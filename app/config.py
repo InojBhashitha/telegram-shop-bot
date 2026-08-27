@@ -82,8 +82,12 @@ class Settings(BaseSettings):
                     val = query.pop("sslmode")
                     if val in ("require", "verify-ca", "verify-full"):
                         query["ssl"] = "require"
-                    parsed = parsed._replace(query=query)
 
+                # Remove query params not supported by asyncpg
+                for unsupported in ("channel_binding", "target_session_attrs", "gssencmode"):
+                    query.pop(unsupported, None)
+
+                parsed = parsed._replace(query=query)
                 return parsed.render_as_string(hide_password=False)
             except Exception:
                 # Fallback replacement if parsing fails
@@ -91,7 +95,9 @@ class Settings(BaseSettings):
                     url_str = "postgresql+asyncpg://" + url_str[len("postgres://"):]
                 elif url_str.startswith("postgresql://"):
                     url_str = "postgresql+asyncpg://" + url_str[len("postgresql://"):]
-                return url_str.replace("sslmode=require", "ssl=require")
+                clean_url = url_str.replace("sslmode=require", "ssl=require")
+                clean_url = clean_url.replace("&channel_binding=require", "").replace("channel_binding=require&", "").replace("channel_binding=require", "")
+                return clean_url
 
         return url_str
 
