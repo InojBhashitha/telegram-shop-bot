@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  cloud-deals:
+    build: .
+    container_name: cloud-deals
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./cloud_deals.db:/app/cloud_deals.db
+      - ./backups:/app/backups
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # Optional: PostgreSQL for production
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: cloud-deals-db
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: cloud_deals
+  #     POSTGRES_USER: cloud_deals
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+
+# volumes:
+#   pgdata:

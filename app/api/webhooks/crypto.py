@@ -1,0 +1,161 @@
+"""Crypto payment webhook endpoint (NOWPayments IPN)."""
+
+from __future__ import annotations
+
+import json
+import logging
+
+from fastapi import APIRouter, Request, Response
+
+from app.database.database import get_session
+from app.payments.nowpayments import get_provider
+from app.services import delivery_service, payment_service, topup_service
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
+
+
+@router.post("/nowpayments")
+async def nowpayments_webhook(request: Request) -> Response:
+    """Handle NOWPayments IPN webhook.
+
+    This endpoint:
+    1. Reads the raw body for signature verification
+    2. Verifies the HMAC-SHA512 signature
+    3. Processes the payment notification idempotently
+    4. Triggers delivery if payment is finished
+    5. Always returns 200 to acknowledge receipt
+    """
+    # Read raw body for signature verification
+    body = await request.body()
+    headers = dict(request.headers)
+
+    provider = get_provider()
+
+    # Verify webhook signature
+    if not provider.verify_webhook(headers, body):
+        logger.warning("Webhook signature verification FAILED")
+        # Return 200 anyway to prevent retries of bad requests
+        # But do NOT process the payment
+        return Response(status_code=200, content="signature_invalid")
+
+    # Parse webhook data
+    try:
+        webhook_data = json.loads(body)
+    except json.JSONDecodeError:
+        logger.error("Webhook body is not valid JSON")
+        return Response(status_code=200, content="invalid_json")
+
+    logger.info(
+        "Webhook received: payment_id=%s status=%s order=%s",
+        webhook_data.get("payment_id"),
+        webhook_data.get("payment_status"),
+        webhook_data.get("order_id"),
+    )
+
+    order_id_str = webhook_data.get("order_id", "")
+
+    # Check if this is a top-up payment
+    if order_id_str.startswith("TOPUP-"):
+        await _handle_topup_webhook(webhook_data, provider)
+        return Response(status_code=200, content="ok")
+
+    # Process as order payment
+    async with get_session() as session:
+        result = await payment_service.process_webhook(
+            session, provider, webhook_data
+        )
+
+        if result is None:
+            logger.warning("Webhook did not match any payment record")
+            return Response(status_code=200, content="no_match")
+
+        order = result["order"]
+        action = result["action"]
+
+        # Trigger Telegram delivery for fulfilled orders
+        if action == "fulfilled":
+            await _deliver_order(order, session)
+
+        logger.info(
+            "Webhook processed: order=%s action=%s",
+            order.public_order_id, action,
+        )
+
+    return Response(status_code=200, content="ok")
+
+
+async def _handle_topup_webhook(webhook_data: dict, provider) -> None:
+    """Handle webhook for top-up payments."""
+    async with get_session() as session:
+        invoice_id = str(webhook_data.get("invoice_id", ""))
+        status = webhook_data.get("payment_status", "")
+
+        result = await topup_service.process_topup_webhook(
+            session,
+            provider_invoice_id=invoice_id,
+            provider_name=provider.provider_name,
+            status=status,
+        )
+
+        if result and result["action"] == "credited":
+            # Notify user via Telegram
+            topup = result["topup"]
+            try:
+                from app.bot.bot import get_bot_instance
+                bot = get_bot_instance()
+                if bot:
+                    from app.database.repositories import user_repo
+                    user = await user_repo.get_by_id(session, topup.user_id)
+                    if user:
+                        await bot.send_message(
+                            chat_id=user.telegram_id,
+                            text=(
+                                f"✅ *Top-Up Confirmed!*\n\n"
+                                f"💰 Amount: ${topup.amount}\n"
+                                f"💳 New balance has been credited.\n\n"
+                                f"Thank you! ☁️"
+                            ),
+                            parse_mode="Markdown",
+                        )
+            except Exception as e:
+                logger.error("Failed to send top-up notification: %s", e)
+
+
+async def _deliver_order(order, session) -> None:
+    """Send the fulfilled order's product to the customer via Telegram."""
+    try:
+        from app.bot.bot import get_bot_instance
+        bot = get_bot_instance()
+        if bot is None:
+            logger.error("Bot instance not available for delivery")
+            return
+
+        from app.database.repositories import user_repo, inventory_repo
+        user = await user_repo.get_by_id(session, order.user_id)
+        if user is None:
+            logger.error("User not found for delivery: order=%s", order.public_order_id)
+            return
+
+        content = None
+        if order.inventory_id:
+            item = await inventory_repo.get_item_by_id(session, order.inventory_id)
+            if item:
+                content = item.content
+
+        if content is None:
+            logger.error("No delivery content for order=%s", order.public_order_id)
+            return
+
+        product_name = order.product.name if order.product else "Product"
+
+        await delivery_service.deliver_to_user(
+            bot, user.telegram_id, order, content, product_name
+        )
+
+    except Exception as e:
+        logger.error(
+            "Delivery failed for order=%s: %s",
+            order.public_order_id, e,
+        )
