@@ -83,6 +83,17 @@ def admin_categories_keyboard(categories: list) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
+def admin_category_detail_keyboard(category_id: int) -> InlineKeyboardMarkup:
+    """Admin category detail actions."""
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("➕ Add Product Here", callback_data=f"adm:selcat:{category_id}"),
+            InlineKeyboardButton("🔴 Deactivate", callback_data=f"adm:deact_cat:{category_id}"),
+        ],
+        [InlineKeyboardButton("⬅️ Back", callback_data="adm:categories")],
+    ])
+
+
 def admin_category_select_keyboard(categories: list) -> InlineKeyboardMarkup:
     """Category selection keyboard for product creation."""
     buttons = []

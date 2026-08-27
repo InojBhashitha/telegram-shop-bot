@@ -49,13 +49,13 @@ logger = logging.getLogger(__name__)
 # Conversation states
 (
     ADD_CAT_NAME, ADD_CAT_ICON, ADD_CAT_DESC,
-    ADD_PROD_NAME, ADD_PROD_DESC, ADD_PROD_PRICE,
+    ADD_PROD_CAT, ADD_PROD_NAME, ADD_PROD_DESC, ADD_PROD_PRICE,
     ADD_STOCK_ITEMS,
     EDIT_PROD_FIELD, EDIT_PROD_VALUE,
     BROADCAST_MSG,
     EDIT_STORE_NAME,
     TICKET_REPLY_MSG,
-) = range(12)
+) = range(13)
 
 
 def _is_admin(user_id: int) -> bool:
@@ -111,6 +111,48 @@ async def admin_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         "⚙️ *Categories*",
         reply_markup=admin_categories_keyboard(cats),
         parse_mode="Markdown",
+    )
+
+
+async def admin_category_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show category detail (admin)."""
+    query = update.callback_query
+    await query.answer()
+    category_id = int(query.data.split(":")[2])
+
+    async with get_session() as session:
+        cat = await category_repo.get_by_id(session, category_id)
+        if cat is None:
+            await query.edit_message_text("❌ Category not found.")
+            return
+        products = await product_service.get_products_by_category(session, category_id)
+
+    icon = cat.icon or "📁"
+    status = "Active ✅" if cat.active else "Inactive ❌"
+
+    from app.bot.keyboards.admin import admin_category_detail_keyboard
+    await query.edit_message_text(
+        f"⚙️ *Category: {icon} {cat.name}*\n\n"
+        f"📝 Description: {cat.description or 'None'}\n"
+        f"Status: {status}\n"
+        f"📦 Products count: {len(products)}",
+        reply_markup=admin_category_detail_keyboard(cat.id),
+        parse_mode="Markdown",
+    )
+
+
+async def deactivate_category_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Deactivate a category."""
+    query = update.callback_query
+    await query.answer()
+    category_id = int(query.data.split(":")[2])
+
+    async with get_session() as session:
+        await product_service.deactivate_category(session, category_id)
+
+    await query.edit_message_text(
+        "✅ Category deactivated.",
+        reply_markup=admin_main_keyboard(),
     )
 
 
@@ -222,6 +264,13 @@ async def start_add_product(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return ConversationHandler.END
     await query.answer()
 
+    # If triggered directly with a category selected (adm:selcat:{id})
+    if query.data.startswith("adm:selcat:"):
+        cat_id = int(query.data.split(":")[2])
+        context.user_data["prod_cat_id"] = cat_id
+        await query.edit_message_text("Enter *product name*:", parse_mode="Markdown")
+        return ADD_PROD_NAME
+
     async with get_session() as session:
         cats = await category_repo.list_active(session)
 
@@ -234,30 +283,30 @@ async def start_add_product(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         reply_markup=admin_category_select_keyboard(cats),
         parse_mode="Markdown",
     )
-    return ADD_PROD_NAME
+    return ADD_PROD_CAT
 
 
 async def recv_prod_category(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Receive category selection for new product."""
     query = update.callback_query
     await query.answer()
-    cat_id = int(query.data.split(":")[1])
+    cat_id = int(query.data.split(":")[2])
     context.user_data["prod_cat_id"] = cat_id
     await query.edit_message_text("Enter *product name*:", parse_mode="Markdown")
-    return ADD_PROD_DESC
+    return ADD_PROD_NAME
 
 
 async def recv_prod_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data["prod_name"] = update.message.text.strip()
     await update.message.reply_text("Enter *description* (or /skip):", parse_mode="Markdown")
-    return ADD_PROD_PRICE
+    return ADD_PROD_DESC
 
 
 async def recv_prod_desc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text = update.message.text.strip()
     context.user_data["prod_desc"] = None if text == "/skip" else text
     await update.message.reply_text("Enter *price* (e.g. 4.50):", parse_mode="Markdown")
-    return ADD_PROD_PRICE + 1  # We'll handle this as the final state
+    return ADD_PROD_PRICE
 
 
 async def recv_prod_price(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -265,7 +314,7 @@ async def recv_prod_price(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         price = Decimal(update.message.text.strip())
     except InvalidOperation:
         await update.message.reply_text("❌ Invalid price. Enter a number (e.g. 4.50):")
-        return ADD_PROD_PRICE + 1
+        return ADD_PROD_PRICE
 
     async with get_session() as session:
         await product_service.create_product(
@@ -871,18 +920,22 @@ def get_handlers() -> list:
     )
 
     add_prod_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(start_add_product, pattern="^adm:add_product$")],
+        entry_points=[
+            CallbackQueryHandler(start_add_product, pattern="^adm:add_product$"),
+            CallbackQueryHandler(start_add_product, pattern=r"^adm:selcat:\d+$"),
+        ],
         states={
-            ADD_PROD_NAME: [
+            ADD_PROD_CAT: [
                 CallbackQueryHandler(recv_prod_category, pattern=r"^adm:selcat:\d+$"),
             ],
-            ADD_PROD_DESC: [
+            ADD_PROD_NAME: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, recv_prod_name),
             ],
-            ADD_PROD_PRICE: [
+            ADD_PROD_DESC: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, recv_prod_desc),
+                CommandHandler("skip", recv_prod_desc),
             ],
-            ADD_PROD_PRICE + 1: [
+            ADD_PROD_PRICE: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, recv_prod_price),
             ],
         },
@@ -936,6 +989,8 @@ def get_handlers() -> list:
         ticket_reply_conv,
         CallbackQueryHandler(admin_panel, pattern="^admin$"),
         CallbackQueryHandler(admin_categories, pattern="^adm:categories$"),
+        CallbackQueryHandler(admin_category_detail, pattern=r"^adm:cat:\d+$"),
+        CallbackQueryHandler(deactivate_category_handler, pattern=r"^adm:deact_cat:\d+$"),
         CallbackQueryHandler(admin_products, pattern="^adm:products$"),
         CallbackQueryHandler(admin_product_detail, pattern=r"^adm:prod:\d+$"),
         CallbackQueryHandler(deactivate_product, pattern=r"^adm:deact_prod:\d+$"),
