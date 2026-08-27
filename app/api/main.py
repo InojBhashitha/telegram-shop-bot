@@ -24,6 +24,15 @@ def create_api() -> FastAPI:
     # Mount webhook routes
     api.include_router(crypto_router, prefix="/webhooks/crypto", tags=["webhooks"])
 
+    @api.get("/")
+    async def root():
+        """Root endpoint."""
+        return {
+            "name": "Cloud Deals API",
+            "status": "online",
+            "message": "Telegram Bot and Webhook Service are running.",
+        }
+
     @api.get("/health")
     async def health_check():
         """Health check endpoint."""
