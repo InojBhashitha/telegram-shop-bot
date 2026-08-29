@@ -420,32 +420,50 @@ async def start_add_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     product_id = int(query.data.split(":")[2])
     context.user_data["stock_product_id"] = product_id
     await query.edit_message_text(
-        "📥 *Add Inventory*\n\n"
-        "Send the items, one per line:\n\n"
-        "Example:\n"
-        "`ITEM-001`\n"
-        "`ITEM-002`\n"
-        "`ITEM-003`",
+        "📥 *Add Inventory / Account Stock*\n\n"
+        "You can send accounts in either format:\n\n"
+        "🔹 *Option 1: One line per account*\n"
+        "`mail1@gmail.com:mailpass1:accpass1`\n"
+        "`mail2@gmail.com:mailpass2:accpass2`\n\n"
+        "🔹 *Option 2: Multi-line blocks (separated by `---`)*\n"
+        "```\n"
+        "Email: user1@gmail.com\n"
+        "Mail Password: mailpass1\n"
+        "Account Password: accpass1\n"
+        "---\n"
+        "Email: user2@gmail.com\n"
+        "Mail Password: mailpass2\n"
+        "Account Password: accpass2\n"
+        "```\n\n"
+        "Send your accounts now (or /cancel):",
         parse_mode="Markdown",
     )
     return ADD_STOCK_ITEMS
 
 
 async def recv_stock_items(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Receive and add inventory items."""
+    """Receive and add inventory items (single-line or multi-line blocks)."""
     product_id = context.user_data.get("stock_product_id")
     if not product_id:
-        await update.message.reply_text("❌ Error. Try again.")
+        await update.message.reply_text("❌ Error. Please try again.")
         return ConversationHandler.END
 
-    lines = [l.strip() for l in update.message.text.strip().split("\n") if l.strip()]
+    raw_text = update.message.text.strip()
+    if "---" in raw_text:
+        items = [item.strip() for item in raw_text.split("---") if item.strip()]
+    else:
+        items = [item.strip() for item in raw_text.split("\n") if item.strip()]
+
+    if not items:
+        await update.message.reply_text("❌ No valid items found. Please try again or /cancel.")
+        return ADD_STOCK_ITEMS
 
     async with get_session() as session:
-        count = await inventory_service.add_stock(session, product_id, lines)
+        count = await inventory_service.add_stock(session, product_id, items)
 
     context.user_data.pop("stock_product_id", None)
     await update.message.reply_text(
-        f"✅ Added {count} inventory items.",
+        f"✅ Added {count} account(s) to stock successfully!",
         reply_markup=admin_main_keyboard(),
     )
     return ConversationHandler.END
