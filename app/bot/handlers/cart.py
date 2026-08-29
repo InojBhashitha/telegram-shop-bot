@@ -174,6 +174,11 @@ async def start_custom_quantity(update: Update, context: ContextTypes.DEFAULT_TY
     context.user_data["custom_qty_max_stock"] = stock
     context.user_data["custom_qty_cat_id"] = product.category_id
 
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    cancel_kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("❌ Cancel", callback_data=f"cancel_custom_qty:{product_id}")]
+    ])
+
     await query.edit_message_text(
         f"☁️ *Cloud Deals — Custom Quantity*\n\n"
         f"📦 *{product.name}*\n"
@@ -181,9 +186,24 @@ async def start_custom_quantity(update: Update, context: ContextTypes.DEFAULT_TY
         f"🟢 Available Stock: *{stock}* accounts\n\n"
         f"🔢 *How many accounts would you like to buy?*\n"
         f"Please send a number between *1* and *{stock}* (or /cancel):",
+        reply_markup=cancel_kb,
         parse_mode="Markdown",
     )
     return CUSTOM_QUANTITY_INPUT
+
+
+async def cancel_custom_quantity(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancel custom quantity input and return to product details."""
+    query = update.callback_query
+    if query:
+        await query.answer()
+        product_id = int(query.data.split(":")[1]) if ":" in query.data else None
+        if product_id:
+            from app.bot.handlers.products import show_product_detail
+            query.data = f"prod:{product_id}"
+            await show_product_detail(update, context)
+            return ConversationHandler.END
+    return ConversationHandler.END
 
 
 async def recv_custom_quantity(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -505,9 +525,11 @@ def get_handlers() -> list:
         },
         fallbacks=[
             CommandHandler("cancel", lambda u, c: ConversationHandler.END),
+            CallbackQueryHandler(cancel_custom_quantity, pattern=r"^cancel_custom_qty:\d+$"),
         ],
         per_user=True,
         per_chat=True,
+        per_message=False,
     )
 
     return [

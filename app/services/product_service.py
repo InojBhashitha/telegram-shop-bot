@@ -65,6 +65,11 @@ async def get_products_by_category(
     return await product_repo.list_by_category(session, category_id, active_only=True)
 
 
+async def get_product(session: AsyncSession, product_id: int):
+    """Get a single product by ID."""
+    return await product_repo.get_by_id(session, product_id)
+
+
 async def get_product_details(
     session: AsyncSession, product_id: int
 ) -> Optional[dict]:
