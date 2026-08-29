@@ -121,6 +121,9 @@ class User(Base):
 
     # Relationships
     orders: Mapped[list[Order]] = relationship("Order", back_populates="user", lazy="selectin")
+    cart_items: Mapped[list[CartItem]] = relationship(
+        "CartItem", back_populates="user", cascade="all, delete-orphan", lazy="selectin"
+    )
     referrals_made: Mapped[list[Referral]] = relationship(
         "Referral", foreign_keys="Referral.referrer_user_id", back_populates="referrer"
     )
@@ -205,7 +208,7 @@ class Order(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     public_order_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
-    product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False)
+    product_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("products.id"), nullable=True)
     inventory_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("inventory.id"), nullable=True
     )
@@ -225,7 +228,7 @@ class Order(Base):
 
     # Relationships
     user: Mapped[User] = relationship("User", back_populates="orders")
-    product: Mapped[Product] = relationship("Product")
+    product: Mapped[Optional[Product]] = relationship("Product")
     inventory_item: Mapped[Optional[Inventory]] = relationship(
         "Inventory", foreign_keys=[inventory_id]
     )
@@ -389,3 +392,27 @@ class WarrantyClaim(Base):
     replacement_item: Mapped[Optional[Inventory]] = relationship(
         "Inventory", foreign_keys=[replacement_inventory_id]
     )
+
+
+class CartItem(Base):
+    __tablename__ = "cart_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False, index=True)
+    quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
+
+    # Relationships
+    user: Mapped[User] = relationship("User", back_populates="cart_items")
+    product: Mapped[Product] = relationship("Product", lazy="selectin")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "product_id", name="uq_user_product_cart"),
+    )
+

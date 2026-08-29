@@ -10,19 +10,23 @@ from telegram import (
 )
 
 
-def main_menu_keyboard() -> InlineKeyboardMarkup:
+def main_menu_keyboard(cart_count: int = 0) -> InlineKeyboardMarkup:
     """Main menu keyboard shown after /start."""
+    cart_btn = f"🛒 My Cart ({cart_count})" if cart_count > 0 else "🛒 My Cart"
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🎁 View all products", callback_data="products")],
         [
             InlineKeyboardButton("🔥 Buy Now", callback_data="products"),
-            InlineKeyboardButton("💳 Top-up", callback_data="topup"),
+            InlineKeyboardButton(cart_btn, callback_data="cart"),
         ],
         [
             InlineKeyboardButton("👤 Profile", callback_data="profile"),
-            InlineKeyboardButton("☎️ Support", callback_data="support"),
+            InlineKeyboardButton("💳 Top-up", callback_data="topup"),
         ],
-        [InlineKeyboardButton("❓ FAQ", callback_data="faq")],
+        [
+            InlineKeyboardButton("☎️ Support", callback_data="support"),
+            InlineKeyboardButton("❓ FAQ", callback_data="faq"),
+        ],
     ])
 
 
@@ -30,8 +34,9 @@ def main_reply_keyboard() -> ReplyKeyboardMarkup:
     """Persistent bottom reply keyboard for quick navigation."""
     return ReplyKeyboardMarkup(
         [
-            [KeyboardButton("🛍 Browse Store"), KeyboardButton("📦 My Orders")],
-            [KeyboardButton("👤 My Profile"), KeyboardButton("☎️ Support / FAQ")],
+            [KeyboardButton("🛍 Browse Store"), KeyboardButton("🛒 My Cart")],
+            [KeyboardButton("📦 My Orders"), KeyboardButton("👤 My Profile")],
+            [KeyboardButton("☎️ Support / FAQ")],
         ],
         resize_keyboard=True,
         is_persistent=True,

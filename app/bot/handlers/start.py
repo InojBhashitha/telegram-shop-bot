@@ -301,6 +301,17 @@ async def _handle_reply_support(update: Update, context: ContextTypes.DEFAULT_TY
     )
 
 
+async def _handle_reply_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle '🛒 My Cart' reply keyboard button."""
+    from app.bot.handlers.cart import show_cart
+    # Force-subscribe gate check
+    is_member = await _check_channel_membership(context.bot, update.effective_user.id)
+    if not is_member:
+        await _show_join_required(update, context)
+        return
+    await show_cart(update, context)
+
+
 def get_handlers() -> list:
     """Return handlers for this module."""
     return [
@@ -312,6 +323,7 @@ def get_handlers() -> list:
         CallbackQueryHandler(lambda u, c: u.callback_query.answer(), pattern="^noop$"),
         # Persistent reply keyboard button handlers
         MessageHandler(filters.Regex("^🛍 Browse Store$"), _handle_reply_browse),
+        MessageHandler(filters.Regex("^🛒 My Cart$"), _handle_reply_cart),
         MessageHandler(filters.Regex("^📦 My Orders$"), _handle_reply_orders),
         MessageHandler(filters.Regex("^👤 My Profile$"), _handle_reply_profile),
         MessageHandler(filters.Regex("^☎️ Support / FAQ$"), _handle_reply_support),

@@ -213,11 +213,21 @@ async def _deliver_order(order, session) -> None:
             logger.error("No delivery content for order=%s", order.public_order_id)
             return
 
-        product_name = order.product.name if order.product else "Product"
+        # Group inventory items by product
+        items_by_product = {}
+        for item in items:
+            p_name = item.product.name if hasattr(item, 'product') and item.product else (order.product.name if order.product else "Product")
+            items_by_product.setdefault(p_name, []).append(item.content)
 
-        await delivery_service.deliver_bulk_to_user(
-            bot, user.telegram_id, order, contents, product_name
-        )
+        if len(items_by_product) > 1:
+            await delivery_service.deliver_cart_order_to_user(
+                bot, user.telegram_id, order, items_by_product
+            )
+        else:
+            p_name = list(items_by_product.keys())[0] if items_by_product else (order.product.name if order.product else "Product")
+            await delivery_service.deliver_bulk_to_user(
+                bot, user.telegram_id, order, contents, p_name
+            )
 
     except Exception as e:
         logger.error(

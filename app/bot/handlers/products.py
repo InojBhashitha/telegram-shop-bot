@@ -94,10 +94,15 @@ async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     async with get_session() as session:
         details = await product_service.get_product_details(session, product_id)
+        if details is None:
+            await query.edit_message_text("❌ Product not found.")
+            return
 
-    if details is None:
-        await query.edit_message_text("❌ Product not found.")
-        return
+        from app.database.repositories import cart_repo, user_repo
+        db_user = await user_repo.get_by_telegram_id(session, query.from_user.id)
+        cart_count = 0
+        if db_user:
+            cart_count = await cart_repo.get_cart_item_count(session, db_user.id)
 
     product = details["product"]
     stock = details["stock"]
@@ -118,7 +123,9 @@ async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
         f"{desc}\n\n"
         f"💰 *Price:* ${product.price}\n"
         f"{stock_text}",
-        reply_markup=product_detail_keyboard(product.id, in_stock, product.category_id, stock),
+        reply_markup=product_detail_keyboard(
+            product.id, in_stock, product.category_id, stock, cart_count
+        ),
         parse_mode="Markdown",
     )
 

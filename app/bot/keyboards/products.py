@@ -64,24 +64,42 @@ def products_keyboard(
 
 
 def product_detail_keyboard(
-    product_id: int, in_stock: bool, category_id: int, stock: int = 0
+    product_id: int,
+    in_stock: bool,
+    category_id: int,
+    stock: int = 0,
+    cart_count: int = 0,
 ) -> InlineKeyboardMarkup:
-    """Product detail keyboard with Buy button and quantity options."""
+    """Product detail keyboard with Add to Cart and custom quantity options."""
     buttons = []
     if in_stock:
+        # Row 1: Add to Cart (1x)
         buttons.append([
-            InlineKeyboardButton("🛒 Buy Now (1x)", callback_data=f"buy:{product_id}:1")
+            InlineKeyboardButton("🛒 Add to Cart (1x)", callback_data=f"cart_add:{product_id}:1")
         ])
+
+        # Row 2: Quick bulk buttons + Custom quantity
+        row2 = []
         if stock >= 2:
-            row2 = []
-            if stock >= 2:
-                row2.append(InlineKeyboardButton("2x", callback_data=f"buy:{product_id}:2"))
-            if stock >= 5:
-                row2.append(InlineKeyboardButton("5x", callback_data=f"buy:{product_id}:5"))
-            if stock >= 10:
-                row2.append(InlineKeyboardButton("10x", callback_data=f"buy:{product_id}:10"))
-            if row2:
-                buttons.append(row2)
+            row2.append(InlineKeyboardButton("2x", callback_data=f"cart_add:{product_id}:2"))
+        if stock >= 5:
+            row2.append(InlineKeyboardButton("5x", callback_data=f"cart_add:{product_id}:5"))
+        if stock >= 10:
+            row2.append(InlineKeyboardButton("10x", callback_data=f"cart_add:{product_id}:10"))
+        if row2:
+            buttons.append(row2)
+
+        # Row 3: Custom Quantity Input
+        buttons.append([
+            InlineKeyboardButton("✏️ Enter Quantity", callback_data=f"cart_custom:{product_id}")
+        ])
+
+    # View Cart button if user has cart items
+    cart_label = f"🛒 View Cart ({cart_count})" if cart_count > 0 else "🛒 View Cart"
+    buttons.append([
+        InlineKeyboardButton(cart_label, callback_data="cart")
+    ])
+
     buttons.append([
         InlineKeyboardButton("⬅️ Back", callback_data=f"cat:{category_id}")
     ])

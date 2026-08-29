@@ -173,6 +173,63 @@ async def deliver_bulk_to_user(
         return False
 
 
+async def deliver_cart_order_to_user(
+    bot: Bot,
+    telegram_id: int,
+    order: Order,
+    items_by_product: dict[str, list[str]],
+) -> bool:
+    """Send multi-product purchased accounts to the customer.
+
+    Args:
+        bot: Telegram Bot instance.
+        telegram_id: Customer Telegram user ID.
+        order: The fulfilled order.
+        items_by_product: Dict mapping product_name -> list of content strings.
+    """
+    sections = []
+    total_qty = sum(len(c) for c in items_by_product.values())
+
+    for prod_name, contents in items_by_product.items():
+        prod_header = f"🏷 *{prod_name}* ({len(contents)}x):"
+        blocks = []
+        for i, content in enumerate(contents, 1):
+            formatted = _format_credentials_for_copy(content)
+            if len(contents) > 1:
+                blocks.append(f"🎁 *Account #{i}:*\n{formatted}")
+            else:
+                blocks.append(f"🎁 *Account:*\n{formatted}")
+        sections.append(f"{prod_header}\n" + "\n\n".join(blocks))
+
+    all_delivery = "\n\n───────────────────\n\n".join(sections)
+
+    message = (
+        f"✅ *Payment Confirmed\\!*\n\n"
+        f"📦 *Order:* `{order.public_order_id}`\n"
+        f"🔢 *Total Items:* {total_qty}\n\n"
+        f"{all_delivery}\n\n"
+        f"Thank you for using Cloud Deals\\! ☁️"
+    )
+
+    try:
+        await bot.send_message(
+            chat_id=telegram_id,
+            text=message,
+            parse_mode="Markdown",
+        )
+        logger.info(
+            "Cart delivery sent: order=%s items=%s user=%s",
+            order.public_order_id, total_qty, telegram_id,
+        )
+        return True
+    except TelegramError as e:
+        logger.error(
+            "Cart delivery failed: order=%s user=%s error=%s",
+            order.public_order_id, telegram_id, e,
+        )
+        return False
+
+
 async def send_payment_update(
     bot: Bot,
     telegram_id: int,

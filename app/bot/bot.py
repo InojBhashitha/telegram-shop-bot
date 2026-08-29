@@ -33,9 +33,9 @@ def build_bot() -> Application:
     _bot_instance = app.bot
 
     # Register handlers — order matters (ConversationHandlers first)
-    from app.bot.handlers import admin, orders, products, profile, start, support
+    from app.bot.handlers import admin, cart, orders, products, profile, start, support
 
-    for module in [admin, support, start, products, orders, profile]:
+    for module in [admin, cart, support, start, products, orders, profile]:
         for handler in module.get_handlers():
             app.add_handler(handler)
 
