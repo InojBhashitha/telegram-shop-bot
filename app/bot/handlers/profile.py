@@ -102,7 +102,14 @@ async def process_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     amount = Decimal(query.data.split(":")[1])
     settings = get_settings()
 
-    if not settings.nowpayments_api_key:
+    from app.payments import get_payment_provider
+    is_configured = False
+    if settings.crypto_provider.lower() == "cryptomus":
+        is_configured = bool(settings.cryptomus_merchant_id and settings.cryptomus_payment_key)
+    else:
+        is_configured = bool(settings.nowpayments_api_key)
+
+    if not is_configured:
         await query.edit_message_text(
             "☁️ *Cloud Deals*\n\n"
             "❌ Payment system is not configured yet.",
@@ -117,7 +124,7 @@ async def process_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             return
 
         try:
-            provider = get_provider()
+            provider = get_payment_provider()
             result = await topup_service.create_topup(
                 session, provider, user.id, amount
             )

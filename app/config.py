@@ -34,12 +34,16 @@ class Settings(BaseSettings):
     admin_telegram_ids: str = ""
 
     # --- Crypto Payment Provider ---
-    crypto_provider: str = "nowpayments"
+    crypto_provider: str = "cryptomus"  # "cryptomus" or "nowpayments"
 
     # NOWPayments
     nowpayments_api_key: str = ""
     nowpayments_ipn_secret: str = ""
     nowpayments_sandbox: bool = True
+
+    # Cryptomus
+    cryptomus_merchant_id: str = ""
+    cryptomus_payment_key: str = ""
 
     # --- Webhook ---
     webhook_base_url: str = "http://localhost:8000"
@@ -137,10 +141,18 @@ class Settings(BaseSettings):
             warnings.append("BOT_TOKEN is required")
         if not self.admin_telegram_ids:
             warnings.append("ADMIN_TELEGRAM_IDS is empty — no admin access")
-        if not self.nowpayments_api_key:
-            warnings.append("NOWPAYMENTS_API_KEY is empty — payments disabled")
-        if not self.nowpayments_ipn_secret:
-            warnings.append("NOWPAYMENTS_IPN_SECRET is empty — webhook verification disabled")
+
+        if self.crypto_provider.lower() == "cryptomus":
+            if not self.cryptomus_merchant_id:
+                warnings.append("CRYPTOMUS_MERCHANT_ID is empty — Cryptomus payments disabled")
+            if not self.cryptomus_payment_key:
+                warnings.append("CRYPTOMUS_PAYMENT_KEY is empty — Cryptomus verification disabled")
+        else:
+            if not self.nowpayments_api_key:
+                warnings.append("NOWPAYMENTS_API_KEY is empty — payments disabled")
+            if not self.nowpayments_ipn_secret:
+                warnings.append("NOWPAYMENTS_IPN_SECRET is empty — webhook verification disabled")
+
         if self.webhook_base_url.startswith("http://") and "localhost" not in self.webhook_base_url:
             warnings.append("WEBHOOK_BASE_URL uses HTTP — use HTTPS in production")
         return warnings

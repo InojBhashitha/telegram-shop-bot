@@ -16,7 +16,11 @@ services:
       - key: ADMIN_TELEGRAM_IDS
         sync: false
       - key: CRYPTO_PROVIDER
-        value: nowpayments
+        value: cryptomus
+      - key: CRYPTOMUS_MERCHANT_ID
+        sync: false
+      - key: CRYPTOMUS_PAYMENT_KEY
+        sync: false
       - key: NOWPAYMENTS_API_KEY
         sync: false
       - key: NOWPAYMENTS_IPN_SECRET

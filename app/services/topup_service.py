@@ -31,18 +31,21 @@ async def create_topup(
         Dict with 'topup' model and 'payment_url'.
     """
     settings = get_settings()
-    ipn_url = f"{settings.webhook_base_url}/webhooks/crypto/nowpayments"
+    ipn_url = f"{settings.webhook_base_url}/webhooks/crypto/{provider.provider_name}"
 
     order_id = f"TOPUP-{user_id}-{int(datetime.now(timezone.utc).timestamp())}"
 
+    bot_username = settings.support_username or "CloudDeals"
+    return_url = f"https://t.me/{bot_username}" if bot_username else "https://t.me"
+
     result = await provider.create_invoice(
         price_amount=amount,
-        price_currency=currency.lower(),
+        price_currency=currency.upper() if provider.provider_name == "cryptomus" else currency.lower(),
         order_id=order_id,
         order_description=f"Cloud Deals Top-Up ${amount}",
         ipn_callback_url=ipn_url,
-        success_url="https://t.me",
-        cancel_url="https://t.me",
+        success_url=return_url,
+        cancel_url=return_url,
     )
 
     topup = await topup_repo.create(
@@ -81,7 +84,7 @@ async def process_topup_webhook(
     if topup.status == TopUpStatus.PAID:
         return {"topup": topup, "action": "skipped"}
 
-    if status == "finished":
+    if status in ("finished", "paid", "paid_over"):
         topup = await topup_repo.update_status(
             session, topup.id, TopUpStatus.PAID,
             confirmed_at=datetime.now(timezone.utc),
@@ -91,7 +94,7 @@ async def process_topup_webhook(
         logger.info("Top-up completed: user_id=%s amount=%s", topup.user_id, topup.amount)
         return {"topup": topup, "action": "credited"}
 
-    elif status in ("expired", "failed"):
+    elif status in ("expired", "failed", "cancel", "fail", "system_fail"):
         await topup_repo.update_status(session, topup.id, TopUpStatus.EXPIRED)
         return {"topup": topup, "action": "expired"}
 

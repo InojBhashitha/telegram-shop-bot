@@ -121,8 +121,15 @@ async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     user = query.from_user
     settings = get_settings()
 
-    # Check if payment provider is configured
-    if not settings.nowpayments_api_key:
+    # Check if active payment provider is configured
+    from app.payments import get_payment_provider
+    is_configured = False
+    if settings.crypto_provider.lower() == "cryptomus":
+        is_configured = bool(settings.cryptomus_merchant_id and settings.cryptomus_payment_key)
+    else:
+        is_configured = bool(settings.nowpayments_api_key)
+
+    if not is_configured:
         await query.edit_message_text(
             "☁️ *Cloud Deals*\n\n"
             "❌ Payment system is not configured yet.\n\n"
@@ -165,7 +172,7 @@ async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         # Create crypto payment
         try:
-            provider = get_provider()
+            provider = get_payment_provider()
             pay_result = await payment_service.create_payment_for_order(
                 session, provider, order.id
             )

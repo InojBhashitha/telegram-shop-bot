@@ -45,16 +45,19 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         settings = get_settings()
         status_text = order.status.value
 
-        if settings.nowpayments_api_key:
-            provider = get_provider()
+        payment = await payment_repo.get_by_order_id(session, order.id)
+        payment_url = payment.payment_url if payment else None
+
+        from app.payments import get_payment_provider
+        provider = get_payment_provider(payment.provider if payment else None)
+        try:
             provider_status = await payment_service.check_payment_status(
                 session, provider, order.id
             )
             if provider_status:
                 status_text = provider_status
-
-        payment = await payment_repo.get_by_order_id(session, order.id)
-        payment_url = payment.payment_url if payment else None
+        except Exception:
+            pass
 
     status_display = _format_status(status_text)
 

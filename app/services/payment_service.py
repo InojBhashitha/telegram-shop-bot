@@ -31,6 +31,22 @@ _NOWPAYMENTS_STATUS_MAP: dict[str, PaymentStatus] = {
     "refunded": PaymentStatus.REFUNDED,
 }
 
+# Mapping from Cryptomus status strings to internal PaymentStatus
+_CRYPTOMUS_STATUS_MAP: dict[str, PaymentStatus] = {
+    "check": PaymentStatus.CONFIRMING,
+    "process": PaymentStatus.CONFIRMING,
+    "confirm_check": PaymentStatus.CONFIRMING,
+    "paid": PaymentStatus.FINISHED,
+    "paid_over": PaymentStatus.FINISHED,
+    "fail": PaymentStatus.FAILED,
+    "cancel": PaymentStatus.FAILED,
+    "system_fail": PaymentStatus.FAILED,
+    "wrong_amount": PaymentStatus.PARTIALLY_PAID,
+    "refund_process": PaymentStatus.REFUNDED,
+    "refund_fail": PaymentStatus.REFUNDED,
+    "refund_paid": PaymentStatus.REFUNDED,
+}
+
 # Internal payment statuses that map to order becoming PAID
 _PAID_STATUSES = {PaymentStatus.FINISHED}
 
@@ -61,17 +77,20 @@ async def create_payment_for_order(
         raise ValueError(f"Order {order_id} not found")
 
     settings = get_settings()
-    ipn_url = f"{settings.webhook_base_url}/webhooks/crypto/nowpayments"
+    ipn_url = f"{settings.webhook_base_url}/webhooks/crypto/{provider.provider_name}"
+
+    bot_username = settings.support_username or "CloudDeals"
+    return_url = f"https://t.me/{bot_username}" if bot_username else "https://t.me"
 
     # Create invoice via payment provider
     result = await provider.create_invoice(
         price_amount=order.amount,
-        price_currency=order.currency.lower(),
+        price_currency=order.currency.upper() if provider.provider_name == "cryptomus" else order.currency.lower(),
         order_id=order.public_order_id,
         order_description=f"Cloud Deals Order {order.public_order_id}",
         ipn_callback_url=ipn_url,
-        success_url=f"https://t.me",  # Return to Telegram
-        cancel_url=f"https://t.me",
+        success_url=return_url,
+        cancel_url=return_url,
     )
 
     # Save payment record
@@ -87,8 +106,8 @@ async def create_payment_for_order(
     )
 
     logger.info(
-        "Payment created: order=%s invoice_id=%s",
-        order.public_order_id, result.invoice_id,
+        "Payment created: provider=%s order=%s invoice_id=%s",
+        provider.provider_name, order.public_order_id, result.invoice_id,
     )
 
     return {"payment": payment, "payment_url": result.payment_url}
@@ -102,7 +121,7 @@ async def process_webhook(
     """Process a payment webhook/IPN notification.
 
     This is the CRITICAL idempotent handler that:
-    1. Finds the payment by provider payment ID
+    1. Finds the payment by provider payment ID or order ID
     2. Checks if already processed (idempotency)
     3. Updates payment status
     4. Updates order status
@@ -112,20 +131,24 @@ async def process_webhook(
         Dict with 'order', 'action' ('fulfilled', 'updated', 'skipped'),
         or None if payment not found.
     """
-    provider_payment_id = str(webhook_data.get("payment_id", ""))
-    provider_status = webhook_data.get("payment_status", "")
-    order_id_str = webhook_data.get("order_id", "")
-    actually_paid = webhook_data.get("actually_paid")
-    pay_currency = webhook_data.get("pay_currency")
+    if provider.provider_name == "cryptomus":
+        provider_payment_id = str(webhook_data.get("uuid") or webhook_data.get("payment_id", ""))
+        provider_status = str(webhook_data.get("payment_status") or webhook_data.get("status", "")).lower()
+        order_id_str = webhook_data.get("order_id", "")
+        actually_paid = webhook_data.get("payment_amount") or webhook_data.get("payer_amount")
+        pay_currency = webhook_data.get("payer_currency") or webhook_data.get("currency")
+        internal_status = _CRYPTOMUS_STATUS_MAP.get(provider_status, PaymentStatus.WAITING)
+    else:
+        provider_payment_id = str(webhook_data.get("payment_id", ""))
+        provider_status = str(webhook_data.get("payment_status", "")).lower()
+        order_id_str = webhook_data.get("order_id", "")
+        actually_paid = webhook_data.get("actually_paid")
+        pay_currency = webhook_data.get("pay_currency")
+        internal_status = _NOWPAYMENTS_STATUS_MAP.get(provider_status, PaymentStatus.WAITING)
 
-    if not provider_payment_id or not provider_status:
-        logger.warning("Webhook missing payment_id or payment_status")
+    if not provider_payment_id and not order_id_str:
+        logger.warning("Webhook missing payment_id and order_id")
         return None
-
-    # Map provider status to internal status
-    internal_status = _NOWPAYMENTS_STATUS_MAP.get(
-        provider_status, PaymentStatus.WAITING
-    )
 
     # Find payment by invoice/order
     payment = None
