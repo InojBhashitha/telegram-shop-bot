@@ -1,11 +1,18 @@
-"""Order handlers — check payment, cancel order, order history."""
+"""Order handlers — check payment, cancel order, order history, warranty claims."""
 
 from __future__ import annotations
 
 import logging
 
 from telegram import Update
-from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
+from telegram.ext import (
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    ConversationHandler,
+    MessageHandler,
+    filters,
+)
 
 from app.bot.keyboards.orders import (
     order_detail_keyboard,
@@ -15,16 +22,18 @@ from app.bot.keyboards.orders import (
 from app.config import get_settings
 from app.database.database import get_session
 from app.database.repositories import payment_repo, user_repo
-from app.payments.nowpayments import get_provider
 from app.services import order_service, payment_service
 
 logger = logging.getLogger(__name__)
 
 ORDERS_PER_PAGE = 5
 
+# Conversation states for warranty claim
+WARRANTY_REASON = 100
+
 
 async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Check payment status for an order."""
+    """Check payment status for an order with live status tracker."""
     query = update.callback_query
     await query.answer("Checking payment status...")
 
@@ -42,7 +51,6 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             await query.answer("❌ This is not your order.", show_alert=True)
             return
 
-        settings = get_settings()
         status_text = order.status.value
 
         payment = await payment_repo.get_by_order_id(session, order.id)
@@ -60,16 +68,19 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             pass
 
     status_display = _format_status(status_text)
+    from app.bot.keyboards.orders import _get_payment_steps
+    steps = _get_payment_steps(status_text)
 
     if payment_url and status_text in ("waiting", "pending_payment"):
         await query.edit_message_text(
             f"☁️ *Cloud Deals*\n\n"
             f"💳 *Payment Status*\n\n"
             f"📦 Order: `{order.public_order_id}`\n"
-            f"💰 Amount: ${order.amount}\n"
+            f"💰 Amount: ${order.amount}\n\n"
+            f"{steps}\n\n"
             f"Status: {status_display}\n\n"
             f"Complete your payment using the button below.",
-            reply_markup=payment_keyboard(payment_url, order.id),
+            reply_markup=payment_keyboard(payment_url, order.id, status_text),
             parse_mode="Markdown",
         )
     else:
@@ -77,9 +88,10 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             f"☁️ *Cloud Deals*\n\n"
             f"💳 *Payment Status*\n\n"
             f"📦 Order: `{order.public_order_id}`\n"
-            f"💰 Amount: ${order.amount}\n"
+            f"💰 Amount: ${order.amount}\n\n"
+            f"{steps}\n\n"
             f"Status: {status_display}",
-            reply_markup=order_detail_keyboard(order.public_order_id),
+            reply_markup=order_detail_keyboard(order, has_warranty=True),
             parse_mode="Markdown",
         )
 
@@ -117,7 +129,7 @@ async def cancel_order_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         f"☁️ *Cloud Deals*\n\n"
         f"❌ *Order Cancelled*\n\n"
         f"📦 Order: `{order.public_order_id}`\n\n"
-        f"Your order has been cancelled and the reserved item has been released.",
+        f"Your order has been cancelled and the reserved item(s) have been released.",
         parse_mode="Markdown",
     )
 
@@ -169,7 +181,7 @@ async def show_orders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 async def show_order_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show details of a specific order."""
+    """Show details of a specific order with warranty button if applicable."""
     query = update.callback_query
     await query.answer()
 
@@ -190,22 +202,118 @@ async def show_order_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         product_name = order.product.name if order.product else "Unknown"
         status_icon = _status_icon(order.status.value)
         created = order.created_at.strftime("%d %b %Y %H:%M")
+        qty_label = f"\n🔢 Quantity: {order.quantity}" if order.quantity > 1 else ""
 
     await query.edit_message_text(
         f"☁️ *Cloud Deals*\n\n"
         f"📦 *Order {order.public_order_id}*\n\n"
-        f"🏷 Product: {product_name}\n"
+        f"🏷 Product: {product_name}{qty_label}\n"
         f"💰 Amount: ${order.amount}\n"
         f"Status: {status_icon} {order.status.value.replace('_', ' ').title()}\n"
         f"📅 Date: {created}",
-        reply_markup=order_detail_keyboard(order.public_order_id),
+        reply_markup=order_detail_keyboard(order, has_warranty=True),
         parse_mode="Markdown",
     )
 
 
+# -----------------------------------------------------------------------
+# Warranty claim flow
+# -----------------------------------------------------------------------
+
+async def start_warranty_claim(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Start warranty claim — ask for reason."""
+    query = update.callback_query
+    await query.answer()
+
+    order_id = int(query.data.split(":")[1])
+    context.user_data["warranty_order_id"] = order_id
+
+    await query.edit_message_text(
+        "☁️ *Cloud Deals — Warranty Claim*\n\n"
+        "🛡 Please describe the issue with your account.\n\n"
+        "Example:\n"
+        "• Account password doesn't work\n"
+        "• Account was already used / not fresh\n"
+        "• Wrong account type delivered\n\n"
+        "Send your issue description (or /cancel):",
+        parse_mode="Markdown",
+    )
+    return WARRANTY_REASON
+
+
+async def recv_warranty_reason(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Receive warranty claim reason and submit."""
+    order_id = context.user_data.get("warranty_order_id")
+    if not order_id:
+        await update.message.reply_text("❌ Error. Please try again.")
+        return ConversationHandler.END
+
+    reason = update.message.text.strip()
+    if len(reason) < 5:
+        await update.message.reply_text("❌ Please provide a more detailed description.")
+        return WARRANTY_REASON
+
+    user = update.effective_user
+
+    async with get_session() as session:
+        db_user = await user_repo.get_by_telegram_id(session, user.id)
+        if db_user is None:
+            await update.message.reply_text("❌ Please /start the bot first.")
+            return ConversationHandler.END
+
+        from app.services import warranty_service
+        try:
+            result = await warranty_service.create_claim(
+                session,
+                order_id=order_id,
+                user_id=db_user.id,
+                reason=reason,
+            )
+        except warranty_service.WarrantyError as e:
+            await update.message.reply_text(
+                f"☁️ *Cloud Deals*\n\n❌ {e}",
+                parse_mode="Markdown",
+            )
+            return ConversationHandler.END
+
+    claim = result["claim"]
+    context.user_data.pop("warranty_order_id", None)
+
+    # Notify admin about the new claim
+    settings = get_settings()
+    try:
+        from app.bot.bot import get_bot_instance
+        bot = get_bot_instance()
+        if bot and settings.admin_ids_list:
+            for admin_id in settings.admin_ids_list:
+                await bot.send_message(
+                    chat_id=admin_id,
+                    text=(
+                        f"🛡 *New Warranty Claim*\n\n"
+                        f"Claim ID: `{claim.id}`\n"
+                        f"User: @{user.username or user.id}\n"
+                        f"Reason: {reason}\n\n"
+                        f"Use /admin → 🛡 Warranty Claims to review."
+                    ),
+                    parse_mode="Markdown",
+                )
+    except Exception as e:
+        logger.error("Failed to notify admin about warranty claim: %s", e)
+
+    await update.message.reply_text(
+        "☁️ *Cloud Deals*\n\n"
+        "✅ *Warranty Claim Submitted*\n\n"
+        f"🛡 Claim ID: `{claim.id}`\n"
+        f"📝 Reason: {reason}\n\n"
+        "Our team will review your claim and you'll receive a replacement "
+        "or notification shortly.",
+        parse_mode="Markdown",
+    )
+    return ConversationHandler.END
+
+
 async def orders_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /orders command."""
-    # Reuse the show_orders logic
     user_tg = update.effective_user
 
     async with get_session() as session:
@@ -245,6 +353,10 @@ def _format_status(status: str) -> str:
         "paid": "✅ Paid",
         "fulfilled": "✅ Delivered",
         "cancelled": "❌ Cancelled",
+        # Cryptomus statuses
+        "process": "🔄 Processing",
+        "check": "🔄 Checking",
+        "confirm_check": "🔄 Confirming",
     }
     return icons.get(status, f"ℹ️ {status}")
 
@@ -264,7 +376,24 @@ def _status_icon(status: str) -> str:
 
 def get_handlers() -> list:
     """Return handlers for this module."""
+    warranty_conv = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(start_warranty_claim, pattern=r"^warranty_claim:\d+$"),
+        ],
+        states={
+            WARRANTY_REASON: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, recv_warranty_reason),
+            ],
+        },
+        fallbacks=[
+            CommandHandler("cancel", lambda u, c: ConversationHandler.END),
+        ],
+        per_user=True,
+        per_chat=True,
+    )
+
     return [
+        warranty_conv,
         CommandHandler("orders", orders_command),
         CallbackQueryHandler(check_payment, pattern=r"^check_pay:\d+$"),
         CallbackQueryHandler(cancel_order_handler, pattern=r"^cancel_order:\d+$"),

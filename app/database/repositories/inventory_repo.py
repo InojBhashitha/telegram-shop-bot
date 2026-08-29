@@ -69,6 +69,50 @@ async def reserve_item(
     return item
 
 
+async def reserve_items(
+    session: AsyncSession,
+    product_id: int,
+    quantity: int,
+) -> list[Inventory]:
+    """Atomically reserve multiple inventory items for a product.
+
+    Uses SELECT ... FOR UPDATE to prevent double-reservation.
+
+    Returns:
+        List of reserved Inventory items. May be shorter than quantity
+        if not enough stock is available.
+    """
+    stmt = (
+        select(Inventory)
+        .where(Inventory.product_id == product_id)
+        .where(Inventory.status == InventoryStatus.AVAILABLE)
+        .with_for_update(skip_locked=True)
+        .limit(quantity)
+    )
+    result = await session.execute(stmt)
+    items = list(result.scalars().all())
+
+    now = datetime.now(timezone.utc)
+    for item in items:
+        item.status = InventoryStatus.RESERVED
+        item.reserved_at = now
+    await session.flush()
+    return items
+
+
+async def get_items_by_order_id(
+    session: AsyncSession,
+    order_id: int,
+) -> list[Inventory]:
+    """Get all inventory items linked to a given order."""
+    stmt = (
+        select(Inventory)
+        .where(Inventory.order_id == order_id)
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
 async def release_item(session: AsyncSession, inventory_id: int) -> None:
     """Release a reserved inventory item back to available."""
     stmt = (

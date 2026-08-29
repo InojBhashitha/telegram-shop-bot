@@ -1,4 +1,4 @@
-"""Product browsing handlers — categories, products, and buy flow."""
+"""Product browsing handlers — categories, products, buy flow with quantity selector."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from app.bot.keyboards.products import (
 )
 from app.config import get_settings
 from app.database.database import get_session
-from app.payments.nowpayments import get_provider
+from app.database.repositories import inventory_repo
 from app.services import order_service, payment_service, product_service
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ async def show_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 async def show_category_products(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show products in a selected category."""
+    """Show products in a selected category with live stock & price badges."""
     query = update.callback_query
     await query.answer()
 
@@ -60,6 +60,11 @@ async def show_category_products(update: Update, context: ContextTypes.DEFAULT_T
             return
 
         products = await product_service.get_products_by_category(session, category_id)
+
+        # Get stock counts for each product to show live badges
+        stock_counts = {}
+        for prod in products:
+            stock_counts[prod.id] = await inventory_repo.get_stock_count(session, prod.id)
 
     if not products:
         await query.edit_message_text(
@@ -75,13 +80,13 @@ async def show_category_products(update: Update, context: ContextTypes.DEFAULT_T
         f"☁️ *Cloud Deals*\n\n"
         f"{icon} *{category.name}*\n\n"
         f"Select a product:",
-        reply_markup=products_keyboard(products, category_id),
+        reply_markup=products_keyboard(products, category_id, stock_counts),
         parse_mode="Markdown",
     )
 
 
 async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show product details with stock and buy button."""
+    """Show product details with stock count and quantity buy buttons."""
     query = update.callback_query
     await query.answer()
 
@@ -98,7 +103,13 @@ async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
     stock = details["stock"]
     in_stock = stock > 0
 
-    stock_text = f"📦 *Stock:* {stock} available" if in_stock else "❌ *OUT OF STOCK*"
+    if in_stock:
+        from app.bot.keyboards.products import _stock_badge
+        badge = _stock_badge(stock)
+        stock_text = f"📦 *Stock:* {badge} ({stock} available)"
+    else:
+        stock_text = "❌ *OUT OF STOCK*"
+
     desc = product.description or "No description."
 
     await query.edit_message_text(
@@ -107,17 +118,20 @@ async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
         f"{desc}\n\n"
         f"💰 *Price:* ${product.price}\n"
         f"{stock_text}",
-        reply_markup=product_detail_keyboard(product.id, in_stock, product.category_id),
+        reply_markup=product_detail_keyboard(product.id, in_stock, product.category_id, stock),
         parse_mode="Markdown",
     )
 
 
 async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle buy button — create order and payment."""
+    """Handle buy button with quantity — create order and payment."""
     query = update.callback_query
     await query.answer()
 
-    product_id = int(query.data.split(":")[1])
+    parts = query.data.split(":")
+    product_id = int(parts[1])
+    quantity = int(parts[2]) if len(parts) > 2 else 1
+
     user = query.from_user
     settings = get_settings()
 
@@ -155,10 +169,10 @@ async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             await query.edit_message_text("❌ User not found. Please /start again.")
             return
 
-        # Create order
+        # Create order with quantity
         try:
             order_result = await order_service.create_order(
-                session, user_id=db_user.id, product_id=product_id
+                session, user_id=db_user.id, product_id=product_id, quantity=quantity
             )
         except order_service.OrderError as e:
             await query.edit_message_text(
@@ -190,12 +204,15 @@ async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
         payment_url = pay_result["payment_url"]
 
+    qty_label = f" (×{quantity})" if quantity > 1 else ""
+
     await query.edit_message_text(
         f"☁️ *Cloud Deals*\n\n"
         f"💳 *Payment Required*\n\n"
         f"📦 Order: `{order.public_order_id}`\n"
-        f"💰 Amount: ${order.amount}\n\n"
-        f"Complete your payment using the button below.\n\n"
+        f"🔢 Quantity: {quantity}{qty_label}\n"
+        f"💰 Total: ${order.amount}\n\n"
+        f"🟡 Deposit → ⚪ Confirm → ⚪ Deliver\n\n"
         f"⏰ Payment expires in {settings.order_expiry_minutes} minutes.",
         reply_markup=payment_keyboard(payment_url, order.id),
         parse_mode="Markdown",
@@ -208,5 +225,5 @@ def get_handlers() -> list:
         CallbackQueryHandler(show_categories, pattern="^products$"),
         CallbackQueryHandler(show_category_products, pattern=r"^cat:\d+$"),
         CallbackQueryHandler(show_product_detail, pattern=r"^prod:\d+$"),
-        CallbackQueryHandler(buy_product, pattern=r"^buy:\d+$"),
+        CallbackQueryHandler(buy_product, pattern=r"^buy:\d+"),
     ]

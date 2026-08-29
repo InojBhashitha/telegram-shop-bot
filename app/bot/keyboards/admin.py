@@ -21,11 +21,14 @@ def admin_main_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton("👥 Users", callback_data="adm:users"),
         ],
         [
+            InlineKeyboardButton("🛡 Warranty Claims", callback_data="adm:warranty"),
             InlineKeyboardButton("📊 Statistics", callback_data="adm:stats"),
-            InlineKeyboardButton("📢 Broadcast", callback_data="adm:broadcast"),
         ],
         [
+            InlineKeyboardButton("📢 Broadcast", callback_data="adm:broadcast"),
             InlineKeyboardButton("🎫 Tickets", callback_data="adm:tickets"),
+        ],
+        [
             InlineKeyboardButton("⚙️ Settings", callback_data="adm:settings"),
         ],
         [InlineKeyboardButton("⬅️ Close", callback_data="main_menu")],

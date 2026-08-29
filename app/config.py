@@ -59,6 +59,8 @@ class Settings(BaseSettings):
     store_name: str = "Cloud Deals"
     support_username: str = ""
     order_expiry_minutes: int = 30
+    warranty_hours: int = 24
+    force_channel_id: str = ""  # e.g. "@YourChannel" or "" to disable
 
     # --- Logging ---
     log_level: str = "INFO"

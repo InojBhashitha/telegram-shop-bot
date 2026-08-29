@@ -1,8 +1,13 @@
-"""Main navigation keyboards."""
+"""Main navigation keyboards — inline menu + persistent reply keyboard."""
 
 from __future__ import annotations
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+)
 
 
 def main_menu_keyboard() -> InlineKeyboardMarkup:
@@ -19,6 +24,18 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
         ],
         [InlineKeyboardButton("❓ FAQ", callback_data="faq")],
     ])
+
+
+def main_reply_keyboard() -> ReplyKeyboardMarkup:
+    """Persistent bottom reply keyboard for quick navigation."""
+    return ReplyKeyboardMarkup(
+        [
+            [KeyboardButton("🛍 Browse Store"), KeyboardButton("📦 My Orders")],
+            [KeyboardButton("👤 My Profile"), KeyboardButton("☎️ Support / FAQ")],
+        ],
+        resize_keyboard=True,
+        is_persistent=True,
+    )
 
 
 def back_button(callback_data: str = "main_menu") -> InlineKeyboardMarkup:

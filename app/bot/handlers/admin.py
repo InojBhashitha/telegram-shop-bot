@@ -37,6 +37,7 @@ from app.database.repositories import (
     settings_repo,
     support_repo,
     user_repo,
+    warranty_repo,
 )
 from app.services import (
     inventory_service,
@@ -1027,4 +1028,179 @@ def get_handlers() -> list:
         CallbackQueryHandler(close_ticket_handler, pattern=r"^adm:close_ticket:\d+$"),
         CallbackQueryHandler(admin_settings, pattern="^adm:settings$"),
         CallbackQueryHandler(toggle_maintenance, pattern="^adm:toggle_maint$"),
+        # Warranty claims
+        CallbackQueryHandler(admin_warranty_claims, pattern="^adm:warranty$"),
+        CallbackQueryHandler(admin_approve_warranty, pattern=r"^adm:approve_war:\d+$"),
+        CallbackQueryHandler(admin_reject_warranty, pattern=r"^adm:reject_war:\d+$"),
     ]
+
+
+# ---------------------------------------------------------------------------
+# Admin warranty claims management
+# ---------------------------------------------------------------------------
+
+async def admin_warranty_claims(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show pending warranty claims for admin review."""
+    query = update.callback_query
+    if not _is_admin(query.from_user.id):
+        await query.answer("❌ Access denied.", show_alert=True)
+        return
+    await query.answer()
+
+    async with get_session() as session:
+        from app.services import warranty_service
+        claims = await warranty_service.get_pending_claims(session)
+
+    if not claims:
+        await query.edit_message_text(
+            "⚙️ *Admin — Warranty Claims*\n\n"
+            "✅ No pending claims.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("⬅️ Back", callback_data="admin")],
+            ]),
+            parse_mode="Markdown",
+        )
+        return
+
+    text = "⚙️ *Admin — Warranty Claims*\n\n"
+    buttons = []
+    for claim in claims[:10]:
+        reason_preview = claim.reason[:40] + "..." if len(claim.reason) > 40 else claim.reason
+        text += (
+            f"🛡 Claim #{claim.id}\n"
+            f"   Order: #{claim.order_id} | User: #{claim.user_id}\n"
+            f"   Reason: {reason_preview}\n\n"
+        )
+        buttons.append([
+            InlineKeyboardButton(f"✅ Approve #{claim.id}", callback_data=f"adm:approve_war:{claim.id}"),
+            InlineKeyboardButton(f"❌ Reject #{claim.id}", callback_data=f"adm:reject_war:{claim.id}"),
+        ])
+
+    buttons.append([InlineKeyboardButton("⬅️ Back", callback_data="admin")])
+
+    await query.edit_message_text(
+        text,
+        reply_markup=InlineKeyboardMarkup(buttons),
+        parse_mode="Markdown",
+    )
+
+
+async def admin_approve_warranty(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Approve a warranty claim and auto-deliver replacement."""
+    query = update.callback_query
+    if not _is_admin(query.from_user.id):
+        await query.answer("❌ Access denied.", show_alert=True)
+        return
+    await query.answer()
+
+    claim_id = int(query.data.split(":")[2])
+
+    async with get_session() as session:
+        from app.services import warranty_service
+        try:
+            result = await warranty_service.approve_claim(session, claim_id)
+        except warranty_service.WarrantyError as e:
+            await query.edit_message_text(
+                f"⚙️ *Admin — Warranty*\n\n❌ {e}",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("⬅️ Back", callback_data="adm:warranty")],
+                ]),
+                parse_mode="Markdown",
+            )
+            return
+
+        # Auto-deliver replacement to user
+        order = result["order"]
+        replacement_content = result["replacement_content"]
+
+        try:
+            from app.bot.bot import get_bot_instance
+            bot_instance = get_bot_instance()
+            if bot_instance:
+                db_user = await user_repo.get_by_id(session, order.user_id)
+                if db_user:
+                    from app.services.delivery_service import _format_credentials_for_copy
+                    formatted = _format_credentials_for_copy(replacement_content)
+                    product_name = order.product.name if order.product else "Product"
+
+                    await bot_instance.send_message(
+                        chat_id=db_user.telegram_id,
+                        text=(
+                            f"🛡 *Warranty Replacement*\n\n"
+                            f"📦 Order: `{order.public_order_id}`\n"
+                            f"🏷 Product: {product_name}\n\n"
+                            f"🎁 *Your replacement account:*\n"
+                            f"{formatted}\n\n"
+                            f"We apologize for the inconvenience! ☁️"
+                        ),
+                        parse_mode="Markdown",
+                    )
+        except Exception as e:
+            logger.error("Failed to send warranty replacement: %s", e)
+
+    await query.edit_message_text(
+        f"⚙️ *Admin — Warranty*\n\n"
+        f"✅ Claim #{claim_id} approved.\n"
+        f"Replacement account has been sent to the customer.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("⬅️ Back", callback_data="adm:warranty")],
+        ]),
+        parse_mode="Markdown",
+    )
+
+
+async def admin_reject_warranty(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Reject a warranty claim."""
+    query = update.callback_query
+    if not _is_admin(query.from_user.id):
+        await query.answer("❌ Access denied.", show_alert=True)
+        return
+    await query.answer()
+
+    claim_id = int(query.data.split(":")[2])
+
+    async with get_session() as session:
+        from app.services import warranty_service
+        try:
+            await warranty_service.reject_claim(session, claim_id)
+        except warranty_service.WarrantyError as e:
+            await query.edit_message_text(
+                f"⚙️ *Admin — Warranty*\n\n❌ {e}",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("⬅️ Back", callback_data="adm:warranty")],
+                ]),
+                parse_mode="Markdown",
+            )
+            return
+
+        # Notify user
+        claim = await warranty_repo.get_by_id(session, claim_id)
+        if claim:
+            try:
+                from app.bot.bot import get_bot_instance
+                bot_instance = get_bot_instance()
+                if bot_instance:
+                    db_user = await user_repo.get_by_id(session, claim.user_id)
+                    if db_user:
+                        await bot_instance.send_message(
+                            chat_id=db_user.telegram_id,
+                            text=(
+                                f"🛡 *Warranty Claim Update*\n\n"
+                                f"❌ Your warranty claim #{claim_id} has been reviewed "
+                                f"and was not approved.\n\n"
+                                f"If you believe this is an error, please contact support."
+                            ),
+                            parse_mode="Markdown",
+                        )
+            except Exception as e:
+                logger.error("Failed to notify user about warranty rejection: %s", e)
+
+    await query.edit_message_text(
+        f"⚙️ *Admin — Warranty*\n\n"
+        f"❌ Claim #{claim_id} rejected.\nUser has been notified.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("⬅️ Back", callback_data="adm:warranty")],
+        ]),
+        parse_mode="Markdown",
+    )
+

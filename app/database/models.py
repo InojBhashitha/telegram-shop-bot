@@ -79,6 +79,12 @@ class DeliveryType(str, enum.Enum):
     MANUAL = "manual"
 
 
+class WarrantyClaimStatus(str, enum.Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -203,6 +209,7 @@ class Order(Base):
     inventory_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("inventory.id"), nullable=True
     )
+    quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(10), default="USD", nullable=False)
     status: Mapped[OrderStatus] = mapped_column(
@@ -214,6 +221,7 @@ class Order(Base):
     paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    warranty_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     user: Mapped[User] = relationship("User", back_populates="orders")
@@ -221,7 +229,11 @@ class Order(Base):
     inventory_item: Mapped[Optional[Inventory]] = relationship(
         "Inventory", foreign_keys=[inventory_id]
     )
+    inventory_items: Mapped[list[Inventory]] = relationship(
+        "Inventory", foreign_keys="Inventory.order_id", viewonly=True
+    )
     payment: Mapped[Optional[Payment]] = relationship("Payment", back_populates="order", uselist=False)
+    warranty_claims: Mapped[list[WarrantyClaim]] = relationship("WarrantyClaim", back_populates="order")
 
 
 class Payment(Base):
@@ -345,4 +357,35 @@ class StoreSettings(Base):
     value: Mapped[str] = mapped_column(Text, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
+
+
+class WarrantyClaim(Base):
+    __tablename__ = "warranty_claims"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    order_id: Mapped[int] = mapped_column(Integer, ForeignKey("orders.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
+    inventory_id: Mapped[int] = mapped_column(Integer, ForeignKey("inventory.id"), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[WarrantyClaimStatus] = mapped_column(
+        Enum(WarrantyClaimStatus), default=WarrantyClaimStatus.PENDING, nullable=False
+    )
+    replacement_inventory_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("inventory.id"), nullable=True
+    )
+    admin_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    order: Mapped[Order] = relationship("Order", back_populates="warranty_claims")
+    user: Mapped[User] = relationship("User")
+    original_item: Mapped[Inventory] = relationship(
+        "Inventory", foreign_keys=[inventory_id]
+    )
+    replacement_item: Mapped[Optional[Inventory]] = relationship(
+        "Inventory", foreign_keys=[replacement_inventory_id]
     )

@@ -199,20 +199,24 @@ async def _deliver_order(order, session) -> None:
             logger.error("User not found for delivery: order=%s", order.public_order_id)
             return
 
-        content = None
-        if order.inventory_id:
+        # Get all inventory items linked to this order
+        items = await inventory_repo.get_items_by_order_id(session, order.id)
+        contents = [item.content for item in items if item.content]
+
+        # Fallback to single inventory_id
+        if not contents and order.inventory_id:
             item = await inventory_repo.get_item_by_id(session, order.inventory_id)
             if item:
-                content = item.content
+                contents = [item.content]
 
-        if content is None:
+        if not contents:
             logger.error("No delivery content for order=%s", order.public_order_id)
             return
 
         product_name = order.product.name if order.product else "Product"
 
-        await delivery_service.deliver_to_user(
-            bot, user.telegram_id, order, content, product_name
+        await delivery_service.deliver_bulk_to_user(
+            bot, user.telegram_id, order, contents, product_name
         )
 
     except Exception as e:

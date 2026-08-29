@@ -20,7 +20,7 @@ async def test_create_order(session: AsyncSession, sample_data: dict):
 
     result = await order_service.create_order(session, user.id, product.id)
     order = result["order"]
-    inv = result["inventory_item"]
+    inv = result["inventory_items"][0]
 
     assert order.public_order_id.startswith("CD-")
     assert order.status == OrderStatus.PENDING_PAYMENT
