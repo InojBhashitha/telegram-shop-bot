@@ -495,11 +495,14 @@ async def checkout_cart_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
         payment_url = pay_result["payment_url"]
 
+    discount_line = f"🎁 10% Channel Discount: -${order.discount_amount}\n" if order.discount_amount > Decimal("0.00") else ""
+
     await query.edit_message_text(
         f"☁️ *Cloud Deals*\n\n"
         f"💳 *Payment Required*\n\n"
         f"📦 Order: `{order.public_order_id}`\n"
         f"🔢 Total Accounts: {order.quantity}\n"
+        f"{discount_line}"
         f"💰 Total Amount: ${order.amount}\n\n"
         f"🟡 Deposit → ⚪ Confirm → ⚪ Deliver\n\n"
         f"⏰ Payment expires in {settings.order_expiry_minutes} minutes.",

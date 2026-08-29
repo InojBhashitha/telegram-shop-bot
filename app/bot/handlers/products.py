@@ -212,12 +212,14 @@ async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         payment_url = pay_result["payment_url"]
 
     qty_label = f" (×{quantity})" if quantity > 1 else ""
+    discount_line = f"🎁 10% Channel Discount: -${order.discount_amount}\n" if order.discount_amount > Decimal("0.00") else ""
 
     await query.edit_message_text(
         f"☁️ *Cloud Deals*\n\n"
         f"💳 *Payment Required*\n\n"
         f"📦 Order: `{order.public_order_id}`\n"
         f"🔢 Quantity: {quantity}{qty_label}\n"
+        f"{discount_line}"
         f"💰 Total: ${order.amount}\n\n"
         f"🟡 Deposit → ⚪ Confirm → ⚪ Deliver\n\n"
         f"⏰ Payment expires in {settings.order_expiry_minutes} minutes.",

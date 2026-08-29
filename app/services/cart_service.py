@@ -220,6 +220,18 @@ async def checkout_cart(
             await inventory_repo.release_item(session, r.id)
         raise
 
+    # Calculate subtotal, discount, and final amount
+    from app.database.repositories import user_repo
+    from app.services.order_service import compute_first_order_discount
+
+    user = await user_repo.get_by_id(session, user_id)
+    subtotal = summary["total_amount"]
+    discount = compute_first_order_discount(user, subtotal)
+    final_amount = max(subtotal - discount, Decimal("0.01"))
+
+    if discount > Decimal("0.00") and user:
+        user.channel_discount_used = True
+
     # Create master order
     settings = get_settings()
     public_order_id = await order_repo.generate_public_order_id(session)
@@ -233,7 +245,8 @@ async def checkout_cart(
         user_id=user_id,
         product_id=primary_product_id or items[0]["product_id"],
         inventory_id=all_reserved[0].id,
-        amount=summary["total_amount"],
+        amount=final_amount,
+        discount_amount=discount,
         currency=summary["currency"],
         quantity=summary["total_count"],
         warranty_expires_at=warranty_expires_at,
@@ -248,8 +261,14 @@ async def checkout_cart(
     await cart_repo.clear_cart(session, user_id)
 
     logger.info(
-        "Cart checkout successful: order=%s items=%s total=%s",
-        public_order_id, len(all_reserved), summary["total_amount"],
+        "Cart checkout successful: order=%s items=%s subtotal=%s discount=%s total=%s",
+        public_order_id, len(all_reserved), subtotal, discount, final_amount,
     )
 
-    return {"order": order, "inventory_items": all_reserved, "summary": summary}
+    return {
+        "order": order,
+        "inventory_items": all_reserved,
+        "summary": summary,
+        "subtotal": subtotal,
+        "discount": discount,
+    }

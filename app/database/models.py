@@ -112,6 +112,8 @@ class User(Base):
     referred_by: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
+    channel_discount_claimed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    channel_discount_used: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
@@ -214,6 +216,7 @@ class Order(Base):
     )
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    discount_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
     currency: Mapped[str] = mapped_column(String(10), default="USD", nullable=False)
     status: Mapped[OrderStatus] = mapped_column(
         Enum(OrderStatus), default=OrderStatus.PENDING_PAYMENT, nullable=False

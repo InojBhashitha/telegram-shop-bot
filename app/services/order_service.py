@@ -21,21 +21,30 @@ class OrderError(Exception):
     pass
 
 
+def compute_first_order_discount(user: Optional[User], raw_amount: Decimal) -> Decimal:
+    """Compute 10% discount capped at $10.00 for channel member's first order."""
+    if user and user.channel_discount_claimed and not user.channel_discount_used:
+        discount = (raw_amount * Decimal("0.10")).quantize(Decimal("0.01"))
+        return min(discount, Decimal("10.00"))
+    return Decimal("0.00")
+
+
 async def create_order(
     session: AsyncSession,
     user_id: int,
     product_id: int,
     quantity: int = 1,
 ) -> dict:
-    """Create a new order with inventory reservation (supports bulk quantity).
+    """Create a new order with inventory reservation (supports bulk quantity & discounts).
 
     This is the main purchase entry point. It:
     1. Validates the product is active
     2. Reserves `quantity` inventory items (atomic)
-    3. Creates the order record with total amount = price × quantity
+    3. Calculates 10% first-order discount (if eligible)
+    4. Creates the order record with total amount = (price × quantity) - discount
 
     Returns:
-        Dict with 'order' and 'inventory_items'.
+        Dict with 'order', 'inventory_items', 'discount', and 'subtotal'.
 
     Raises:
         OrderError: If product invalid, inactive, or out of stock.
@@ -72,8 +81,17 @@ async def create_order(
                 await inventory_repo.release_item(session, ri.id)
             raise OrderError(f"Not enough stock available (only {len(reserved_items)})")
 
-    # Calculate total amount and warranty expiry
-    total_amount = product.price * quantity
+    # Calculate subtotal, first-order discount, and warranty expiry
+    subtotal = product.price * quantity
+    from app.database.repositories import user_repo
+    user = await user_repo.get_by_id(session, user_id)
+    discount = compute_first_order_discount(user, subtotal)
+    final_amount = max(subtotal - discount, Decimal("0.01"))
+
+    # Mark discount as used on user record
+    if discount > Decimal("0.00") and user:
+        user.channel_discount_used = True
+
     settings = get_settings()
     warranty_expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.warranty_hours)
 
@@ -87,7 +105,8 @@ async def create_order(
         user_id=user_id,
         product_id=product_id,
         inventory_id=reserved_items[0].id,
-        amount=total_amount,
+        amount=final_amount,
+        discount_amount=discount,
         currency=product.currency,
         quantity=quantity,
         warranty_expires_at=warranty_expires_at,
@@ -99,15 +118,20 @@ async def create_order(
     await session.flush()
 
     logger.info(
-        "Order created: %s product=%s user_id=%s qty=%s amount=%s",
-        public_order_id, product.name, user_id, quantity, total_amount,
+        "Order created: %s product=%s user_id=%s qty=%s subtotal=%s discount=%s amount=%s",
+        public_order_id, product.name, user_id, quantity, subtotal, discount, final_amount,
     )
 
-    return {"order": order, "inventory_items": reserved_items}
+    return {
+        "order": order,
+        "inventory_items": reserved_items,
+        "subtotal": subtotal,
+        "discount": discount,
+    }
 
 
 async def cancel_order(session: AsyncSession, order_id: int) -> Optional[Order]:
-    """Cancel an order and release its inventory.
+    """Cancel an order, release its inventory, and restore first-order discount if applied.
 
     Only PENDING_PAYMENT orders can be cancelled by user.
     """
@@ -126,6 +150,13 @@ async def cancel_order(session: AsyncSession, order_id: int) -> Optional[Order]:
     # Also release the primary inventory_id if not covered
     if order.inventory_id and not any(i.id == order.inventory_id for i in items):
         await inventory_repo.release_item(session, order.inventory_id)
+
+    # Restore channel discount if order had discount applied
+    if order.discount_amount and order.discount_amount > Decimal("0.00"):
+        from app.database.repositories import user_repo
+        user = await user_repo.get_by_id(session, order.user_id)
+        if user:
+            user.channel_discount_used = False
 
     order = await order_repo.update_status(
         session, order_id, OrderStatus.CANCELLED,

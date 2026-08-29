@@ -39,6 +39,8 @@ async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     user = profile["user"]
     username = f"@{user.username}" if user.username else user.first_name or "User"
 
+    promo_status = "🎁 First Order Promo: *10% OFF Active*\n" if user.channel_discount_claimed and not user.channel_discount_used else ""
+
     text = (
         f"☁️ *Cloud Deals*\n\n"
         f"👤 *Profile*\n\n"
@@ -46,6 +48,7 @@ async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         f"💰 Balance: ${user.balance}\n"
         f"📦 Orders: {profile['order_count']}\n"
         f"💸 Total Spent: ${profile['total_spent']}\n"
+        f"{promo_status}"
         f"🎁 Referrals: {profile['referral_count']}"
     )
 

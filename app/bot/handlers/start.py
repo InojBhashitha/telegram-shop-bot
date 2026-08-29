@@ -46,22 +46,24 @@ async def _check_channel_membership(bot, user_id: int) -> bool:
         return True  # If check fails, don't block users
 
 
-async def _show_join_required(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show the force-subscribe message with join and verify buttons."""
+async def _show_discount_offer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show the optional 10% discount welcome offer with join, claim, and skip buttons."""
     settings = get_settings()
     channel = settings.force_channel_id
 
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{channel.lstrip('@')}")],
-        [InlineKeyboardButton("✅ I Have Joined", callback_data="verify_join")],
+        [InlineKeyboardButton("🎁 Verify & Claim 10% OFF", callback_data="claim_channel_discount")],
+        [InlineKeyboardButton("🛍 Skip & Start Shopping", callback_data="skip_channel_discount")],
     ])
 
     text = (
-        "☁️ *Cloud Deals*\n\n"
-        "📢 *Please join our channel first!*\n\n"
-        f"You need to join {channel} to access the store.\n\n"
-        "After joining, tap the button below:"
+        "☁️ *Welcome to Cloud Deals!*\n\n"
+        "🎁 *EXCLUSIVE NEW CUSTOMER OFFER:*\n"
+        "Join our official channel and get *10% OFF* on your first order\\! *(Max $10 discount)*\n\n"
+        f"📢 *Channel:* {channel}\n\n"
+        "Join now to claim your instant discount, or continue to browse:"
     )
 
     if update.callback_query:
@@ -74,36 +76,70 @@ async def _show_join_required(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
 
 
-async def verify_join(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Verify that user has joined the required channel."""
+async def claim_channel_discount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Verify channel membership and activate 10% first-order discount."""
     query = update.callback_query
     await query.answer()
 
     is_member = await _check_channel_membership(context.bot, query.from_user.id)
     if not is_member:
-        await query.answer("❌ You haven't joined the channel yet!", show_alert=True)
+        await query.answer(
+            "❌ You haven't joined the channel yet! Please join first to claim your 10% discount.",
+            show_alert=True,
+        )
         return
 
-    # User verified — show main menu
+    cart_count = 0
+    async with get_session() as session:
+        from app.database.repositories import cart_repo, user_repo
+        db_user = await user_repo.get_by_telegram_id(session, query.from_user.id)
+        if db_user:
+            db_user.channel_discount_claimed = True
+            await session.flush()
+            cart_count = await cart_repo.get_cart_item_count(session, db_user.id)
+
+    await query.edit_message_text(
+        "☁️ *Cloud Deals*\n\n"
+        "🎉 *10% First-Order Discount Activated!*\n\n"
+        "Your *10% discount* (up to $10.00 max) will be automatically applied at checkout.\n\n"
+        "Choose an option below:",
+        reply_markup=main_menu_keyboard(cart_count),
+        parse_mode="Markdown",
+    )
+
+
+async def skip_channel_discount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Skip discount offer and proceed to main menu."""
+    query = update.callback_query
+    await query.answer()
+
+    cart_count = 0
+    async with get_session() as session:
+        from app.database.repositories import cart_repo, user_repo
+        db_user = await user_repo.get_by_telegram_id(session, query.from_user.id)
+        if db_user:
+            cart_count = await cart_repo.get_cart_item_count(session, db_user.id)
+
     await query.edit_message_text(
         "☁️ *Cloud Deals*\n\n"
         "👋 Welcome!\n\n"
         "Choose an option below:",
-        reply_markup=main_menu_keyboard(),
+        reply_markup=main_menu_keyboard(cart_count),
         parse_mode="Markdown",
     )
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /start command. Creates user, sends persistent keyboard, and shows main menu."""
+    """Handle /start command. Creates user, offers 10% discount, and shows main menu."""
     user = update.effective_user
     if user is None:
         return
 
+    settings = get_settings()
+
     async with get_session() as session:
         # Check maintenance mode
         if await _is_maintenance(session):
-            settings = get_settings()
             if not settings.is_admin(user.id):
                 await update.message.reply_text(
                     "☁️ *Cloud Deals*\n\n"
@@ -127,14 +163,19 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             referral_code=referral_code,
         )
 
+        db_user = result["user"]
         if result["is_new"]:
             logger.info("New user registered: %s (@%s)", user.id, user.username)
 
-    # Force-subscribe gate check
-    is_member = await _check_channel_membership(context.bot, user.id)
-    if not is_member:
-        await _show_join_required(update, context)
-        return
+        from app.database.repositories import cart_repo
+        cart_count = await cart_repo.get_cart_item_count(session, db_user.id)
+
+        # Check if user is already a channel member and auto-claim
+        if settings.force_channel_id and not db_user.channel_discount_claimed and not db_user.channel_discount_used:
+            is_member = await _check_channel_membership(context.bot, user.id)
+            if is_member:
+                db_user.channel_discount_claimed = True
+                await session.flush()
 
     # Send persistent bottom keyboard
     await update.message.reply_text(
@@ -142,11 +183,19 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         reply_markup=main_reply_keyboard(),
     )
 
+    # If channel configured and discount not yet claimed or used, show welcome offer
+    if settings.force_channel_id and not db_user.channel_discount_claimed and not db_user.channel_discount_used:
+        await _show_discount_offer(update, context)
+        return
+
+    promo_banner = "🎁 *10% First Order Discount Active!*\n\n" if db_user.channel_discount_claimed and not db_user.channel_discount_used else ""
+
     await update.message.reply_text(
-        "☁️ *Cloud Deals*\n\n"
-        "👋 Welcome!\n\n"
-        "Choose an option below:",
-        reply_markup=main_menu_keyboard(),
+        f"☁️ *Cloud Deals*\n\n"
+        f"👋 Welcome!\n\n"
+        f"{promo_banner}"
+        f"Choose an option below:",
+        reply_markup=main_menu_keyboard(cart_count),
         parse_mode="Markdown",
     )
 
@@ -318,7 +367,8 @@ def get_handlers() -> list:
         CommandHandler("start", start_command),
         CommandHandler("help", help_command),
         CallbackQueryHandler(main_menu_callback, pattern="^main_menu$"),
-        CallbackQueryHandler(verify_join, pattern="^verify_join$"),
+        CallbackQueryHandler(claim_channel_discount, pattern="^claim_channel_discount$"),
+        CallbackQueryHandler(skip_channel_discount, pattern="^skip_channel_discount$"),
         # noop callback for status tracker button
         CallbackQueryHandler(lambda u, c: u.callback_query.answer(), pattern="^noop$"),
         # Persistent reply keyboard button handlers

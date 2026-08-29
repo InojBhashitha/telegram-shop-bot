@@ -22,6 +22,7 @@ async def create(
     currency: str = "USD",
     quantity: int = 1,
     warranty_expires_at=None,
+    discount_amount: Decimal = Decimal("0.00"),
 ) -> Order:
     """Create a new order."""
     order = Order(
@@ -30,6 +31,7 @@ async def create(
         product_id=product_id,
         inventory_id=inventory_id,
         amount=amount,
+        discount_amount=discount_amount,
         currency=currency,
         quantity=quantity,
         warranty_expires_at=warranty_expires_at,
@@ -124,6 +126,8 @@ async def expire_old_orders(
     for order in orders:
         order.status = OrderStatus.EXPIRED
         order.cancelled_at = now
+        if order.discount_amount and order.discount_amount > Decimal("0.00"):
+            user = await session.get(Order, order.id)  # get user or update user
         if order.inventory_id:
             inventory_ids.append(order.inventory_id)
 
