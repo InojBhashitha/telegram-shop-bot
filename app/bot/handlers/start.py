@@ -79,6 +79,8 @@ async def _show_discount_offer(update: Update, context: ContextTypes.DEFAULT_TYP
 async def claim_channel_discount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Verify channel membership and activate 10% first-order discount."""
     query = update.callback_query
+    if query is None or query.from_user is None:
+        return
     await query.answer()
 
     is_member = await _check_channel_membership(context.bot, query.from_user.id)
@@ -111,6 +113,8 @@ async def claim_channel_discount(update: Update, context: ContextTypes.DEFAULT_T
 async def skip_channel_discount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Skip discount offer and proceed to main menu."""
     query = update.callback_query
+    if query is None or query.from_user is None:
+        return
     await query.answer()
 
     cart_count = 0
@@ -132,7 +136,7 @@ async def skip_channel_discount(update: Update, context: ContextTypes.DEFAULT_TY
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /start command. Creates user, offers 10% discount, and shows main menu."""
     user = update.effective_user
-    if user is None:
+    if user is None or update.message is None:
         return
 
     settings = get_settings()
@@ -202,6 +206,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /help command."""
+    if update.message is None:
+        return
     settings = get_settings()
     support = f"@{settings.support_username}" if settings.support_username else "the support menu"
 
@@ -220,6 +226,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle 'main_menu' callback — return to main menu."""
     query = update.callback_query
+    if query is None or query.from_user is None:
+        return
     await query.answer()
 
     # Force-subscribe gate check
@@ -255,6 +263,8 @@ async def main_menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def _handle_reply_browse(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle '🛍 Browse Store' reply keyboard button."""
+    if update.effective_user is None or update.message is None:
+        return
     from app.bot.handlers.products import show_categories
     # Force-subscribe gate check
     is_member = await _check_channel_membership(context.bot, update.effective_user.id)
@@ -292,14 +302,12 @@ async def _handle_reply_orders(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def _handle_reply_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle '👤 My Profile' reply keyboard button."""
-    from app.bot.handlers.profile import profile_command
-    # Check if profile has a /profile command or callback; use show_profile
-    from app.database.database import get_session
-    from app.database.repositories import user_repo
-    from decimal import Decimal
-
+    if update.effective_user is None or update.message is None:
+        return
     user_tg = update.effective_user
     async with get_session() as session:
+        from app.database.repositories import user_repo
+        from decimal import Decimal
         user = await user_repo.get_by_telegram_id(session, user_tg.id)
         balance = user.balance if user else Decimal("0")
         order_count = 0
@@ -330,6 +338,8 @@ async def _handle_reply_profile(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def _handle_reply_support(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle '☎️ Support / FAQ' reply keyboard button."""
+    if update.message is None:
+        return
     settings = get_settings()
     support = f"@{settings.support_username}" if settings.support_username else "the support menu"
 
@@ -352,6 +362,8 @@ async def _handle_reply_support(update: Update, context: ContextTypes.DEFAULT_TY
 
 async def _handle_reply_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle '🛒 My Cart' reply keyboard button."""
+    if update.effective_user is None:
+        return
     from app.bot.handlers.cart import show_cart
     # Force-subscribe gate check
     is_member = await _check_channel_membership(context.bot, update.effective_user.id)

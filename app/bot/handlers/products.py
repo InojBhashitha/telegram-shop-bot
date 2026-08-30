@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 async def show_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show product categories."""
     query = update.callback_query
+    if query is None:
+        return
     await query.answer()
 
     async with get_session() as session:
@@ -50,6 +52,8 @@ async def show_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def show_category_products(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show products in a selected category with live stock & price badges."""
     query = update.callback_query
+    if query is None or query.data is None:
+        return
     await query.answer()
 
     category_id = int(query.data.split(":")[1])
@@ -106,6 +110,8 @@ async def show_category_products(update: Update, context: ContextTypes.DEFAULT_T
 async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show product details with stock count and quantity buy buttons."""
     query = update.callback_query
+    if query is None or query.data is None or query.from_user is None:
+        return
     await query.answer()
 
     product_id = int(query.data.split(":")[1])
@@ -164,6 +170,8 @@ async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle buy button with quantity — create order and payment."""
     query = update.callback_query
+    if query is None or query.data is None or query.from_user is None:
+        return
     await query.answer()
 
     parts = query.data.split(":")
