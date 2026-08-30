@@ -18,11 +18,13 @@ logger = logging.getLogger(__name__)
 
 async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show user profile."""
+    user_tg = update.effective_user
+    if user_tg is None:
+        return
+
     query = update.callback_query
     if query:
         await query.answer()
-
-    user_tg = update.effective_user
 
     async with get_session() as session:
         profile = await user_service.get_profile(session, user_tg.id)
@@ -31,7 +33,7 @@ async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         text = "❌ Please /start the bot first."
         if query:
             await query.edit_message_text(text)
-        else:
+        elif update.message:
             await update.message.reply_text(text)
         return
 
@@ -60,13 +62,15 @@ async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     if query:
         await query.edit_message_text(text, reply_markup=keyboard, parse_mode="Markdown")
-    else:
+    elif update.message:
         await update.message.reply_text(text, reply_markup=keyboard, parse_mode="Markdown")
 
 
 async def show_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show top-up options."""
     query = update.callback_query
+    if query is None or query.from_user is None:
+        return
     await query.answer()
 
     async with get_session() as session:
@@ -99,6 +103,8 @@ async def show_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 async def process_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Create a top-up payment."""
     query = update.callback_query
+    if query is None or query.data is None or query.from_user is None:
+        return
     await query.answer()
 
     amount = Decimal(query.data.split(":")[1])
@@ -160,6 +166,8 @@ async def process_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def show_referral(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show referral information."""
     query = update.callback_query
+    if query is None or query.from_user is None:
+        return
     await query.answer()
 
     async with get_session() as session:
@@ -170,7 +178,7 @@ async def show_referral(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         referral_count = await user_repo.count_referrals(session, user.id)
 
     settings = get_settings()
-    bot_username = context.bot.username
+    bot_username = context.bot.username if context.bot else "bot"
     referral_link = f"https://t.me/{bot_username}?start={user.referral_code}"
 
     keyboard = InlineKeyboardMarkup([
