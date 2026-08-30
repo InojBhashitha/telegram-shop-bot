@@ -11,7 +11,6 @@ from telegram.ext import CallbackQueryHandler, CommandHandler, ContextTypes
 from app.config import get_settings
 from app.database.database import get_session
 from app.database.repositories import user_repo
-from app.payments.nowpayments import get_provider
 from app.services import topup_service, user_service
 
 logger = logging.getLogger(__name__)

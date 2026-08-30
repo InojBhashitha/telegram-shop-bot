@@ -191,7 +191,9 @@ class Inventory(Base):
     )
     reserved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     sold_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    order_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("orders.id"), nullable=True)
+    order_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("orders.id", use_alter=True, name="fk_inventory_order_id"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
@@ -214,7 +216,7 @@ class Order(Base):
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     product_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("products.id"), nullable=True)
     inventory_id: Mapped[Optional[int]] = mapped_column(
-        Integer, ForeignKey("inventory.id"), nullable=True
+        Integer, ForeignKey("inventory.id", use_alter=True, name="fk_order_inventory_id"), nullable=True
     )
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
