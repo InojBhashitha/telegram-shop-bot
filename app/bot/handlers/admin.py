@@ -922,6 +922,11 @@ async def toggle_maintenance(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # Handler registration
 # ---------------------------------------------------------------------------
 
+async def _cancel_conv(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancel conversation fallback handler."""
+    return ConversationHandler.END
+
+
 def get_handlers() -> list:
     """Return all admin handlers."""
     add_cat_conv = ConversationHandler(
@@ -934,7 +939,7 @@ def get_handlers() -> list:
                 CommandHandler("skip", recv_cat_desc),
             ],
         },
-        fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
+        fallbacks=[CommandHandler("cancel", _cancel_conv)],
         per_message=False,
     )
 
@@ -958,7 +963,7 @@ def get_handlers() -> list:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, recv_prod_price),
             ],
         },
-        fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
+        fallbacks=[CommandHandler("cancel", _cancel_conv)],
         per_message=False,
     )
 
@@ -971,7 +976,7 @@ def get_handlers() -> list:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, recv_stock_items),
             ],
         },
-        fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
+        fallbacks=[CommandHandler("cancel", _cancel_conv)],
         per_message=False,
     )
 
@@ -982,7 +987,7 @@ def get_handlers() -> list:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, send_broadcast),
             ],
         },
-        fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
+        fallbacks=[CommandHandler("cancel", _cancel_conv)],
         per_message=False,
     )
 
@@ -995,7 +1000,7 @@ def get_handlers() -> list:
                 MessageHandler(filters.TEXT & ~filters.COMMAND, recv_ticket_reply),
             ],
         },
-        fallbacks=[CommandHandler("cancel", lambda u, c: ConversationHandler.END)],
+        fallbacks=[CommandHandler("cancel", _cancel_conv)],
         per_message=False,
     )
 

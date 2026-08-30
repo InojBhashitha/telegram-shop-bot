@@ -373,6 +373,12 @@ async def _handle_reply_cart(update: Update, context: ContextTypes.DEFAULT_TYPE)
     await show_cart(update, context)
 
 
+async def _noop_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """No-op callback for status tracker button."""
+    if update.callback_query:
+        await update.callback_query.answer()
+
+
 def get_handlers() -> list:
     """Return handlers for this module."""
     return [
@@ -382,7 +388,7 @@ def get_handlers() -> list:
         CallbackQueryHandler(claim_channel_discount, pattern="^claim_channel_discount$"),
         CallbackQueryHandler(skip_channel_discount, pattern="^skip_channel_discount$"),
         # noop callback for status tracker button
-        CallbackQueryHandler(lambda u, c: u.callback_query.answer(), pattern="^noop$"),
+        CallbackQueryHandler(_noop_callback, pattern="^noop$"),
         # Persistent reply keyboard button handlers
         MessageHandler(filters.Regex("^🛍 Browse Store$"), _handle_reply_browse),
         MessageHandler(filters.Regex("^🛒 My Cart$"), _handle_reply_cart),

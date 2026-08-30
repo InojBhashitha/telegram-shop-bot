@@ -531,7 +531,7 @@ def get_handlers() -> list:
             ],
         },
         fallbacks=[
-            CommandHandler("cancel", lambda u, c: ConversationHandler.END),
+            CommandHandler("cancel", cancel_custom_quantity),
             CallbackQueryHandler(cancel_custom_quantity, pattern=r"^cancel_custom_qty:\d+$"),
         ],
         per_user=True,

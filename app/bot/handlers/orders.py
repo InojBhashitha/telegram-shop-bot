@@ -374,6 +374,11 @@ def _status_icon(status: str) -> str:
     return icons.get(status, "📦")
 
 
+async def _cancel_warranty_conv(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancel warranty conversation fallback."""
+    return ConversationHandler.END
+
+
 def get_handlers() -> list:
     """Return handlers for this module."""
     warranty_conv = ConversationHandler(
@@ -386,7 +391,7 @@ def get_handlers() -> list:
             ],
         },
         fallbacks=[
-            CommandHandler("cancel", lambda u, c: ConversationHandler.END),
+            CommandHandler("cancel", _cancel_warranty_conv),
         ],
         per_user=True,
         per_chat=True,
