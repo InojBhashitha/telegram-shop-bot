@@ -174,7 +174,7 @@ class Product(Base):
     )
 
     # Relationships
-    category: Mapped[Category] = relationship("Category", back_populates="products")
+    category: Mapped[Category] = relationship("Category", back_populates="products", lazy="selectin")
     inventory_items: Mapped[list[Inventory]] = relationship(
         "Inventory", back_populates="product", foreign_keys="Inventory.product_id"
     )

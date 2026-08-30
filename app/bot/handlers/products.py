@@ -122,14 +122,16 @@ async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
             await query.edit_message_text("❌ Product not found.")
             return
 
+        product = details["product"]
+        stock = details["stock"]
+        image_url = product.image_url or (product.category.image_url if product.category else None)
+
         from app.database.repositories import cart_repo, user_repo
         db_user = await user_repo.get_by_telegram_id(session, query.from_user.id)
         cart_count = 0
         if db_user:
             cart_count = await cart_repo.get_cart_item_count(session, db_user.id)
 
-    product = details["product"]
-    stock = details["stock"]
     in_stock = stock > 0
 
     settings = get_settings()
@@ -146,8 +148,6 @@ async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
     keyboard = product_detail_keyboard(
         product.id, in_stock, product.category_id, stock, cart_count
     )
-
-    image_url = product.image_url or (product.category.image_url if product.category else None)
 
     if image_url:
         try:
