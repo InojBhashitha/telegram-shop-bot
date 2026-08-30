@@ -23,6 +23,7 @@ async def create(
     price: Decimal,
     currency: str = "USD",
     description: Optional[str] = None,
+    image_url: Optional[str] = None,
     delivery_type: DeliveryType = DeliveryType.DIGITAL,
     active: bool = True,
 ) -> Product:
@@ -31,6 +32,7 @@ async def create(
         category_id=category_id,
         name=name,
         description=description,
+        image_url=image_url,
         price=price,
         currency=currency,
         delivery_type=delivery_type,

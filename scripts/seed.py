@@ -34,6 +34,7 @@ async def seed() -> None:
                 name="Digital Ocean",
                 description="DigitalOcean credits and droplets",
                 icon="🌊",
+                image_url="https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=800&q=80",
                 sort_order=1,
             )
             oracle_cat = await category_repo.create(
@@ -41,6 +42,7 @@ async def seed() -> None:
                 name="Oracle Cloud",
                 description="Oracle Cloud accounts & credits",
                 icon="☁️",
+                image_url="https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&q=80",
                 sort_order=2,
             )
             vps_cat = await category_repo.create(
@@ -48,6 +50,7 @@ async def seed() -> None:
                 name="VPS",
                 description="High performance virtual private servers",
                 icon="🖥",
+                image_url="https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=800&q=80",
                 sort_order=3,
             )
             other_cat = await category_repo.create(
@@ -55,6 +58,7 @@ async def seed() -> None:
                 name="Other Services",
                 description="VPNs, proxies, and digital vouchers",
                 icon="🔐",
+                image_url="https://images.unsplash.com/photo-1563986768609-322da13575f3?w=800&q=80",
                 sort_order=4,
             )
 

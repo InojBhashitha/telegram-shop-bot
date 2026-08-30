@@ -77,11 +77,28 @@ async def show_category_products(update: Update, context: ContextTypes.DEFAULT_T
         return
 
     icon = category.icon or "📁"
+    text = (
+        f"☁️ *Cloud Deals — Category Catalog*\n\n"
+        f"{icon} *{category.name}*\n"
+        f"_{category.description or 'Explore premium digital accounts below:'}_\n\n"
+        f"Select a product:"
+    )
+    keyboard = products_keyboard(products, category_id, stock_counts)
+
+    if category.image_url:
+        try:
+            from telegram import InputMediaPhoto
+            await query.edit_message_media(
+                media=InputMediaPhoto(media=category.image_url, caption=text, parse_mode="Markdown"),
+                reply_markup=keyboard,
+            )
+            return
+        except Exception as e:
+            logger.warning("Category media edit failed: %s", e)
+
     await query.edit_message_text(
-        f"☁️ *Cloud Deals*\n\n"
-        f"{icon} *{category.name}*\n\n"
-        f"Select a product:",
-        reply_markup=products_keyboard(products, category_id, stock_counts),
+        text,
+        reply_markup=keyboard,
         parse_mode="Markdown",
     )
 
@@ -109,24 +126,37 @@ async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
     stock = details["stock"]
     in_stock = stock > 0
 
-    if in_stock:
-        from app.bot.keyboards.products import _stock_badge
-        badge = _stock_badge(stock)
-        stock_text = f"📦 *Stock:* {badge} ({stock} available)"
-    else:
-        stock_text = "❌ *OUT OF STOCK*"
+    settings = get_settings()
+    from app.bot.utils.ui import format_product_caption
+    caption = format_product_caption(
+        name=product.name,
+        price=product.price,
+        stock=stock,
+        description=product.description,
+        currency=product.currency,
+        warranty_hours=settings.warranty_hours,
+    )
 
-    desc = product.description or "No description."
+    keyboard = product_detail_keyboard(
+        product.id, in_stock, product.category_id, stock, cart_count
+    )
+
+    image_url = product.image_url or (product.category.image_url if product.category else None)
+
+    if image_url:
+        try:
+            from telegram import InputMediaPhoto
+            await query.edit_message_media(
+                media=InputMediaPhoto(media=image_url, caption=caption, parse_mode="Markdown"),
+                reply_markup=keyboard,
+            )
+            return
+        except Exception as e:
+            logger.warning("Media edit failed, fallback to text: %s", e)
 
     await query.edit_message_text(
-        f"☁️ *Cloud Deals*\n\n"
-        f"📦 *{product.name}*\n\n"
-        f"{desc}\n\n"
-        f"💰 *Price:* ${product.price}\n"
-        f"{stock_text}",
-        reply_markup=product_detail_keyboard(
-            product.id, in_stock, product.category_id, stock, cart_count
-        ),
+        caption,
+        reply_markup=keyboard,
         parse_mode="Markdown",
     )
 

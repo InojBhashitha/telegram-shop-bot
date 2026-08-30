@@ -180,11 +180,14 @@ async def start_custom_quantity(update: Update, context: ContextTypes.DEFAULT_TY
         [InlineKeyboardButton("❌ Cancel", callback_data=f"cancel_custom_qty:{product_id}")]
     ])
 
+    from app.bot.utils.ui import format_stock_bar
+    stock_bar = format_stock_bar(stock)
+
     await query.edit_message_text(
         f"☁️ *Cloud Deals — Custom Quantity*\n\n"
         f"📦 *{product.name}*\n"
         f"💰 Price: ${product.price} each\n"
-        f"🟢 Available Stock: *{stock}* accounts\n\n"
+        f"📊 Stock: {stock_bar}\n\n"
         f"🔢 *How many accounts would you like to buy?*\n"
         f"Please send a number between *1* and *{stock}* (or /cancel):",
         reply_markup=cancel_kb,

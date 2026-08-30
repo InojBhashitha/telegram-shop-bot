@@ -15,6 +15,7 @@ async def create(
     name: str,
     description: Optional[str] = None,
     icon: Optional[str] = None,
+    image_url: Optional[str] = None,
     sort_order: int = 0,
 ) -> Category:
     """Create a new product category."""
@@ -22,6 +23,7 @@ async def create(
         name=name,
         description=description,
         icon=icon,
+        image_url=image_url,
         sort_order=sort_order,
     )
     session.add(cat)
