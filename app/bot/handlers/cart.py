@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
@@ -24,8 +24,9 @@ from app.bot.keyboards.cart import (
 from app.bot.keyboards.orders import payment_keyboard
 from app.config import get_settings
 from app.database.database import get_session
-from app.database.repositories import inventory_repo, user_repo
-from app.services import cart_service, payment_service, product_service, user_service
+from app.database.repositories import cart_repo, inventory_repo, user_repo
+from app.payments import get_payment_provider
+from app.services import cart_service, order_service, payment_service, product_service, user_service
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +176,6 @@ async def start_custom_quantity(update: Update, context: ContextTypes.DEFAULT_TY
     context.user_data["custom_qty_max_stock"] = stock
     context.user_data["custom_qty_cat_id"] = product.category_id
 
-    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
     cancel_kb = InlineKeyboardMarkup([
         [InlineKeyboardButton("❌ Cancel", callback_data=f"cancel_custom_qty:{product_id}")]
     ])
