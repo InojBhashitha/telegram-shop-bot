@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from decimal import Decimal
 
 from telegram import Update
 from telegram.ext import CallbackQueryHandler, ContextTypes
