@@ -267,13 +267,13 @@ async def check_payment_status(
     provider: PaymentProvider,
     order_id: int,
 ) -> Optional[str]:
-    """Poll the provider for current payment status.
+    """Poll the provider for current payment status and process status update.
 
-    This is for the "Check Payment" button — it queries the provider
-    but does NOT update order status (that's only done via webhook).
+    This queries the payment provider and updates the database & fulfills order
+    if status has progressed (e.g. user clicked Check Payment after completing checkout).
 
     Returns:
-        The provider status string, or None if payment not found.
+        The updated order status string, or None if payment not found.
     """
     payment = await payment_repo.get_by_order_id(session, order_id)
     if payment is None or not payment.provider_payment_id:
@@ -281,7 +281,19 @@ async def check_payment_status(
 
     try:
         result = await provider.get_payment_status(payment.provider_payment_id)
+        webhook_data = {
+            "uuid": payment.provider_payment_id,
+            "payment_id": payment.provider_payment_id,
+            "payment_status": result.status,
+            "order_id": payment.order.public_order_id if payment.order else None,
+            "actually_paid": result.actually_paid,
+            "payer_currency": result.pay_currency,
+        }
+        res = await process_webhook(session, provider, webhook_data)
+        if res and res.get("order"):
+            return res["order"].status.value
         return result.status
     except Exception as e:
-        logger.warning("Failed to check payment status: %s", e)
-        return payment.status.value
+        logger.warning("Failed to check payment status for order %s: %s", order_id, e)
+        order = await order_repo.get_by_id(session, order_id)
+        return order.status.value if order else payment.status.value

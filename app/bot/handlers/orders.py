@@ -33,9 +33,11 @@ WARRANTY_REASON = 100
 
 
 async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Check payment status for an order with live status tracker."""
+    """Check payment status with active provider status resolution and fulfillment."""
     query = update.callback_query
-    await query.answer("Checking payment status...")
+    if query is None or query.data is None or query.from_user is None:
+        return
+    await query.answer()
 
     order_id = int(query.data.split(":")[1])
 
@@ -51,27 +53,55 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             await query.answer("❌ This is not your order.", show_alert=True)
             return
 
-        status_text = order.status.value
-
         payment = await payment_repo.get_by_order_id(session, order.id)
         payment_url = payment.payment_url if payment else None
 
-        from app.payments import get_payment_provider
-        provider = get_payment_provider(payment.provider if payment else None)
-        try:
-            provider_status = await payment_service.check_payment_status(
-                session, provider, order.id
-            )
-            if provider_status:
-                status_text = provider_status
-        except Exception:
-            pass
+        if payment and payment.provider:
+            from app.payments import get_payment_provider
+            try:
+                provider = get_payment_provider(payment.provider)
+                await payment_service.check_payment_status(session, provider, order.id)
+            except Exception as e:
+                logger.warning("Check payment status error: %s", e)
 
+        # Refresh order state from database after checking
+        order = await order_service.get_order_by_id(session, order.id)
+        if order is None:
+            await query.edit_message_text("❌ Order not found.")
+            return
+
+        status_text = order.status.value
+
+        # Fetch delivered items if order is fulfilled
+        delivered_items = []
+        if order.status == OrderStatus.FULFILLED:
+            items = await inventory_repo.get_items_by_order_id(session, order.id)
+            delivered_items = [item.content for item in items if item.content]
+
+    if order.status == OrderStatus.FULFILLED:
+        credentials_block = ""
+        if delivered_items:
+            formatted_items = "\n".join(f"• `{item}`" for item in delivered_items)
+            credentials_block = f"\n\n🔑 *Your Delivered Credentials:*\n{formatted_items}"
+
+        await query.edit_message_text(
+            f"☁️ *Cloud Deals*\n\n"
+            f"✅ *Payment Confirmed & Order Fulfilled!*\n\n"
+            f"📦 Order: `{order.public_order_id}`\n"
+            f"💰 Amount: ${order.amount}\n"
+            f"Status: ✅ Fulfilled{credentials_block}\n\n"
+            f"Thank you for your purchase!",
+            reply_markup=order_detail_keyboard(order, has_warranty=True),
+            parse_mode="Markdown",
+        )
+        return
+
+    from app.bot.keyboards.orders import _format_status
     status_display = _format_status(status_text)
     from app.bot.keyboards.orders import _get_payment_steps
     steps = _get_payment_steps(status_text)
 
-    if payment_url and status_text in ("waiting", "pending_payment"):
+    if payment_url and status_text in ("waiting", "pending_payment", "payment_processing"):
         await query.edit_message_text(
             f"☁️ *Cloud Deals*\n\n"
             f"💳 *Payment Status*\n\n"
@@ -79,7 +109,7 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             f"💰 Amount: ${order.amount}\n\n"
             f"{steps}\n\n"
             f"Status: {status_display}\n\n"
-            f"Complete your payment using the button below.",
+            f"Complete your payment using the button below or cancel anytime.",
             reply_markup=payment_keyboard(payment_url, order.id, status_text),
             parse_mode="Markdown",
         )
@@ -91,7 +121,7 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             f"💰 Amount: ${order.amount}\n\n"
             f"{steps}\n\n"
             f"Status: {status_display}",
-            reply_markup=order_detail_keyboard(order, has_warranty=True),
+            reply_markup=order_detail_keyboard(order, has_warranty=True, payment_url=payment_url),
             parse_mode="Markdown",
         )
 
