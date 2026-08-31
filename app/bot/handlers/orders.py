@@ -97,7 +97,6 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
         return
 
-    from app.bot.keyboards.orders import _format_status
     status_display = _format_status(status_text)
     from app.bot.keyboards.orders import _get_payment_steps
     steps = _get_payment_steps(status_text)
