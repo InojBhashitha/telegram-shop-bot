@@ -84,9 +84,19 @@ def order_list_keyboard(
 def order_detail_keyboard(
     order: Order,
     has_warranty: bool = False,
+    payment_url: Optional[str] = None,
 ) -> InlineKeyboardMarkup:
-    """Order detail keyboard with optional warranty claim button."""
+    """Order detail keyboard with payment options, cancel order button, and optional warranty claim button."""
     buttons = []
+
+    # If pending or payment processing, show Pay, Check Payment, and Cancel Order buttons
+    if order.status in (OrderStatus.PENDING_PAYMENT, OrderStatus.PAYMENT_PROCESSING):
+        if payment_url:
+            buttons.append([InlineKeyboardButton("💳 Pay with Crypto", url=payment_url)])
+        buttons.append([
+            InlineKeyboardButton("🔄 Check Payment", callback_data=f"check_pay:{order.id}"),
+            InlineKeyboardButton("❌ Cancel Order", callback_data=f"cancel_order:{order.id}"),
+        ])
 
     # Warranty button for fulfilled orders within warranty period
     if has_warranty and order.status == OrderStatus.FULFILLED:

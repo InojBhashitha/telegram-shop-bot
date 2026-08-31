@@ -181,8 +181,10 @@ async def show_orders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 async def show_order_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show details of a specific order with warranty button if applicable."""
+    """Show details of a specific order with payment, cancel, and warranty buttons."""
     query = update.callback_query
+    if query is None or query.data is None or query.from_user is None:
+        return
     await query.answer()
 
     public_id = query.data.split(":")[1]
@@ -204,6 +206,9 @@ async def show_order_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         created = order.created_at.strftime("%d %b %Y %H:%M")
         qty_label = f"\n🔢 Quantity: {order.quantity}" if order.quantity > 1 else ""
 
+        payment = await payment_repo.get_by_order_id(session, order.id)
+        payment_url = payment.payment_url if payment else None
+
     await query.edit_message_text(
         f"☁️ *Cloud Deals*\n\n"
         f"📦 *Order {order.public_order_id}*\n\n"
@@ -211,7 +216,7 @@ async def show_order_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         f"💰 Amount: ${order.amount}\n"
         f"Status: {status_icon} {order.status.value.replace('_', ' ').title()}\n"
         f"📅 Date: {created}",
-        reply_markup=order_detail_keyboard(order, has_warranty=True),
+        reply_markup=order_detail_keyboard(order, has_warranty=True, payment_url=payment_url),
         parse_mode="Markdown",
     )
 
