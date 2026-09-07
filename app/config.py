@@ -94,7 +94,7 @@ class Settings(BaseSettings):
                 for unsupported in ("channel_binding", "target_session_attrs", "gssencmode"):
                     query.pop(unsupported, None)
 
-                parsed = parsed._replace(query=query)
+                parsed = parsed.set(query=query)
                 return parsed.render_as_string(hide_password=False)
             except Exception:
                 # Fallback replacement if parsing fails
