@@ -6,8 +6,10 @@ import logging
 
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.webhooks.crypto import router as crypto_router
@@ -55,11 +57,38 @@ def create_api() -> FastAPI:
     # Mount static assets for Telegram Mini App storefront
     webapp_dir = Path(__file__).resolve().parent.parent / "webapp"
     webapp_dir.mkdir(parents=True, exist_ok=True)
-    api.mount("/webapp", StaticFiles(directory=str(webapp_dir), html=True), name="webapp")
+    index_file = webapp_dir / "index.html"
 
     @api.get("/")
-    async def root():
-        """Root endpoint."""
+    @api.get("/webapp")
+    @api.get("/webapp/")
+    @api.get("/app")
+    @api.get("/store")
+    @api.get("/shop")
+    async def serve_webapp(request: Request):
+        """Serve the Telegram Mini App storefront directly across all common paths."""
+        accept = request.headers.get("accept", "")
+        if "application/json" in accept and "text/html" not in accept:
+            return {
+                "name": "Cloud Deals API",
+                "status": "online",
+                "message": "Telegram Bot and Webhook Service are running.",
+            }
+        return FileResponse(str(index_file))
+
+    @api.get("/style.css")
+    async def serve_root_style():
+        return FileResponse(str(webapp_dir / "style.css"))
+
+    @api.get("/app.js")
+    async def serve_root_js():
+        return FileResponse(str(webapp_dir / "app.js"))
+
+    # Mount static directory for relative paths like /webapp/style.css
+    api.mount("/webapp", StaticFiles(directory=str(webapp_dir), html=True), name="webapp")
+
+    @api.get("/api")
+    async def api_info():
         return {
             "name": "Cloud Deals API",
             "status": "online",
