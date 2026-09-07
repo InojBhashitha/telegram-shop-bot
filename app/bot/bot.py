@@ -25,7 +25,7 @@ async def _post_init(app: Application) -> None:
     """Configure Telegram Chat Menu Button on startup to launch the Mini App."""
     settings = get_settings()
     webapp_url = settings.effective_webapp_url
-    if webapp_url:
+    if webapp_url and webapp_url.startswith("https://"):
         try:
             from telegram import MenuButtonWebApp, WebAppInfo
             await app.bot.set_chat_menu_button(

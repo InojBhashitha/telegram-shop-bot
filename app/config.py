@@ -135,10 +135,30 @@ class Settings(BaseSettings):
 
     @property
     def effective_webapp_url(self) -> str:
-        """Return the effective Mini App URL (defaults to webhook_base_url + /webapp)."""
+        """Return the effective Mini App URL.
+
+        Prioritizes:
+        1. Explicit webapp_url if set.
+        2. RENDER_EXTERNAL_URL (automatically provided by Render).
+        3. webhook_base_url if configured with https.
+        """
         if self.webapp_url and self.webapp_url.strip():
             return self.webapp_url.strip().rstrip("/")
-        return f"{self.webhook_base_url.rstrip('/')}/webapp"
+
+        # Auto-detect Render deployment environment variable
+        render_url = os.environ.get("RENDER_EXTERNAL_URL", "").strip().rstrip("/")
+        if render_url:
+            return f"{render_url}/webapp"
+
+        # Check webhook_base_url if configured with https
+        if self.webhook_base_url and self.webhook_base_url.startswith("https://"):
+            return f"{self.webhook_base_url.rstrip('/')}/webapp"
+
+        # Fallback for local testing
+        if self.webhook_base_url:
+            return f"{self.webhook_base_url.rstrip('/')}/webapp"
+
+        return ""
 
     def is_admin(self, telegram_id: int) -> bool:
         """Check if a Telegram user ID is an admin."""

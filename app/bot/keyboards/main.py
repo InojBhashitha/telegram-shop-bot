@@ -20,7 +20,7 @@ def main_menu_keyboard(cart_count: int = 0) -> InlineKeyboardMarkup:
     cart_btn = f"🛒 My Cart ({cart_count})" if cart_count > 0 else "🛒 My Cart"
 
     rows: list[list[InlineKeyboardButton]] = []
-    if webapp_url:
+    if webapp_url and webapp_url.startswith("https://"):
         rows.append([InlineKeyboardButton("🚀 Launch Mini App Store", web_app=WebAppInfo(url=webapp_url))])
 
     rows.extend([
@@ -47,7 +47,7 @@ def main_reply_keyboard() -> ReplyKeyboardMarkup:
     webapp_url = settings.effective_webapp_url
 
     rows: list[list[KeyboardButton]] = []
-    if webapp_url:
+    if webapp_url and webapp_url.startswith("https://"):
         rows.append([KeyboardButton("🚀 Open Store (Mini App)", web_app=WebAppInfo(url=webapp_url))])
 
     rows.extend([
