@@ -21,6 +21,24 @@ def get_bot_instance() -> Optional[Bot]:
     return _bot_instance
 
 
+async def _post_init(app: Application) -> None:
+    """Configure Telegram Chat Menu Button on startup to launch the Mini App."""
+    settings = get_settings()
+    webapp_url = settings.effective_webapp_url
+    if webapp_url:
+        try:
+            from telegram import MenuButtonWebApp, WebAppInfo
+            await app.bot.set_chat_menu_button(
+                menu_button=MenuButtonWebApp(
+                    text="🛍 Store",
+                    web_app=WebAppInfo(url=webapp_url),
+                )
+            )
+            logger.info("Telegram Chat Menu Button set to Mini App: %s", webapp_url)
+        except Exception as e:
+            logger.warning("Could not set Telegram menu button: %s", e)
+
+
 def build_bot() -> Application:
     """Build and configure the Telegram bot application.
 
@@ -29,7 +47,12 @@ def build_bot() -> Application:
     global _bot_instance
 
     settings = get_settings()
-    app = Application.builder().token(settings.bot_token).build()
+    app = (
+        Application.builder()
+        .token(settings.bot_token)
+        .post_init(_post_init)
+        .build()
+    )
     _bot_instance = app.bot
 
     # Register handlers — order matters (ConversationHandlers first)

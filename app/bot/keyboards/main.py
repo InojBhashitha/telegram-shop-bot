@@ -7,13 +7,23 @@ from telegram import (
     InlineKeyboardMarkup,
     KeyboardButton,
     ReplyKeyboardMarkup,
+    WebAppInfo,
 )
+
+from app.config import get_settings
 
 
 def main_menu_keyboard(cart_count: int = 0) -> InlineKeyboardMarkup:
-    """Main menu keyboard shown after /start."""
+    """Main menu keyboard shown after /start with prominent Mini App launcher."""
+    settings = get_settings()
+    webapp_url = settings.effective_webapp_url
     cart_btn = f"🛒 My Cart ({cart_count})" if cart_count > 0 else "🛒 My Cart"
-    return InlineKeyboardMarkup([
+
+    rows: list[list[InlineKeyboardButton]] = []
+    if webapp_url:
+        rows.append([InlineKeyboardButton("🚀 Launch Mini App Store", web_app=WebAppInfo(url=webapp_url))])
+
+    rows.extend([
         [InlineKeyboardButton("🎁 View all products", callback_data="products")],
         [
             InlineKeyboardButton("🔥 Buy Now", callback_data="products"),
@@ -28,16 +38,26 @@ def main_menu_keyboard(cart_count: int = 0) -> InlineKeyboardMarkup:
             InlineKeyboardButton("❓ FAQ", callback_data="faq"),
         ],
     ])
+    return InlineKeyboardMarkup(rows)
 
 
 def main_reply_keyboard() -> ReplyKeyboardMarkup:
-    """Persistent bottom reply keyboard for quick navigation."""
+    """Persistent bottom reply keyboard for quick navigation with Mini App button."""
+    settings = get_settings()
+    webapp_url = settings.effective_webapp_url
+
+    rows: list[list[KeyboardButton]] = []
+    if webapp_url:
+        rows.append([KeyboardButton("🚀 Open Store (Mini App)", web_app=WebAppInfo(url=webapp_url))])
+
+    rows.extend([
+        [KeyboardButton("🛍 Browse Store"), KeyboardButton("🛒 My Cart")],
+        [KeyboardButton("📦 My Orders"), KeyboardButton("👤 My Profile")],
+        [KeyboardButton("☎️ Support / FAQ")],
+    ])
+
     return ReplyKeyboardMarkup(
-        [
-            [KeyboardButton("🛍 Browse Store"), KeyboardButton("🛒 My Cart")],
-            [KeyboardButton("📦 My Orders"), KeyboardButton("👤 My Profile")],
-            [KeyboardButton("☎️ Support / FAQ")],
-        ],
+        rows,
         resize_keyboard=True,
         is_persistent=True,
     )

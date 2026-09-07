@@ -45,8 +45,9 @@ class Settings(BaseSettings):
     cryptomus_merchant_id: str = ""
     cryptomus_payment_key: str = ""
 
-    # --- Webhook ---
+    # --- Webhook & Mini App ---
     webhook_base_url: str = "http://localhost:8000"
+    webapp_url: str = ""  # Custom Mini App URL; if empty, defaults to webhook_base_url + "/webapp"
 
     # --- API Server ---
     api_host: str = "0.0.0.0"
@@ -131,6 +132,13 @@ class Settings(BaseSettings):
         if self.nowpayments_sandbox:
             return "https://api-sandbox.nowpayments.io/v1"
         return "https://api.nowpayments.io/v1"
+
+    @property
+    def effective_webapp_url(self) -> str:
+        """Return the effective Mini App URL (defaults to webhook_base_url + /webapp)."""
+        if self.webapp_url and self.webapp_url.strip():
+            return self.webapp_url.strip().rstrip("/")
+        return f"{self.webhook_base_url.rstrip('/')}/webapp"
 
     def is_admin(self, telegram_id: int) -> bool:
         """Check if a Telegram user ID is an admin."""

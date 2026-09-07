@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Cloud Deals — Premium Digital Store</title>
+  
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Google Fonts: Outfit (Luxury Headings) & Inter (Crisp UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/webapp/style.css">
+</head>
+<body class="theme-obsidian">
+  <!-- Ambient background lighting mesh -->
+  <div class="ambient-glow glow-cyan"></div>
+  <div class="ambient-glow glow-violet"></div>
+
+  <!-- Main Container -->
+  <div id="app" class="app-shell">
+    
+    <!-- Top Bar / Brand Header -->
+    <header class="app-header">
+      <div class="brand-block">
+        <div class="logo-emblem">
+          <svg class="cloud-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="m13 10-3 5h4l-2 5" stroke="url(#cyan-violet-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <defs>
+              <linearGradient id="cyan-violet-grad" x1="10" y1="10" x2="14" y2="20" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#00f0ff"/>
+                <stop offset="1" stop-color="#a855f7"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="brand-info">
+          <div class="brand-title-row">
+            <span class="brand-name">Cloud Deals</span>
+            <span class="live-dot" title="Live System Online"></span>
+          </div>
+          <span class="brand-tagline">Premium Digital Goods</span>
+        </div>
+      </div>
+
+      <!-- User Profile Chip -->
+      <div class="user-chip" id="userChipBtn" role="button" tabindex="0">
+        <div class="user-avatar" id="userAvatar">CD</div>
+        <div class="user-meta">
+          <span class="user-name" id="userName">Loading...</span>
+          <span class="user-balance" id="userBalance">$0.00</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Promotional / First-Order Discount Banner -->
+    <div id="promoBanner" class="promo-card hidden">
+      <div class="promo-icon">🎁</div>
+      <div class="promo-content">
+        <div class="promo-title">10% First-Order Discount Available!</div>
+        <div class="promo-desc">Join our official channel to activate instant savings.</div>
+      </div>
+      <button id="claimDiscountBtn" class="btn-claim">Claim 10%</button>
+    </div>
+
+    <!-- Active Discount Badge (When Claimed) -->
+    <div id="discountActiveCard" class="discount-active-card hidden">
+      <span class="discount-badge-icon">✨</span>
+      <span><strong>10% First-Order Discount Active</strong> • Automatically applied at checkout</span>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <section class="search-section">
+      <div class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <circle cx="11" cy="11" r="8" stroke-width="2"/>
+          <path d="m21 21-4.3-4.3" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Search accounts, codes, services..." autocomplete="off">
+        <button id="clearSearchBtn" class="btn-clear hidden">&times;</button>
+      </div>
+
+      <!-- Categories Scroll Strip -->
+      <div class="categories-scroll" id="categoriesBar">
+        <button class="cat-pill active" data-category-id="all">
+          <span class="cat-icon">⚡</span>
+          <span class="cat-label">All Products</span>
+        </button>
+        <!-- Populated via JS -->
+      </div>
+    </section>
+
+    <!-- Catalog View -->
+    <main class="content-area" id="mainContent">
+      <div class="section-header">
+        <h2 class="section-title" id="catalogTitle">Explore Products</h2>
+        <span class="catalog-count" id="productCountBadge">0 available</span>
+      </div>
+
+      <!-- Products Grid -->
+      <div class="products-grid" id="productsGrid">
+        <!-- Skeleton Loaders -->
+        <div class="product-card skeleton"></div>
+        <div class="product-card skeleton"></div>
+        <div class="product-card skeleton"></div>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyCatalog" class="empty-state hidden">
+        <div class="empty-icon">🔍</div>
+        <h3>No Products Found</h3>
+        <p>Try searching for a different keyword or select another category.</p>
+        <button class="btn-secondary" id="resetFiltersBtn">Reset Filters</button>
+      </div>
+    </main>
+
+    <!-- Floating Bottom Navigation Dock -->
+    <nav class="bottom-dock">
+      <button class="dock-btn active" id="dockCatalogBtn" data-tab="catalog">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <rect x="3" y="3" width="7" height="7" rx="2" stroke-width="2"/>
+          <rect x="14" y="3" width="7" height="7" rx="2" stroke-width="2"/>
+          <rect x="14" y="14" width="7" height="7" rx="2" stroke-width="2"/>
+          <rect x="3" y="14" width="7" height="7" rx="2" stroke-width="2"/>
+        </svg>
+        <span>Store</span>
+      </button>
+
+      <button class="dock-btn" id="dockCartBtn" data-tab="cart">
+        <div class="dock-icon-wrapper">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" stroke-width="2"/>
+            <path d="M3 6h18" stroke-width="2"/>
+            <path d="M16 10a4 4 0 0 1-8 0" stroke-width="2"/>
+          </svg>
+          <span class="dock-badge hidden" id="cartBadge">0</span>
+        </div>
+        <span>Cart</span>
+      </button>
+
+      <button class="dock-btn" id="dockOrdersBtn" data-tab="orders">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" stroke-width="2"/>
+          <path d="m3.3 7 8.7 5 8.7-5" stroke-width="2"/>
+          <path d="M12 22V12" stroke-width="2"/>
+        </svg>
+        <span>Orders</span>
+      </button>
+
+      <button class="dock-btn" id="dockProfileBtn" data-tab="profile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" stroke-width="2"/>
+          <circle cx="12" cy="7" r="4" stroke-width="2"/>
+        </svg>
+        <span>Profile</span>
+      </button>
+    </nav>
+
+    <!-- Sticky Floating Checkout Bar (When Cart Has Items) -->
+    <div id="stickyCheckoutBar" class="sticky-checkout-bar hidden">
+      <div class="sticky-info">
+        <span class="sticky-label">Cart Total</span>
+        <span class="sticky-amount" id="stickyTotalAmount">$0.00</span>
+      </div>
+      <button class="btn-checkout-glow" id="stickyCheckoutBtn">
+        <span>View Cart & Pay</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="m9 18 6-6-6-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+
+  </div> <!-- End App Shell -->
+
+  <!-- ===================================================================== -->
+  <!-- MODALS & DRAWERS (Sliding Glass Sheets) -->
+  <!-- ===================================================================== -->
+
+  <!-- Backdrop Overlay -->
+  <div id="modalOverlay" class="modal-overlay hidden"></div>
+
+  <!-- 1. Product Detail Modal -->
+  <div id="productModal" class="bottom-sheet hidden">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="product-badge-row">
+        <span class="badge badge-category" id="modalCategory">Category</span>
+        <span class="badge badge-stock" id="modalStockBadge">In Stock</span>
+      </div>
+      <button class="btn-close-sheet" id="closeProductModal">&times;</button>
+    </div>
+
+    <div class="sheet-body">
+      <h2 class="modal-product-title" id="modalTitle">Product Title</h2>
+      <div class="modal-price-row">
+        <span class="modal-price" id="modalPrice">$0.00</span>
+        <span class="modal-currency">USD</span>
+        <span class="modal-delivery-tag">⚡ Instant Key Delivery</span>
+      </div>
+
+      <div class="perks-grid">
+        <div class="perk-item">
+          <span class="perk-icon">⚡</span>
+          <div>
+            <strong>Instant Delivery</strong>
+            <small>Keys delivered automatically</small>
+          </div>
+        </div>
+        <div class="perk-item">
+          <span class="perk-icon">🛡</span>
+          <div>
+            <strong>24h Warranty</strong>
+            <small>Full replacement guarantee</small>
+          </div>
+        </div>
+        <div class="perk-item">
+          <span class="perk-icon">🔒</span>
+          <div>
+            <strong>100% Tested</strong>
+            <small>Directly verified accounts</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-desc-block">
+        <h3>Description</h3>
+        <p id="modalDescription">Detailed product description goes here...</p>
+      </div>
+
+      <div class="quantity-picker-row">
+        <span class="qty-label">Quantity:</span>
+        <div class="qty-stepper">
+          <button class="btn-step" id="modalQtyMinus">&minus;</button>
+          <span class="step-value" id="modalQtyValue">1</span>
+          <button class="btn-step" id="modalQtyPlus">&plus;</button>
+        </div>
+        <span class="qty-subtotal" id="modalQtySubtotal">Total: $0.00</span>
+      </div>
+    </div>
+
+    <div class="sheet-footer">
+      <button class="btn-secondary" id="modalAddToCartBtn">
+        🛒 Add to Cart
+      </button>
+      <button class="btn-primary" id="modalBuyNowBtn">
+        ⚡ Buy Now
+      </button>
+    </div>
+  </div>
+
+  <!-- 2. Shopping Cart Drawer -->
+  <div id="cartModal" class="bottom-sheet hidden">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="cart-header-title">
+        <h2>Your Shopping Cart</h2>
+        <span class="cart-items-count" id="cartModalItemCount">0 items</span>
+      </div>
+      <button class="btn-clear-cart" id="clearCartBtn" title="Empty Cart">Clear All</button>
+      <button class="btn-close-sheet" id="closeCartModal">&times;</button>
+    </div>
+
+    <div class="sheet-body">
+      <!-- Cart Items List -->
+      <div class="cart-items-list" id="cartItemsList">
+        <!-- Populated via JS -->
+      </div>
+
+      <!-- Empty Cart View -->
+      <div id="emptyCartView" class="empty-cart-state hidden">
+        <div class="empty-icon">🛒</div>
+        <h3>Your Cart is Empty</h3>
+        <p>Browse our digital accounts catalog and add items to your cart.</p>
+        <button class="btn-primary" id="continueShoppingBtn">Explore Products</button>
+      </div>
+
+      <!-- Order Summary Card -->
+      <div id="cartSummaryCard" class="cart-summary-card">
+        <div class="summary-row">
+          <span>Subtotal</span>
+          <span id="cartSubtotalAmount">$0.00</span>
+        </div>
+        <div class="summary-row discount-row hidden" id="cartDiscountRow">
+          <span>🎁 10% First Order Discount</span>
+          <span class="discount-deduction" id="cartDiscountAmount">-$0.00</span>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-row total-row">
+          <span>Grand Total</span>
+          <span class="final-total" id="cartFinalAmount">$0.00</span>
+        </div>
+
+        <!-- Payment Method Selector -->
+        <div class="payment-method-selector">
+          <label class="method-option active" id="cryptoMethodOption">
+            <input type="radio" name="payment_method" value="crypto" checked>
+            <div class="method-info">
+              <span class="method-title">💎 Crypto (USDT, BTC, LTC, SOL...)</span>
+              <span class="method-sub">Instant zero-fee automated gateway</span>
+            </div>
+            <span class="method-check">✓</span>
+          </label>
+
+          <label class="method-option" id="balanceMethodOption">
+            <input type="radio" name="payment_method" value="balance">
+            <div class="method-info">
+              <span class="method-title">💳 Store Balance</span>
+              <span class="method-sub" id="methodBalanceSub">Available: $0.00</span>
+            </div>
+            <span class="method-check">✓</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-footer" id="cartSheetFooter">
+      <button class="btn-primary btn-checkout-full" id="executeCheckoutBtn">
+        Proceed to Payment • <span id="btnCheckoutTotal">$0.00</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- 3. Live Payment Modal (Crypto Invoice & Status Polling) -->
+  <div id="paymentModal" class="bottom-sheet hidden">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="payment-header-title">
+        <h2>Complete Payment</h2>
+        <span class="order-id-badge" id="payModalOrderId">Order #CD-0000</span>
+      </div>
+      <button class="btn-close-sheet" id="closePaymentModal">&times;</button>
+    </div>
+
+    <div class="sheet-body payment-body">
+      <div class="payment-amount-box">
+        <span class="pay-label">Total Amount Due</span>
+        <span class="pay-amount" id="payModalAmount">$0.00</span>
+        <span class="pay-currency">USD / Crypto</span>
+      </div>
+
+      <!-- Action Button to Open Payment Invoice -->
+      <div class="payment-actions">
+        <a id="payInvoiceLink" href="#" target="_blank" class="btn-primary btn-open-invoice">
+          <span>🚀 Open Crypto Payment Page</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" stroke-width="2"/>
+            <polyline points="15 3 21 3 21 9" stroke-width="2"/>
+            <line x1="10" y1="14" x2="21" y2="3" stroke-width="2"/>
+          </svg>
+        </a>
+      </div>
+
+      <!-- Live Blockchain Polling Tracker -->
+      <div class="live-tracker-box">
+        <div class="radar-spinner">
+          <div class="radar-core"></div>
+          <div class="radar-wave"></div>
+        </div>
+        <div class="tracker-text">
+          <strong id="trackerStatusTitle">Awaiting Confirmation</strong>
+          <small id="trackerStatusSubtitle">We are monitoring the blockchain network in real-time...</small>
+        </div>
+      </div>
+
+      <div class="payment-notice">
+        ⚡ After completing the payment in your wallet/browser, your digital account credentials will unlock automatically right here!
+      </div>
+    </div>
+
+    <div class="sheet-footer">
+      <button class="btn-secondary" id="checkPaymentStatusBtn">
+        🔄 Check Status Now
+      </button>
+      <button class="btn-danger-outline" id="cancelOrderBtn">
+        Cancel Order
+      </button>
+    </div>
+  </div>
+
+  <!-- 4. Digital Credentials Vault (Instant Delivery & Celebration) -->
+  <div id="vaultModal" class="bottom-sheet hidden">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <div class="vault-header">
+        <span class="vault-sparkle">🎉</span>
+        <h2>Order Fulfilled!</h2>
+      </div>
+      <button class="btn-close-sheet" id="closeVaultModal">&times;</button>
+    </div>
+
+    <div class="sheet-body vault-body">
+      <div class="success-banner">
+        <strong>Thank you for your purchase!</strong>
+        <p>Your digital account credentials have been reserved and delivered successfully.</p>
+      </div>
+
+      <div class="credentials-vault-card">
+        <div class="vault-card-header">
+          <span>🔑 Your Delivered Credentials</span>
+          <button class="btn-copy-all" id="copyAllCredentialsBtn">📋 Copy All</button>
+        </div>
+        <div class="credentials-content" id="vaultCredentialsContent">
+          <!-- Populated via JS with individual 1-tap copy fields -->
+        </div>
+      </div>
+
+      <div class="warranty-card">
+        <span class="shield-icon">🛡</span>
+        <div class="warranty-text">
+          <strong>24-Hour Replacement Warranty Active</strong>
+          <p>If you encounter any login or warranty issues, tap Support in your profile to request an instant replacement.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-footer">
+      <button class="btn-primary" id="vaultDoneBtn">
+        Done & Save to Orders
+      </button>
+    </div>
+  </div>
+
+  <!-- 5. Orders History Drawer -->
+  <div id="ordersModal" class="bottom-sheet hidden">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h2>My Order History</h2>
+      <button class="btn-close-sheet" id="closeOrdersModal">&times;</button>
+    </div>
+
+    <div class="sheet-body">
+      <div class="orders-list" id="ordersList">
+        <!-- Populated via JS -->
+      </div>
+      <div id="emptyOrdersView" class="empty-state hidden">
+        <div class="empty-icon">📦</div>
+        <h3>No Orders Yet</h3>
+        <p>Your completed purchases and purchased digital keys will be stored here safely.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Profile & Wallet Drawer -->
+  <div id="profileModal" class="bottom-sheet hidden">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h2>My Account</h2>
+      <button class="btn-close-sheet" id="closeProfileModal">&times;</button>
+    </div>
+
+    <div class="sheet-body">
+      <!-- User ID Card -->
+      <div class="profile-card">
+        <div class="profile-main">
+          <div class="profile-avatar" id="profAvatar">CD</div>
+          <div class="profile-names">
+            <h3 id="profName">Cloud Customer</h3>
+            <span id="profUsername">@username</span>
+            <span class="id-tag" id="profId">ID: 00000000</span>
+          </div>
+        </div>
+        <div class="balance-pill-large">
+          <span class="bal-label">Store Balance</span>
+          <span class="bal-amount" id="profBalance">$0.00</span>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="profile-actions">
+        <div class="action-card" id="topupActionCard">
+          <span class="act-icon">💳</span>
+          <div class="act-info">
+            <strong>Top-Up Balance</strong>
+            <small>Add funds using Crypto in bot</small>
+          </div>
+          <span class="act-arrow">&rarr;</span>
+        </div>
+
+        <div class="action-card" id="referralActionCard">
+          <span class="act-icon">🎁</span>
+          <div class="act-info">
+            <strong>Referral Link</strong>
+            <small>Earn rewards by inviting friends</small>
+          </div>
+          <button class="btn-mini-copy" id="copyRefLinkBtn">Copy</button>
+        </div>
+
+        <div class="action-card" id="supportActionCard">
+          <span class="act-icon">☎️</span>
+          <div class="act-info">
+            <strong>Customer Support</strong>
+            <small>24/7 Assistance & Replacement</small>
+          </div>
+          <span class="act-arrow">&rarr;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Standalone Browser Testing Preview Banner -->
+  <aside id="devPreviewBar" class="dev-preview-bar hidden">
+    <div class="dev-content">
+      <span class="dev-tag">DEV PREVIEW</span>
+      <span>Browser Mode (Outside Telegram)</span>
+      <input type="number" id="devUserIdInput" placeholder="Telegram ID" value="999001">
+      <button id="devSwitchUserBtn">Switch User</button>
+    </div>
+  </aside>
+
+  <!-- Core App Logic -->
+  <script src="/webapp/app.js"></script>
+</body>
+</html>

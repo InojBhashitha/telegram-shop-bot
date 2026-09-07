@@ -235,7 +235,7 @@ class Order(Base):
 
     # Relationships
     user: Mapped[User] = relationship("User", back_populates="orders")
-    product: Mapped[Optional[Product]] = relationship("Product")
+    product: Mapped[Optional[Product]] = relationship("Product", lazy="selectin")
     inventory_item: Mapped[Optional[Inventory]] = relationship(
         "Inventory", foreign_keys=[inventory_id]
     )

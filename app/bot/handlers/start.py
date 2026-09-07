@@ -198,6 +198,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         f"☁️ *Cloud Deals*\n\n"
         f"👋 Welcome!\n\n"
         f"{promo_banner}"
+        f"📱 *New:* Tap *Launch Mini App Store* below for our full interactive catalog, instant search & 1-tap checkout!\n\n"
         f"Choose an option below:",
         reply_markup=main_menu_keyboard(cart_count),
         parse_mode="Markdown",
