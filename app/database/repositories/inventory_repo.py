@@ -196,7 +196,7 @@ async def release_expired_reservations(
         )
     )
     result = await session.execute(stmt)
-    return result.rowcount
+    return int(getattr(result, "rowcount", 0))
 
 
 async def get_stock_count(session: AsyncSession, product_id: int) -> int:

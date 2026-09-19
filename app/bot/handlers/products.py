@@ -106,14 +106,21 @@ async def show_category_products(update: Update, context: ContextTypes.DEFAULT_T
     )
 
 
-async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def show_product_detail(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    product_id: int | None = None,
+) -> None:
     """Show product details with stock count and quantity buy buttons."""
     query = update.callback_query
-    if query is None or query.data is None or query.from_user is None:
+    if query is None or query.from_user is None:
         return
     await query.answer()
 
-    product_id = int(query.data.split(":")[1])
+    if product_id is None:
+        if query.data is None:
+            return
+        product_id = int(query.data.split(":")[1])
 
     async with get_session() as session:
         details = await product_service.get_product_details(session, product_id)

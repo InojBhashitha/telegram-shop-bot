@@ -104,7 +104,8 @@ async def create_order(
             )
             discount = coupon_res["discount_amount"]
             applied_coupon_id = coupon_res["coupon_id"]
-            await coupon_repo.increment_uses(session, applied_coupon_id)
+            if applied_coupon_id is not None:
+                await coupon_repo.increment_uses(session, applied_coupon_id)
         except coupon_service.CouponError as e:
             # Release reserved items before raising
             for ri in reserved_items:
@@ -260,6 +261,8 @@ async def fulfill_order(session: AsyncSession, order_id: int) -> Optional[dict]:
         session, order_id, OrderStatus.FULFILLED,
         delivered_at=datetime.now(timezone.utc),
     )
+    if order is None:
+        return None
 
     # Credit affiliate commission if order used an affiliate coupon
     try:

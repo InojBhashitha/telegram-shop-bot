@@ -100,8 +100,8 @@ async def approve_claim(
         raise WarrantyError("Claim is not pending")
 
     order = await order_repo.get_by_id(session, claim.order_id)
-    if order is None:
-        raise WarrantyError("Associated order not found")
+    if order is None or order.product_id is None:
+        raise WarrantyError("Associated order or product not found")
 
     # Reserve a replacement item from same product
     replacement = await inventory_repo.reserve_item(session, order.product_id)

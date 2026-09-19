@@ -485,7 +485,7 @@ async def admin_orders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await query.answer()
 
     page = 0
-    if "orders_p:" in query.data:
+    if query.data and "orders_p:" in query.data:
         page = int(query.data.split(":")[2])
 
     async with get_session() as session:

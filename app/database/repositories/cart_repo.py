@@ -93,7 +93,7 @@ async def remove_item(
     )
     result = await session.execute(stmt)
     await session.flush()
-    return result.rowcount > 0
+    return int(getattr(result, "rowcount", 0)) > 0
 
 
 async def clear_cart(session: AsyncSession, user_id: int) -> int:
@@ -101,7 +101,7 @@ async def clear_cart(session: AsyncSession, user_id: int) -> int:
     stmt = delete(CartItem).where(CartItem.user_id == user_id)
     result = await session.execute(stmt)
     await session.flush()
-    return result.rowcount
+    return int(getattr(result, "rowcount", 0))
 
 
 async def get_cart_item_count(session: AsyncSession, user_id: int) -> int:

@@ -206,11 +206,10 @@ async def cancel_custom_quantity(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     if query:
         await query.answer()
-        product_id = int(query.data.split(":")[1]) if ":" in query.data else None
+        product_id = int(query.data.split(":")[1]) if query.data and ":" in query.data else None
         if product_id:
             from app.bot.handlers.products import show_product_detail
-            query.data = f"prod:{product_id}"
-            await show_product_detail(update, context)
+            await show_product_detail(update, context, product_id=product_id)
             return ConversationHandler.END
     return ConversationHandler.END
 

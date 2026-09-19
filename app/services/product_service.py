@@ -90,7 +90,14 @@ async def create_product(
     """Create a new product."""
     dt = DeliveryType(delivery_type)
     prod = await product_repo.create(
-        session, category_id, name, price, currency, description, dt, active
+        session=session,
+        category_id=category_id,
+        name=name,
+        price=price,
+        currency=currency,
+        description=description,
+        delivery_type=dt,
+        active=active,
     )
     logger.info("Product created: id=%s name=%s price=%s", prod.id, prod.name, prod.price)
     return prod

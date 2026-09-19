@@ -10,7 +10,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.database.models import Inventory
+from app.database.models import CartItem, Inventory
 from app.database.repositories import cart_repo, inventory_repo, order_repo, product_repo
 
 logger = logging.getLogger(__name__)
@@ -242,7 +242,8 @@ async def checkout_cart(
             )
             discount = coupon_res["discount_amount"]
             coupon_id = coupon_res["coupon_id"]
-            await coupon_repo.increment_uses(session, coupon_id)
+            if coupon_id is not None:
+                await coupon_repo.increment_uses(session, coupon_id)
         except coupon_service.CouponError as e:
             for r in all_reserved:
                 await inventory_repo.release_item(session, r.id)

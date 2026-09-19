@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     )
 
     # --- Telegram Bot ---
-    bot_token: str
+    bot_token: str = ""
 
     # --- Database ---
     database_url: str = "sqlite+aiosqlite:///./cloud_deals.db"

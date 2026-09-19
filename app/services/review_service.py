@@ -63,6 +63,9 @@ async def submit_review(
     if not product_id:
         raise ReviewError("Product ID or associated Order is required.")
 
+    if not order_id:
+        raise ReviewError("Order ID is required to review a purchase.")
+
     review = await review_repo.create_review(
         session=session,
         order_id=order_id,
