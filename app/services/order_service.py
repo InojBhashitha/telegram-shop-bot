@@ -10,8 +10,8 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.database.models import Inventory, Order, OrderStatus
-from app.database.repositories import inventory_repo, order_repo, product_repo
+from app.database.models import Order, OrderStatus, User
+from app.database.repositories import coupon_repo, inventory_repo, order_repo, product_repo, user_repo
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,6 @@ def compute_first_order_discount(user: Optional[User], raw_amount: Decimal) -> D
     return Decimal("0.00")
 
 
-from app.database.repositories import coupon_repo, inventory_repo, order_repo, product_repo, user_repo
 from app.services import coupon_service
 from app.utils.crypto_vault import decrypt_content
 

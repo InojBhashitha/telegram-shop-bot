@@ -10,7 +10,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.database.models import CartItem, Inventory, Order, OrderStatus
+from app.database.models import Inventory
 from app.database.repositories import cart_repo, inventory_repo, order_repo, product_repo
 
 logger = logging.getLogger(__name__)

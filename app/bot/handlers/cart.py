@@ -24,7 +24,7 @@ from app.bot.keyboards.cart import (
 from app.bot.keyboards.orders import payment_keyboard
 from app.config import get_settings
 from app.database.database import get_session
-from app.database.repositories import cart_repo, inventory_repo, user_repo
+from app.database.repositories import inventory_repo
 from app.payments import get_payment_provider
 from app.services import cart_service, order_service, payment_service, product_service, user_service
 

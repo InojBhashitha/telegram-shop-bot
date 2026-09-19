@@ -46,6 +46,34 @@ async def _check_channel_membership(bot, user_id: int) -> bool:
         return True  # If check fails, don't block users
 
 
+async def _show_join_required(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show force-subscribe gate — user must join channel before accessing the bot."""
+    settings = get_settings()
+    channel = settings.force_channel_id
+
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 Join Channel", url=f"https://t.me/{channel.lstrip('@')}")],
+        [InlineKeyboardButton("✅ I've Joined — Check Again", callback_data="main_menu")],
+    ])
+
+    text = (
+        "☁️ *Cloud Deals*\n\n"
+        "🔒 *Channel Membership Required*\n\n"
+        f"Please join our channel {channel} to access the store.\n\n"
+        "After joining, tap the button below:"
+    )
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text, reply_markup=keyboard, parse_mode="Markdown",
+        )
+    elif update.message:
+        await update.message.reply_text(
+            text, reply_markup=keyboard, parse_mode="Markdown",
+        )
+
+
 async def _show_discount_offer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show the optional 10% discount welcome offer with join, claim, and skip buttons."""
     settings = get_settings()
