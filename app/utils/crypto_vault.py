@@ -9,9 +9,19 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
-from typing import Optional
+from typing import TYPE_CHECKING, Any, Optional
 
-from cryptography.fernet import Fernet, InvalidToken
+if TYPE_CHECKING:
+    from cryptography.fernet import Fernet, InvalidToken
+    HAS_CRYPTOGRAPHY = True
+else:
+    try:
+        from cryptography.fernet import Fernet, InvalidToken
+        HAS_CRYPTOGRAPHY = True
+    except ImportError:
+        HAS_CRYPTOGRAPHY = False
+        Fernet = None
+        InvalidToken = Exception
 
 from app.config import get_settings
 
@@ -20,8 +30,11 @@ logger = logging.getLogger(__name__)
 _fernet_instance: Optional[Fernet] = None
 
 
-def _get_fernet() -> Fernet:
+def _get_fernet() -> Optional[Fernet]:
     """Get or initialize the Fernet cipher instance."""
+    if not HAS_CRYPTOGRAPHY or Fernet is None:
+        return None
+
     global _fernet_instance
     if _fernet_instance is not None:
         return _fernet_instance
@@ -61,6 +74,9 @@ def encrypt_content(plaintext: str) -> str:
         return stripped
 
     cipher = _get_fernet()
+    if cipher is None:
+        return plaintext
+
     encrypted = cipher.encrypt(plaintext.encode("utf-8"))
     return encrypted.decode("utf-8")
 
@@ -80,9 +96,12 @@ def decrypt_content(stored_content: str) -> str:
         return stored_content
 
     cipher = _get_fernet()
+    if cipher is None:
+        return stored_content
+
     try:
         decrypted = cipher.decrypt(stripped.encode("utf-8"))
         return decrypted.decode("utf-8")
     except (InvalidToken, Exception) as e:
-        logger.warning("Could not decrypt inventory content, returning as plaintext fallback: %s", e)
+        logger.warning("Could not decrypt content, returning raw stored content: %s", e)
         return stored_content
