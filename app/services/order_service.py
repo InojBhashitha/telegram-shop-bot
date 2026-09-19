@@ -286,7 +286,7 @@ async def get_expiring_orders_for_warning(
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
     stmt = (
         select(Order)
-        .options(selectinload(Order.user), selectinload(Order.product))
+        .options(selectinload(Order.user), selectinload(Order.product), selectinload(Order.payment))
         .where(Order.status == OrderStatus.PENDING_PAYMENT)
         .where(Order.created_at <= cutoff)
         .where(Order.expiry_warned == False)

@@ -52,16 +52,22 @@ async def expire_orders_task(bot=None, interval_seconds: int = 60) -> None:
                                     f"⏳ *Reminder: Your order is expiring soon!*\n\n"
                                     f"📦 *Order:* `{order.public_order_id}`\n"
                                     f"🏷 *Product:* {prod_name}\n"
-                                    f"💰 *Amount:* ${order.final_amount:.2f}\n\n"
+                                    f"💰 *Amount:* ${order.amount:.2f}\n\n"
                                     f"⚠️ Your reserved stock will be automatically released in "
                                     f"*10 minutes* if payment is not completed.\n\n"
                                     f"Tap below to pay now:"
                                 )
                                 try:
+                                    payment_url = (
+                                        order.payment.payment_url
+                                        if order.payment and order.payment.payment_url
+                                        else ""
+                                    )
+                                    reply_markup = payment_keyboard(payment_url, order.id)
                                     await bot.send_message(
                                         chat_id=order.user.telegram_id,
                                         text=warning_text,
-                                        reply_markup=payment_keyboard(order),
+                                        reply_markup=reply_markup,
                                         parse_mode="Markdown",
                                     )
                                     logger.info(

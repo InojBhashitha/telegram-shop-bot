@@ -110,4 +110,4 @@ async def get_cart_item_count(session: AsyncSession, user_id: int) -> int:
         CartItem.user_id == user_id
     )
     result = await session.execute(stmt)
-    return int(result.scalar_one())
+    return result.scalar_one()
