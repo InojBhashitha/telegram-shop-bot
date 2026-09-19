@@ -482,11 +482,14 @@ async def recv_stock_items(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 async def admin_orders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Show orders (admin)."""
     query = update.callback_query
+    if query is None or query.data is None:
+        return
     await query.answer()
 
+    data = query.data
     page = 0
-    if query.data and "orders_p:" in query.data:
-        page = int(query.data.split(":")[2])
+    if "orders_p:" in data:
+        page = int(data.split(":")[2])
 
     async with get_session() as session:
         orders = await order_repo.get_all_orders(session, offset=page * 10, limit=11)
