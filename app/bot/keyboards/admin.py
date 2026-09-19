@@ -29,6 +29,7 @@ def admin_main_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton("🎫 Tickets", callback_data="adm:tickets"),
         ],
         [
+            InlineKeyboardButton("🎟️ Coupons", callback_data="adm:coupons"),
             InlineKeyboardButton("⚙️ Settings", callback_data="adm:settings"),
         ],
         [InlineKeyboardButton("⬅️ Close", callback_data="main_menu")],

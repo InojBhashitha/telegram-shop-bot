@@ -11,6 +11,7 @@ from telegram.ext import (
     ContextTypes,
     ConversationHandler,
     MessageHandler,
+    PreCheckoutQueryHandler,
     filters,
 )
 
@@ -22,8 +23,8 @@ from app.bot.keyboards.orders import (
 from app.config import get_settings
 from app.database.database import get_session
 from app.database.models import OrderStatus
-from app.database.repositories import inventory_repo, payment_repo, user_repo
-from app.services import order_service, payment_service
+from app.database.repositories import inventory_repo, order_repo, payment_repo, user_repo
+from app.services import delivery_service, order_service, payment_service
 
 logger = logging.getLogger(__name__)
 
@@ -414,6 +415,95 @@ async def _cancel_warranty_conv(update: Update, context: ContextTypes.DEFAULT_TY
     return ConversationHandler.END
 
 
+async def review_order_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle 1-5 star review button click on delivered order."""
+    query = update.callback_query
+    if query is None or query.data is None or query.from_user is None:
+        return
+
+    parts = query.data.split(":")
+    if len(parts) < 3:
+        return
+    order_id = int(parts[1])
+    stars = int(parts[2])
+
+    async with get_session() as session:
+        from app.services import review_service
+
+        db_user = await user_repo.get_by_telegram_id(session, query.from_user.id)
+        if not db_user:
+            await query.answer("User not found.", show_alert=True)
+            return
+
+        try:
+            await review_service.submit_review(
+                session=session,
+                order_id=order_id,
+                user_id=db_user.id,
+                rating=stars,
+                bot=context.bot,
+            )
+            await query.answer(f"⭐ Thank you! Your {stars}-star rating has been recorded.", show_alert=True)
+            if query.message:
+                try:
+                    await query.edit_message_reply_markup(reply_markup=None)
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.warning("Failed to submit review: %s", e)
+            await query.answer("Rating could not be recorded.", show_alert=True)
+
+
+async def handle_pre_checkout_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle Telegram Stars pre-checkout validation."""
+    query = update.pre_checkout_query
+    if query is None:
+        return
+
+    public_order_id = query.invoice_payload
+    async with get_session() as session:
+        order = await order_repo.get_by_public_id(session, public_order_id)
+        if order is None or order.status != OrderStatus.PENDING_PAYMENT:
+            await query.answer(ok=False, error_message="Order is no longer available or already completed.")
+            return
+
+        await query.answer(ok=True)
+
+
+async def handle_successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle completed Telegram Stars payment."""
+    if update.message is None or update.message.successful_payment is None:
+        return
+
+    payment = update.message.successful_payment
+    public_order_id = payment.invoice_payload
+
+    async with get_session() as session:
+        order = await order_repo.get_by_public_id(session, public_order_id)
+        if not order:
+            logger.error("SuccessfulPayment: order %s not found", public_order_id)
+            return
+
+        if order.status in (OrderStatus.PAID, OrderStatus.FULFILLED):
+            logger.info("Order %s already processed", public_order_id)
+            return
+
+        await order_service.mark_paid(session, order.id)
+        fulfill_res = await order_service.fulfill_order(session, order.id)
+
+        if fulfill_res and fulfill_res.get("contents"):
+            prod_name = order.product.name if order.product else "Digital Item"
+            user_tg_id = update.effective_user.id if update.effective_user else 0
+            if user_tg_id:
+                await delivery_service.deliver_bulk_to_user(
+                    bot=context.bot,
+                    telegram_id=user_tg_id,
+                    order=order,
+                    contents=fulfill_res["contents"],
+                    product_name=prod_name,
+                )
+
+
 def get_handlers() -> list:
     """Return handlers for this module."""
     warranty_conv = ConversationHandler(
@@ -433,8 +523,11 @@ def get_handlers() -> list:
     )
 
     return [
+        PreCheckoutQueryHandler(handle_pre_checkout_query),
+        MessageHandler(filters.SUCCESSFUL_PAYMENT, handle_successful_payment),
         warranty_conv,
         CommandHandler("orders", orders_command),
+        CallbackQueryHandler(review_order_callback, pattern=r"^review:\d+:\d+$"),
         CallbackQueryHandler(check_payment, pattern=r"^check_pay:\d+$"),
         CallbackQueryHandler(cancel_order_handler, pattern=r"^cancel_order:\d+$"),
         CallbackQueryHandler(show_orders, pattern=r"^orders$"),

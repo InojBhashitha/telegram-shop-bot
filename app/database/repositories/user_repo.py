@@ -103,6 +103,9 @@ async def update_balance(
     return user
 
 
+adjust_balance = update_balance
+
+
 async def list_users(
     session: AsyncSession, offset: int = 0, limit: int = 20
 ) -> list[User]:

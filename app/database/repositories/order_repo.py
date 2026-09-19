@@ -23,6 +23,7 @@ async def create(
     quantity: int = 1,
     warranty_expires_at=None,
     discount_amount: Decimal = Decimal("0.00"),
+    coupon_id: Optional[int] = None,
 ) -> Order:
     """Create a new order."""
     order = Order(
@@ -35,6 +36,7 @@ async def create(
         currency=currency,
         quantity=quantity,
         warranty_expires_at=warranty_expires_at,
+        coupon_id=coupon_id,
         status=OrderStatus.PENDING_PAYMENT,
     )
     session.add(order)

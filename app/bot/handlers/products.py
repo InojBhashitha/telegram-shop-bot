@@ -66,10 +66,9 @@ async def show_category_products(update: Update, context: ContextTypes.DEFAULT_T
 
         products = await product_service.get_products_by_category(session, category_id)
 
-        # Get stock counts for each product to show live badges
-        stock_counts = {}
-        for prod in products:
-            stock_counts[prod.id] = await inventory_repo.get_stock_count(session, prod.id)
+        # Batch query stock counts to eliminate N+1 queries
+        product_ids = [prod.id for prod in products]
+        stock_counts = await inventory_repo.get_stock_counts_for_products(session, product_ids)
 
     if not products:
         await query.edit_message_text(
@@ -132,15 +131,22 @@ async def show_product_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
         if db_user:
             cart_count = await cart_repo.get_cart_item_count(session, db_user.id)
 
+        from app.services import review_service
+        rating_info = await review_service.get_product_rating(session, product.id)
+
     in_stock = stock > 0
 
     settings = get_settings()
     from app.bot.utils.ui import format_product_caption
+    rating_text = ""
+    if rating_info["review_count"] > 0:
+        rating_text = f"\n⭐ *Customer Rating:* {rating_info['average_rating']}/5.0 ({rating_info['review_count']} reviews)"
+
     caption = format_product_caption(
         name=product.name,
         price=product.price,
         stock=stock,
-        description=product.description,
+        description=(product.description or "") + rating_text,
         currency=product.currency,
         warranty_hours=settings.warranty_hours,
     )
@@ -267,11 +273,36 @@ async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     )
 
 
+async def stock_alert_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle user subscribing to restock alerts for an out-of-stock product."""
+    query = update.callback_query
+    if query is None or query.data is None or query.from_user is None:
+        return
+
+    product_id = int(query.data.split(":")[1])
+    async with get_session() as session:
+        from app.database.repositories import user_repo
+        from app.services import stock_alert_service
+
+        db_user = await user_repo.get_by_telegram_id(session, query.from_user.id)
+        if not db_user:
+            await query.answer("Please start the bot first using /start", show_alert=True)
+            return
+
+        alert, created = await stock_alert_service.subscribe_user(session, db_user.id, product_id)
+
+    if created:
+        await query.answer("🔔 Alert set! You'll receive a Telegram message the instant stock arrives.", show_alert=True)
+    else:
+        await query.answer("ℹ️ You are already subscribed to restock alerts for this product.", show_alert=True)
+
+
 def get_handlers() -> list:
     """Return handlers for this module."""
     return [
         CallbackQueryHandler(show_categories, pattern="^products$"),
         CallbackQueryHandler(show_category_products, pattern=r"^cat:\d+$"),
         CallbackQueryHandler(show_product_detail, pattern=r"^prod:\d+$"),
+        CallbackQueryHandler(stock_alert_callback, pattern=r"^stock_alert:\d+$"),
         CallbackQueryHandler(buy_product, pattern=r"^buy:\d+"),
     ]

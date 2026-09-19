@@ -29,18 +29,25 @@ def compute_first_order_discount(user: Optional[User], raw_amount: Decimal) -> D
     return Decimal("0.00")
 
 
+from app.database.repositories import coupon_repo, inventory_repo, order_repo, product_repo, user_repo
+from app.services import coupon_service
+from app.utils.crypto_vault import decrypt_content
+
+
 async def create_order(
     session: AsyncSession,
     user_id: int,
     product_id: int,
     quantity: int = 1,
+    coupon_code: Optional[str] = None,
+    coupon_id: Optional[int] = None,
 ) -> dict:
     """Create a new order with inventory reservation (supports bulk quantity & discounts).
 
     This is the main purchase entry point. It:
     1. Validates the product is active
     2. Reserves `quantity` inventory items (atomic)
-    3. Calculates 10% first-order discount (if eligible)
+    3. Calculates coupon discount or 10% first-order discount
     4. Creates the order record with total amount = (price × quantity) - discount
 
     Returns:
@@ -81,16 +88,52 @@ async def create_order(
                 await inventory_repo.release_item(session, ri.id)
             raise OrderError(f"Not enough stock available (only {len(reserved_items)})")
 
-    # Calculate subtotal, first-order discount, and warranty expiry
+    # Calculate subtotal, discount, and warranty expiry
     subtotal = product.price * quantity
-    from app.database.repositories import user_repo
     user = await user_repo.get_by_id(session, user_id)
-    discount = compute_first_order_discount(user, subtotal)
-    final_amount = max(subtotal - discount, Decimal("0.01"))
 
-    # Mark discount as used on user record
-    if discount > Decimal("0.00") and user:
-        user.channel_discount_used = True
+    applied_coupon_id: Optional[int] = None
+    discount = Decimal("0.00")
+
+    if coupon_code and coupon_code.strip():
+        try:
+            coupon_res = await coupon_service.validate_and_calculate_discount(
+                session=session,
+                code=coupon_code.strip(),
+                subtotal=subtotal,
+                user_id=user_id,
+            )
+            discount = coupon_res["discount_amount"]
+            applied_coupon_id = coupon_res["coupon_id"]
+            await coupon_repo.increment_uses(session, applied_coupon_id)
+        except coupon_service.CouponError as e:
+            # Release reserved items before raising
+            for ri in reserved_items:
+                await inventory_repo.release_item(session, ri.id)
+            raise OrderError(str(e))
+    elif coupon_id is not None:
+        coupon_obj = await coupon_repo.get_by_id(session, coupon_id)
+        if coupon_obj:
+            try:
+                coupon_res = await coupon_service.validate_and_calculate_discount(
+                    session=session,
+                    code=coupon_obj.code,
+                    subtotal=subtotal,
+                    user_id=user_id,
+                )
+                discount = coupon_res["discount_amount"]
+                applied_coupon_id = coupon_obj.id
+                await coupon_repo.increment_uses(session, applied_coupon_id)
+            except coupon_service.CouponError as e:
+                for ri in reserved_items:
+                    await inventory_repo.release_item(session, ri.id)
+                raise OrderError(str(e))
+    else:
+        discount = compute_first_order_discount(user, subtotal)
+        if discount > Decimal("0.00") and user:
+            user.channel_discount_used = True
+
+    final_amount = max(subtotal - discount, Decimal("0.01"))
 
     settings = get_settings()
     warranty_expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.warranty_hours)
@@ -110,6 +153,7 @@ async def create_order(
         currency=product.currency,
         quantity=quantity,
         warranty_expires_at=warranty_expires_at,
+        coupon_id=applied_coupon_id,
     )
 
     # Link all inventory items to this order
@@ -118,8 +162,8 @@ async def create_order(
     await session.flush()
 
     logger.info(
-        "Order created: %s product=%s user_id=%s qty=%s subtotal=%s discount=%s amount=%s",
-        public_order_id, product.name, user_id, quantity, subtotal, discount, final_amount,
+        "Order created: %s product=%s user_id=%s qty=%s subtotal=%s discount=%s amount=%s coupon_id=%s",
+        public_order_id, product.name, user_id, quantity, subtotal, discount, final_amount, coupon_id,
     )
 
     return {
@@ -198,19 +242,19 @@ async def fulfill_order(session: AsyncSession, order_id: int) -> Optional[dict]:
             f"(expected PAID)"
         )
 
-    # Mark all inventory items as sold and collect contents
+    # Mark all inventory items as sold and collect decrypted contents
     contents = []
     items = await inventory_repo.get_items_by_order_id(session, order.id)
     for item in items:
         await inventory_repo.mark_sold(session, item.id, order.id)
-        contents.append(item.content)
+        contents.append(decrypt_content(item.content))
 
     # Fallback: if no items found via order_id, try inventory_id
     if not contents and order.inventory_id:
         await inventory_repo.mark_sold(session, order.inventory_id, order.id)
         item = await inventory_repo.get_item_by_id(session, order.inventory_id)
         if item:
-            contents.append(item.content)
+            contents.append(decrypt_content(item.content))
 
     # Mark order fulfilled
     order = await order_repo.update_status(
@@ -218,8 +262,43 @@ async def fulfill_order(session: AsyncSession, order_id: int) -> Optional[dict]:
         delivered_at=datetime.now(timezone.utc),
     )
 
+    # Credit affiliate commission if order used an affiliate coupon
+    try:
+        await coupon_service.credit_affiliate_for_order(session, order)
+    except Exception as e:
+        logger.warning("Error crediting affiliate commission for order %s: %s", order.public_order_id, e)
+
     logger.info("Order fulfilled: %s (%d items)", order.public_order_id, len(contents))
     return {"order": order, "contents": contents, "content": contents[0] if contents else None}
+
+
+async def get_expiring_orders_for_warning(
+    session: AsyncSession,
+    expiry_minutes: int = 30,
+    warning_minutes_before: int = 10,
+) -> list[Order]:
+    """Find pending orders that have <= warning_minutes_before remaining before expiration."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    threshold_minutes = max(1, expiry_minutes - warning_minutes_before)
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
+    stmt = (
+        select(Order)
+        .options(selectinload(Order.user), selectinload(Order.product))
+        .where(Order.status == OrderStatus.PENDING_PAYMENT)
+        .where(Order.created_at <= cutoff)
+        .where(Order.expiry_warned == False)
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def mark_order_warned(session: AsyncSession, order_id: int) -> None:
+    """Mark order as having received the expiry warning."""
+    from sqlalchemy import update
+    stmt = update(Order).where(Order.id == order_id).values(expiry_warned=True)
+    await session.execute(stmt)
+    await session.flush()
 
 
 async def expire_old_orders(session: AsyncSession, expiry_minutes: int = 30) -> int:

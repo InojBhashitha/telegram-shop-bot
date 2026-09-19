@@ -6,12 +6,25 @@ import logging
 import re
 from typing import Optional
 
-from telegram import Bot
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import TelegramError
 
 from app.database.models import Order
 
 logger = logging.getLogger(__name__)
+
+
+def _review_keyboard(order_id: int) -> InlineKeyboardMarkup:
+    """Build interactive 1-5 star review rating keyboard."""
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("1 ⭐", callback_data=f"review:{order_id}:1"),
+            InlineKeyboardButton("2 ⭐", callback_data=f"review:{order_id}:2"),
+            InlineKeyboardButton("3 ⭐", callback_data=f"review:{order_id}:3"),
+            InlineKeyboardButton("4 ⭐", callback_data=f"review:{order_id}:4"),
+            InlineKeyboardButton("5 ⭐", callback_data=f"review:{order_id}:5"),
+        ]
+    ])
 
 
 def _format_credentials_for_copy(content: str) -> str:
@@ -100,13 +113,15 @@ async def deliver_to_user(
         f"🏷 *Product:* {product_name}\n\n"
         f"🎁 *Your product:*\n"
         f"{formatted}\n\n"
-        f"Thank you for using Cloud Deals\\! ☁️"
+        f"Thank you for using Cloud Deals\\! ☁️\n\n"
+        f"⭐ *Rate your purchase below:*"
     )
 
     try:
         await bot.send_message(
             chat_id=telegram_id,
             text=message,
+            reply_markup=_review_keyboard(order.id),
             parse_mode="Markdown",
         )
         logger.info(
@@ -150,13 +165,15 @@ async def deliver_bulk_to_user(
         f"🏷 *Product:* {product_name}\n"
         f"🔢 *Quantity:* {len(contents)}\n\n"
         f"{all_accounts}\n\n"
-        f"Thank you for using Cloud Deals\\! ☁️"
+        f"Thank you for using Cloud Deals\\! ☁️\n\n"
+        f"⭐ *Rate your purchase below:*"
     )
 
     try:
         await bot.send_message(
             chat_id=telegram_id,
             text=message,
+            reply_markup=_review_keyboard(order.id),
             parse_mode="Markdown",
         )
         logger.info(
@@ -208,13 +225,15 @@ async def deliver_cart_order_to_user(
         f"📦 *Order:* `{order.public_order_id}`\n"
         f"🔢 *Total Items:* {total_qty}\n\n"
         f"{all_delivery}\n\n"
-        f"Thank you for using Cloud Deals\\! ☁️"
+        f"Thank you for using Cloud Deals\\! ☁️\n\n"
+        f"⭐ *Rate your purchase below:*"
     )
 
     try:
         await bot.send_message(
             chat_id=telegram_id,
             text=message,
+            reply_markup=_review_keyboard(order.id),
             parse_mode="Markdown",
         )
         logger.info(

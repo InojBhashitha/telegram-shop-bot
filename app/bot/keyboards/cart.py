@@ -14,11 +14,12 @@ def cart_view_keyboard(has_items: bool, is_valid: bool = True) -> InlineKeyboard
                 InlineKeyboardButton("💳 Checkout with Crypto", callback_data="cart_checkout")
             ])
         buttons.append([
+            InlineKeyboardButton("🎟️ Apply Promo Code", callback_data="cart_promo"),
             InlineKeyboardButton("✏️ Manage Items", callback_data="cart_manage"),
-            InlineKeyboardButton("🗑️ Clear Cart", callback_data="cart_clear"),
         ])
         buttons.append([
-            InlineKeyboardButton("🛍 Keep Shopping", callback_data="products")
+            InlineKeyboardButton("🗑️ Clear Cart", callback_data="cart_clear"),
+            InlineKeyboardButton("🛍 Keep Shopping", callback_data="products"),
         ])
     else:
         buttons.append([

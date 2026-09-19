@@ -9,6 +9,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import Inventory, InventoryStatus
+from app.utils.crypto_vault import encrypt_content
 
 
 async def add_items(
@@ -18,6 +19,8 @@ async def add_items(
 ) -> list[Inventory]:
     """Add multiple inventory items for a product.
 
+    Encrypts deliverable content before storing in database.
+
     Args:
         contents: List of deliverable content strings (one per item).
 
@@ -26,15 +29,40 @@ async def add_items(
     """
     items = []
     for content in contents:
+        encrypted_text = encrypt_content(content.strip())
         item = Inventory(
             product_id=product_id,
-            content=content.strip(),
+            content=encrypted_text,
             status=InventoryStatus.AVAILABLE,
         )
         session.add(item)
         items.append(item)
     await session.flush()
     return items
+
+
+async def get_stock_counts_for_products(
+    session: AsyncSession,
+    product_ids: list[int],
+) -> dict[int, int]:
+    """Get stock counts for multiple products in a single aggregated query.
+
+    Eliminates N+1 queries when loading catalogs.
+    """
+    if not product_ids:
+        return {}
+
+    stmt = (
+        select(Inventory.product_id, func.count(Inventory.id))
+        .where(Inventory.product_id.in_(product_ids))
+        .where(Inventory.status == InventoryStatus.AVAILABLE)
+        .group_by(Inventory.product_id)
+    )
+    res = await session.execute(stmt)
+    counts = {pid: 0 for pid in product_ids}
+    for pid, count in res.all():
+        counts[pid] = count
+    return counts
 
 
 async def reserve_item(

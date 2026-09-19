@@ -190,6 +190,7 @@
       <div class="product-badge-row">
         <span class="badge badge-category" id="modalCategory">Category</span>
         <span class="badge badge-stock" id="modalStockBadge">In Stock</span>
+        <span class="badge badge-rating" id="modalRatingBadge">⭐ 5.0</span>
       </div>
       <button class="btn-close-sheet" id="closeProductModal">&times;</button>
     </div>
@@ -231,7 +232,7 @@
         <p id="modalDescription">Detailed product description goes here...</p>
       </div>
 
-      <div class="quantity-picker-row">
+      <div class="quantity-picker-row" id="modalQtyRow">
         <span class="qty-label">Quantity:</span>
         <div class="qty-stepper">
           <button class="btn-step" id="modalQtyMinus">&minus;</button>
@@ -240,9 +241,15 @@
         </div>
         <span class="qty-subtotal" id="modalQtySubtotal">Total: $0.00</span>
       </div>
+
+      <!-- Restock alert box for out-of-stock items -->
+      <div id="modalOutOfStockBox" class="stock-alert-box hidden">
+        <p>This item is currently sold out. Tap below to be notified as soon as new stock is added!</p>
+        <button class="btn-notify-stock" id="modalStockAlertBtn">🔔 Notify When Back in Stock</button>
+      </div>
     </div>
 
-    <div class="sheet-footer">
+    <div class="sheet-footer" id="modalActionFooter">
       <button class="btn-secondary" id="modalAddToCartBtn">
         🛒 Add to Cart
       </button>
@@ -280,12 +287,19 @@
 
       <!-- Order Summary Card -->
       <div id="cartSummaryCard" class="cart-summary-card">
+        <!-- Promo Code Input Group -->
+        <div class="coupon-box">
+          <input type="text" id="couponInput" placeholder="Promo Code (e.g. SAVE20)" autocomplete="off">
+          <button id="applyCouponBtn" class="btn-apply-coupon">Apply</button>
+        </div>
+        <div id="couponStatusMsg" class="coupon-status-msg hidden"></div>
+
         <div class="summary-row">
           <span>Subtotal</span>
           <span id="cartSubtotalAmount">$0.00</span>
         </div>
         <div class="summary-row discount-row hidden" id="cartDiscountRow">
-          <span>🎁 10% First Order Discount</span>
+          <span id="cartDiscountLabel">🎁 10% First Order Discount</span>
           <span class="discount-deduction" id="cartDiscountAmount">-$0.00</span>
         </div>
         <div class="summary-divider"></div>
@@ -299,8 +313,17 @@
           <label class="method-option active" id="cryptoMethodOption">
             <input type="radio" name="payment_method" value="crypto" checked>
             <div class="method-info">
-              <span class="method-title">💎 Crypto (USDT, BTC, LTC, SOL...)</span>
+              <span class="method-title">💎 Crypto (USDT, BTC, LTC...)</span>
               <span class="method-sub">Instant zero-fee automated gateway</span>
+            </div>
+            <span class="method-check">✓</span>
+          </label>
+
+          <label class="method-option" id="starsMethodOption">
+            <input type="radio" name="payment_method" value="stars">
+            <div class="method-info">
+              <span class="method-title">⭐ Telegram Stars</span>
+              <span class="method-sub">Instant 1-tap in-app checkout</span>
             </div>
             <span class="method-check">✓</span>
           </label>

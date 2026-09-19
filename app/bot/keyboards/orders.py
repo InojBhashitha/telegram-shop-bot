@@ -15,6 +15,7 @@ def payment_keyboard(
     order_id: int,
     order_status: str = "pending_payment",
     amount: Optional[str] = None,
+    stars_invoice_url: Optional[str] = None,
 ) -> InlineKeyboardMarkup:
     """Payment keyboard with crypto checkout URL and live status tracker."""
     # Status step indicators
@@ -22,12 +23,17 @@ def payment_keyboard(
 
     buttons = [
         [InlineKeyboardButton(f"💳 Pay with Crypto", url=payment_url)],
+    ]
+    if stars_invoice_url:
+        buttons.append([InlineKeyboardButton("⭐ Pay with Telegram Stars", url=stars_invoice_url)])
+
+    buttons.extend([
         [InlineKeyboardButton(steps, callback_data="noop")],
         [
             InlineKeyboardButton("🔄 Check Payment", callback_data=f"check_pay:{order_id}"),
             InlineKeyboardButton("❌ Cancel", callback_data=f"cancel_order:{order_id}"),
         ],
-    ]
+    ])
     return InlineKeyboardMarkup(buttons)
 
 

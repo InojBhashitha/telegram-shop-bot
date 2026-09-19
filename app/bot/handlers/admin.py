@@ -461,10 +461,15 @@ async def recv_stock_items(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     async with get_session() as session:
         count = await inventory_service.add_stock(session, product_id, items)
+        from app.services import stock_alert_service
+        notified = await stock_alert_service.notify_subscribers_of_restock(
+            context.bot, session, product_id
+        )
 
     context.user_data.pop("stock_product_id", None)
+    alert_text = f"\n🔔 Notified {notified} waiting customer(s)!" if notified > 0 else ""
     await update.message.reply_text(
-        f"✅ Added {count} account(s) to stock successfully!",
+        f"✅ Added {count} account(s) to stock successfully!{alert_text}",
         reply_markup=admin_main_keyboard(),
     )
     return ConversationHandler.END
@@ -918,6 +923,100 @@ async def toggle_maintenance(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
 
 
+async def admin_coupons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show list of coupons and creation instructions."""
+    query = update.callback_query
+    if query is None or not _is_admin(query.from_user.id):
+        return
+    await query.answer()
+
+    async with get_session() as session:
+        from app.database.repositories import coupon_repo
+        coupons = await coupon_repo.list_all(session)
+
+    lines = ["🎟️ *Admin — Promo Coupons*\n"]
+    if not coupons:
+        lines.append("No promo coupons created yet.\n")
+    else:
+        for c in coupons:
+            status = "🟢 Active" if c.active else "🔴 Inactive"
+            val_str = f"{c.discount_value}%" if c.discount_type.value == "percentage" else f"${c.discount_value}"
+            lines.append(f"• `{c.code}` — {val_str} off ({status}, used: {c.current_uses}x)")
+
+    lines.append("\n*To create a coupon, send:*")
+    lines.append("`/createcoupon CODE TYPE VALUE [MIN_SPEND]`")
+    lines.append("Example: `/createcoupon SAVE20 percentage 20 10`")
+    lines.append("Example: `/createcoupon FLAT5 fixed 5 20`")
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("⬅️ Back to Admin", callback_data="admin")]
+    ])
+    await query.edit_message_text("\n".join(lines), reply_markup=keyboard, parse_mode="Markdown")
+
+
+async def create_coupon_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin command to quickly create a promo coupon."""
+    if update.effective_user is None or not _is_admin(update.effective_user.id):
+        return
+
+    args = context.args or []
+    if len(args) < 3:
+        await update.message.reply_text(
+            "Usage: `/createcoupon CODE TYPE VALUE [MIN_SPEND]`\n\n"
+            "Example: `/createcoupon SAVE20 percentage 20 10`\n"
+            "Example: `/createcoupon FLAT5 fixed 5 20`",
+            parse_mode="Markdown",
+        )
+        return
+
+    code = args[0].strip().upper()
+    ctype_str = args[1].strip().lower()
+    from app.database.models import CouponType
+    if ctype_str in ("pct", "percentage", "%"):
+        ctype = CouponType.PERCENTAGE
+    elif ctype_str in ("fixed", "$", "flat"):
+        ctype = CouponType.FIXED
+    else:
+        await update.message.reply_text("Invalid type. Must be 'percentage' or 'fixed'.")
+        return
+
+    try:
+        val = Decimal(args[2])
+    except Exception:
+        await update.message.reply_text("Invalid discount value.")
+        return
+
+    min_spend = Decimal("0.00")
+    if len(args) > 3:
+        try:
+            min_spend = Decimal(args[3])
+        except Exception:
+            pass
+
+    async with get_session() as session:
+        from app.database.repositories import coupon_repo
+        existing = await coupon_repo.get_by_code(session, code)
+        if existing:
+            await update.message.reply_text(f"Coupon `{code}` already exists.", parse_mode="Markdown")
+            return
+
+        coupon = await coupon_repo.create(
+            session=session,
+            code=code,
+            discount_type=ctype,
+            discount_value=val,
+            min_order_amount=min_spend,
+        )
+
+    await update.message.reply_text(
+        f"✅ Coupon `{coupon.code}` created successfully!\n"
+        f"Type: {coupon.discount_type.value}\n"
+        f"Value: {coupon.discount_value}\n"
+        f"Min Spend: ${coupon.min_order_amount}",
+        parse_mode="Markdown",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Handler registration
 # ---------------------------------------------------------------------------
@@ -1033,6 +1132,8 @@ def get_handlers() -> list:
         CallbackQueryHandler(close_ticket_handler, pattern=r"^adm:close_ticket:\d+$"),
         CallbackQueryHandler(admin_settings, pattern="^adm:settings$"),
         CallbackQueryHandler(toggle_maintenance, pattern="^adm:toggle_maint$"),
+        CallbackQueryHandler(admin_coupons, pattern="^adm:coupons$"),
+        CommandHandler("createcoupon", create_coupon_command),
         # Warranty claims
         CallbackQueryHandler(admin_warranty_claims, pattern="^adm:warranty$"),
         CallbackQueryHandler(admin_approve_warranty, pattern=r"^adm:approve_war:\d+$"),

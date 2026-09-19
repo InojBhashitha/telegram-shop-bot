@@ -180,12 +180,36 @@ class CartRemoveRequest(BaseModel):
 
 
 class CheckoutRequest(BaseModel):
-    payment_method: str = "crypto"  # "crypto" or "balance"
+    payment_method: str = "crypto"  # "crypto", "balance", or "stars"
+    coupon_code: Optional[str] = None
     init_data: Optional[str] = None
     telegram_id: Optional[int] = None
 
 
 class ClaimDiscountRequest(BaseModel):
+    init_data: Optional[str] = None
+    telegram_id: Optional[int] = None
+
+
+class ValidateCouponRequest(BaseModel):
+    code: str
+    subtotal: Optional[float] = None
+    cart_subtotal: Optional[float] = None
+    init_data: Optional[str] = None
+    telegram_id: Optional[int] = None
+
+
+class StockAlertRequest(BaseModel):
+    product_id: int
+    init_data: Optional[str] = None
+    telegram_id: Optional[int] = None
+
+
+class CreateReviewRequest(BaseModel):
+    order_id: Optional[int] = None
+    product_id: Optional[int] = None
+    rating: int
+    comment: Optional[str] = None
     init_data: Optional[str] = None
     telegram_id: Optional[int] = None
 
@@ -283,14 +307,23 @@ async def get_catalog(category_id: Optional[int] = Query(None)):
                 "sort_order": cat.sort_order,
             })
 
+        # Batch calculate stock for all products to eliminate N+1 queries
+        prod_ids = [prod.id for prod in products]
+        stock_map = await inventory_repo.get_stock_counts_for_products(session, prod_ids)
+
         prod_list = []
         for prod in products:
             if category_id is not None and prod.category_id != category_id:
                 continue
 
-            stock = await inventory_repo.get_stock_count(session, prod.id)
+            stock = stock_map.get(prod.id, 0)
             cat_name = prod.category.name if prod.category else "Other"
             cat_icon = prod.category.icon if prod.category else "📦"
+
+            # Compute rating summary
+            ratings = [r.rating for r in prod.reviews] if hasattr(prod, "reviews") and prod.reviews else []
+            avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else 0.0
+            rev_count = len(ratings)
 
             prod_list.append({
                 "id": prod.id,
@@ -305,6 +338,8 @@ async def get_catalog(category_id: Optional[int] = Query(None)):
                 "stock": stock,
                 "in_stock": stock > 0,
                 "image_url": prod.image_url,
+                "average_rating": avg_rating,
+                "review_count": rev_count,
             })
 
         return {
@@ -315,7 +350,7 @@ async def get_catalog(category_id: Optional[int] = Query(None)):
 
 @router.get("/products/{product_id}")
 async def get_product_detail(product_id: int):
-    """Get single product details with live stock."""
+    """Get single product details with live stock and rating stats."""
     async with get_session() as session:
         prod_data = await product_repo.get_product_with_stock(session, product_id)
         if not prod_data:
@@ -323,6 +358,9 @@ async def get_product_detail(product_id: int):
 
         prod = prod_data["product"]
         stock = prod_data["stock"]
+
+        from app.database.repositories import review_repo
+        rating_summary = await review_repo.get_product_rating_summary(session, prod.id)
 
         return {
             "id": prod.id,
@@ -338,6 +376,8 @@ async def get_product_detail(product_id: int):
             "in_stock": stock > 0,
             "active": prod.active,
             "image_url": prod.image_url,
+            "average_rating": rating_summary["average_rating"],
+            "review_count": rating_summary["review_count"],
         }
 
 
@@ -451,7 +491,9 @@ async def checkout(req: CheckoutRequest):
 
         # 1. Validate and execute cart checkout
         try:
-            checkout_res = await cart_service.checkout_cart(session, user.id)
+            checkout_res = await cart_service.checkout_cart(
+                session, user.id, coupon_code=req.coupon_code
+            )
         except cart_service.CartError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
@@ -498,6 +540,7 @@ async def checkout(req: CheckoutRequest):
 
             return {
                 "success": True,
+                "order_id": order.id,
                 "payment_method": "balance",
                 "status": "fulfilled",
                 "public_order_id": order.public_order_id,
@@ -508,7 +551,43 @@ async def checkout(req: CheckoutRequest):
                 "message": "Order paid with store balance and fulfilled instantly!",
             }
 
-        # --- OPTION B: CRYPTO INVOICE CHECKOUT (Cryptomus / NOWPayments) ---
+        # --- OPTION B: TELEGRAM STARS (XTR) CHECKOUT ---
+        if req.payment_method.lower() == "stars":
+            from app.bot.bot import get_bot_instance
+            bot = get_bot_instance()
+            if not bot:
+                await order_service.cancel_order(session, order.id)
+                raise HTTPException(status_code=500, detail="Telegram bot service unavailable.")
+
+            stars_price = max(1, int(order.amount / Decimal(str(settings.stars_usd_rate))))
+            from telegram import LabeledPrice
+            try:
+                invoice_link = await bot.create_invoice_link(
+                    title=f"Order {order.public_order_id}",
+                    description=f"{settings.store_name} Checkout",
+                    payload=order.public_order_id,
+                    provider_token="",
+                    currency="XTR",
+                    prices=[LabeledPrice(label=f"Order {order.public_order_id}", amount=stars_price)],
+                )
+            except Exception as e:
+                logger.error("Failed to generate Stars invoice link: %s", e)
+                await order_service.cancel_order(session, order.id)
+                raise HTTPException(status_code=500, detail="Failed to create Telegram Stars invoice.")
+
+            return {
+                "success": True,
+                "payment_method": "stars",
+                "status": "pending_payment",
+                "public_order_id": order.public_order_id,
+                "amount": str(order.amount),
+                "discount": str(discount),
+                "subtotal": str(subtotal),
+                "payment_url": invoice_link,
+                "stars_amount": stars_price,
+            }
+
+        # --- OPTION C: CRYPTO INVOICE CHECKOUT (Cryptomus / NOWPayments) ---
         provider = get_payment_provider()
         try:
             pay_result = await payment_service.create_payment_for_order(
@@ -710,3 +789,128 @@ async def claim_channel_discount(req: ClaimDiscountRequest):
             "message": "🎉 10% First-Order Discount activated! Applied automatically at checkout.",
             "claimed": True,
         }
+
+
+# ---------------------------------------------------------------------------
+# Coupon & Promo Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/coupon/validate")
+async def validate_coupon(req: ValidateCouponRequest):
+    """Validate a promo code and calculate discount deduction for checkout."""
+    async with get_session() as session:
+        user = await resolve_user(session, init_data=req.init_data, telegram_id=req.telegram_id)
+        from app.services import coupon_service
+
+        subtotal_val = req.subtotal if req.subtotal is not None else (req.cart_subtotal or 0.0)
+        try:
+            res = await coupon_service.validate_and_calculate_discount(
+                session=session,
+                code=req.code,
+                subtotal=Decimal(str(subtotal_val)),
+                user_id=user.id,
+            )
+            coupon = res["coupon"]
+            return {
+                "valid": True,
+                "code": res["code"],
+                "discount_amount": str(res["discount_amount"]),
+                "discount": str(res["discount_amount"]),
+                "discount_type": coupon.discount_type.value,
+                "discount_value": str(coupon.discount_value),
+                "final_amount": str(res["final_amount"]),
+            }
+        except coupon_service.CouponError as e:
+            return {
+                "valid": False,
+                "message": str(e),
+                "code": req.code,
+            }
+
+
+# ---------------------------------------------------------------------------
+# Restock Alert Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/stock-alert")
+async def subscribe_stock_alert(req: StockAlertRequest):
+    """Subscribe current user to restock alerts for an out-of-stock product."""
+    async with get_session() as session:
+        user = await resolve_user(session, init_data=req.init_data, telegram_id=req.telegram_id)
+        from app.services import stock_alert_service
+
+        alert, created = await stock_alert_service.subscribe_user(session, user.id, req.product_id)
+        return {
+            "success": True,
+            "created": created,
+            "message": "You will receive a notification via Telegram the moment this product is restocked!" if created else "You are already subscribed to restock alerts for this product.",
+        }
+
+
+# ---------------------------------------------------------------------------
+# Product Reviews & Ratings Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/products/{product_id}/reviews")
+async def get_product_reviews(product_id: int):
+    """Get reviews and rating summary for a product."""
+    async with get_session() as session:
+        from app.database.repositories import review_repo
+        summary = await review_repo.get_product_rating_summary(session, product_id)
+        reviews = await review_repo.get_product_reviews(session, product_id, limit=20)
+
+        review_list = []
+        for r in reviews:
+            if r.user:
+                if r.user.username:
+                    display_name = f"@{r.user.username}"
+                elif r.user.first_name:
+                    display_name = r.user.first_name[:1] + "***"
+                else:
+                    display_name = "Verified Customer"
+            else:
+                display_name = "Verified Customer"
+
+            review_list.append({
+                "id": r.id,
+                "rating": r.rating,
+                "comment": r.comment,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "username": display_name,
+            })
+
+        return {
+            "summary": summary,
+            "reviews": review_list,
+            "average_rating": summary.get("average_rating", 0.0),
+            "review_count": summary.get("review_count", 0),
+        }
+
+
+@router.post("/reviews")
+async def create_review(req: CreateReviewRequest):
+    """Submit a rating and optional review for an order or product."""
+    async with get_session() as session:
+        user = await resolve_user(session, init_data=req.init_data, telegram_id=req.telegram_id)
+        from app.bot.bot import get_bot_instance
+        from app.services import review_service
+
+        try:
+            review = await review_service.submit_review(
+                session=session,
+                user_id=user.id,
+                rating=req.rating,
+                order_id=req.order_id,
+                product_id=req.product_id,
+                comment=req.comment,
+                bot=get_bot_instance(),
+            )
+            await session.commit()
+            return {
+                "success": True,
+                "review_id": review.id,
+                "rating": review.rating,
+                "message": "Thank you for your rating! ⭐",
+            }
+        except review_service.ReviewError as e:
+            raise HTTPException(status_code=400, detail=str(e))

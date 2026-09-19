@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     order_expiry_minutes: int = 30
     warranty_hours: int = 24
     force_channel_id: str = ""  # e.g. "@YourChannel" or "" to disable
+    vouch_channel_id: str = ""  # e.g. "@CloudDealsVouches" or "" to disable
+    stars_usd_rate: float = 0.02  # 1 Telegram Star = $0.02 USD (50 Stars = $1.00 USD)
+    inventory_encryption_key: str = ""  # Fernet key or auto-derived from bot_token if empty
 
     # --- Logging ---
     log_level: str = "INFO"

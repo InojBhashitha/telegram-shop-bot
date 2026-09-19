@@ -93,6 +93,10 @@ def product_detail_keyboard(
         buttons.append([
             InlineKeyboardButton("✏️ Enter Quantity", callback_data=f"cart_custom:{product_id}")
         ])
+    else:
+        buttons.append([
+            InlineKeyboardButton("🔔 Notify When Back in Stock", callback_data=f"stock_alert:{product_id}")
+        ])
 
     # View Cart button if user has cart items
     cart_label = f"🛒 View Cart ({cart_count})" if cart_count > 0 else "🛒 View Cart"

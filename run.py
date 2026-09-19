@@ -26,16 +26,61 @@ def run_api_server(host: str, port: int) -> None:
     server.run()
 
 
-async def expire_orders_task(interval_seconds: int = 300) -> None:
-    """Periodic task to expire old orders and release inventory."""
+async def expire_orders_task(bot=None, interval_seconds: int = 60) -> None:
+    """Periodic task to warn expiring orders, expire old orders and release inventory."""
     from app.database.database import get_session
     from app.services import order_service
+    from app.bot.keyboards.orders import payment_keyboard
     settings = get_settings()
 
     while True:
         try:
             await asyncio.sleep(interval_seconds)
             async with get_session() as session:
+                # 1. Warn users about orders expiring soon (10 min warning window)
+                if bot:
+                    try:
+                        expiring = await order_service.get_expiring_orders_for_warning(
+                            session,
+                            expiry_minutes=settings.order_expiry_minutes,
+                            warning_minutes_before=10,
+                        )
+                        for order in expiring:
+                            if order.user and order.user.telegram_id:
+                                prod_name = order.product.name if order.product else "Digital Item"
+                                warning_text = (
+                                    f"⏳ *Reminder: Your order is expiring soon!*\n\n"
+                                    f"📦 *Order:* `{order.public_order_id}`\n"
+                                    f"🏷 *Product:* {prod_name}\n"
+                                    f"💰 *Amount:* ${order.final_amount:.2f}\n\n"
+                                    f"⚠️ Your reserved stock will be automatically released in "
+                                    f"*10 minutes* if payment is not completed.\n\n"
+                                    f"Tap below to pay now:"
+                                )
+                                try:
+                                    await bot.send_message(
+                                        chat_id=order.user.telegram_id,
+                                        text=warning_text,
+                                        reply_markup=payment_keyboard(order),
+                                        parse_mode="Markdown",
+                                    )
+                                    logger.info(
+                                        "Sent expiry warning for order %s to user %s",
+                                        order.public_order_id, order.user.telegram_id,
+                                    )
+                                except Exception as err:
+                                    logger.warning(
+                                        "Could not send expiry warning for order %s: %s",
+                                        order.public_order_id, err,
+                                    )
+
+                            await order_service.mark_order_warned(session, order.id)
+                        if expiring:
+                            await session.commit()
+                    except Exception as err:
+                        logger.error("Error during expiring orders check: %s", err)
+
+                # 2. Expire orders that passed the full expiry window
                 expired = await order_service.expire_old_orders(
                     session, settings.order_expiry_minutes
                 )
@@ -72,12 +117,14 @@ async def main() -> None:
     api_thread.start()
     logger.info("API server starting on %s:%s", settings.api_host, settings.api_port)
 
-    # Start order expiry background task
-    expiry_task = asyncio.create_task(expire_orders_task())
-
-    # Build and run the Telegram bot
+    # Build the Telegram bot
     from app.bot.bot import build_bot
     bot_app = build_bot()
+
+    # Start order expiry & reminder background task
+    expiry_task = asyncio.create_task(
+        expire_orders_task(bot=bot_app.bot, interval_seconds=60)
+    )
 
     logger.info("☁️ Cloud Deals bot is running...")
 

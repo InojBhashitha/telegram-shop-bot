@@ -572,6 +572,24 @@ html, body {
   color: var(--text-sub);
 }
 
+.product-rating-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+.product-rating-pill small {
+  color: var(--text-sub);
+  font-size: 0.65rem;
+}
+
 .card-bottom-row {
   display: flex;
   align-items: center;
@@ -1004,6 +1022,12 @@ html, body {
   color: var(--emerald);
 }
 
+.badge-rating {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
 .modal-product-title {
   font-family: var(--font-heading);
   font-size: 1.35rem;
@@ -1149,6 +1173,49 @@ html, body {
   font-weight: 600;
 }
 
+/* Stock Alert Box for Out-of-Stock Items */
+.stock-alert-box {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stock-alert-box p {
+  font-size: 0.84rem;
+  color: #fbbf24;
+  line-height: 1.4;
+}
+
+.btn-notify-stock {
+  width: 100%;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+  transition: all var(--duration-fast);
+}
+
+.btn-notify-stock:active {
+  transform: scale(0.98);
+}
+
+.btn-notify-stock:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 /* --------------------------------------------------------------------------
    Shopping Cart Drawer Styling
    -------------------------------------------------------------------------- */
@@ -1253,6 +1320,70 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* Coupon / Promo Code Input Box */
+.coupon-box {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.coupon-box input {
+  flex: 1;
+  background: rgba(10, 15, 28, 0.85);
+  border: 1px solid var(--border-glass-bright);
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: var(--text-main);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  outline: none;
+  transition: border-color var(--duration-fast);
+}
+
+.coupon-box input:focus {
+  border-color: var(--cyan);
+}
+
+.btn-apply-coupon {
+  padding: 9px 16px;
+  background: linear-gradient(135deg, var(--cyan), var(--violet));
+  border: none;
+  border-radius: 10px;
+  color: #070a11;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.84rem;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+  transition: transform var(--duration-fast), opacity var(--duration-fast);
+}
+
+.btn-apply-coupon:active {
+  transform: scale(0.96);
+}
+
+.coupon-status-msg {
+  font-size: 0.8rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.coupon-status-msg.success {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--emerald);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.coupon-status-msg.error {
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--rose);
+  border: 1px solid rgba(244, 63, 94, 0.3);
 }
 
 .summary-row {

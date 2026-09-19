@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 # Conversation state for custom quantity prompt
 CUSTOM_QUANTITY_INPUT = 1
+PROMO_CODE_INPUT = 2
 
 
 # ---------------------------------------------------------------------------
@@ -84,6 +85,10 @@ async def show_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             )
 
         lines.append(f"\n───────────────────\n💰 *Total:* ${total_amount} ({total_count} accounts)")
+
+        applied_coupon = context.user_data.get("applied_coupon")
+        if applied_coupon:
+            lines.append(f"🎟️ *Active Promo Code:* `{applied_coupon}` (discount applies at checkout)")
 
         if not is_valid:
             lines.append("\n⚠️ *Please adjust quantities before checking out.*")
@@ -467,8 +472,11 @@ async def checkout_cart_handler(update: Update, context: ContextTypes.DEFAULT_TY
         )
         db_user = user_res["user"]
 
+        applied_coupon = context.user_data.get("applied_coupon")
         try:
-            checkout_res = await cart_service.checkout_cart(session, db_user.id)
+            checkout_res = await cart_service.checkout_cart(
+                session, db_user.id, coupon_code=applied_coupon
+            )
         except cart_service.CartError as e:
             await query.edit_message_text(
                 f"☁️ *Cloud Deals*\n\n❌ {e}",
@@ -477,9 +485,12 @@ async def checkout_cart_handler(update: Update, context: ContextTypes.DEFAULT_TY
             )
             return
 
+        # Clear coupon from session once order is formed
+        context.user_data.pop("applied_coupon", None)
+
         order = checkout_res["order"]
 
-        # Create payment invoice
+        # Create crypto payment invoice
         try:
             provider = get_payment_provider()
             pay_result = await payment_service.create_payment_for_order(
@@ -499,7 +510,24 @@ async def checkout_cart_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
         payment_url = pay_result["payment_url"]
 
-    discount_line = f"🎁 10% Channel Discount: -${order.discount_amount}\n" if order.discount_amount > Decimal("0.00") else ""
+        # Generate Telegram Stars payment invoice if enabled
+        stars_invoice_url = None
+        if settings.stars_usd_rate > 0:
+            try:
+                from telegram import LabeledPrice
+                stars_price = max(1, int(order.amount / Decimal(str(settings.stars_usd_rate))))
+                stars_invoice_url = await context.bot.create_invoice_link(
+                    title=f"Order {order.public_order_id}",
+                    description=f"{settings.store_name} Cart Checkout",
+                    payload=order.public_order_id,
+                    provider_token="",
+                    currency="XTR",
+                    prices=[LabeledPrice(label=f"Order {order.public_order_id}", amount=stars_price)],
+                )
+            except Exception as e:
+                logger.warning("Could not create Stars invoice link in cart checkout: %s", e)
+
+    discount_line = f"🎁 Discount Applied: -${order.discount_amount}\n" if order.discount_amount > Decimal("0.00") else ""
 
     await query.edit_message_text(
         f"☁️ *Cloud Deals*\n\n"
@@ -510,9 +538,76 @@ async def checkout_cart_handler(update: Update, context: ContextTypes.DEFAULT_TY
         f"💰 Total Amount: ${order.amount}\n\n"
         f"🟡 Deposit → ⚪ Confirm → ⚪ Deliver\n\n"
         f"⏰ Payment expires in {settings.order_expiry_minutes} minutes.",
-        reply_markup=payment_keyboard(payment_url, order.id),
+        reply_markup=payment_keyboard(payment_url, order.id, stars_invoice_url=stars_invoice_url),
         parse_mode="Markdown",
     )
+
+
+# ---------------------------------------------------------------------------
+# Promo Code Input Conversation
+# ---------------------------------------------------------------------------
+
+async def start_promo_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Prompt user to type their promo code."""
+    query = update.callback_query
+    if query:
+        await query.answer()
+        await query.edit_message_text(
+            "🎟️ *Cloud Deals — Apply Promo Code*\n\n"
+            "Please send your promo code in chat:\n\n"
+            "_(Type /cancel to abort)_",
+            parse_mode="Markdown",
+        )
+    return PROMO_CODE_INPUT
+
+
+async def recv_promo_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Validate and record promo code in session."""
+    if update.message is None or not update.message.text:
+        return PROMO_CODE_INPUT
+
+    code = update.message.text.strip().upper()
+    user_tg = update.effective_user
+
+    async with get_session() as session:
+        from app.database.repositories import user_repo
+        from app.services import coupon_service
+
+        db_user = await user_repo.get_by_telegram_id(session, user_tg.id) if user_tg else None
+        user_id = db_user.id if db_user else None
+
+        summary = await cart_service.get_cart_summary(session, user_id) if user_id else {"total_amount": Decimal("10.00")}
+        subtotal = summary.get("total_amount") or Decimal("10.00")
+
+        try:
+            res = await coupon_service.validate_and_calculate_discount(
+                session=session,
+                code=code,
+                subtotal=subtotal,
+                user_id=user_id,
+            )
+            context.user_data["applied_coupon"] = code
+            await update.message.reply_text(
+                f"✅ *Promo Code Applied!*\n\n"
+                f"🏷 *Code:* `{code}`\n"
+                f"💰 *Discount:* -${res['discount_amount']}\n\n"
+                f"Use /cart to view your updated shopping cart.",
+                parse_mode="Markdown",
+            )
+            return ConversationHandler.END
+        except coupon_service.CouponError as e:
+            await update.message.reply_text(
+                f"❌ {e}\n\nPlease enter a valid code or type /cancel to return.",
+                parse_mode="Markdown",
+            )
+            return PROMO_CODE_INPUT
+
+
+async def cancel_promo_input(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancel promo input."""
+    if update.message:
+        await update.message.reply_text("Promo code entry cancelled. Use /cart to view your cart.")
+    return ConversationHandler.END
 
 
 # ---------------------------------------------------------------------------
@@ -539,8 +634,26 @@ def get_handlers() -> list:
         per_message=False,
     )
 
+    promo_conv = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(start_promo_input, pattern="^cart_promo$"),
+        ],
+        states={
+            PROMO_CODE_INPUT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, recv_promo_code),
+            ],
+        },
+        fallbacks=[
+            CommandHandler("cancel", cancel_promo_input),
+        ],
+        per_user=True,
+        per_chat=True,
+        per_message=False,
+    )
+
     return [
         custom_qty_conv,
+        promo_conv,
         CommandHandler("cart", show_cart),
         CallbackQueryHandler(show_cart, pattern="^cart$"),
         CallbackQueryHandler(handle_quick_add, pattern=r"^cart_add:\d+:\d+$"),

@@ -246,3 +246,98 @@ async def test_webapp_first_order_discount(test_app_client: AsyncClient):
     data = claim_res.json()
     assert data["success"] is True
     assert data["claimed"] is True
+
+
+@pytest.mark.asyncio
+async def test_webapp_coupon_and_stock_alert(test_app_client: AsyncClient):
+    """Test validating coupon codes and creating stock alerts via WebApp API."""
+    tg_id = 556677
+
+    # 1. Invalid coupon check
+    val_res = await test_app_client.post(
+        "/api/webapp/coupon/validate",
+        json={"code": "NONEXISTENT", "cart_subtotal": 50.0, "telegram_id": tg_id},
+    )
+    assert val_res.status_code == 200
+    assert val_res.json()["valid"] is False
+
+    # 2. Create coupon in database
+    from app.services import coupon_service
+    from app.database.models import CouponType
+    async with get_session() as session:
+        await coupon_service.create_coupon(
+            session,
+            code="API20",
+            discount_type=CouponType.PERCENTAGE,
+            discount_value=Decimal("20.00"),
+        )
+        await session.commit()
+
+    # 3. Valid coupon check
+    val_res2 = await test_app_client.post(
+        "/api/webapp/coupon/validate",
+        json={"code": "api20", "cart_subtotal": 50.0, "telegram_id": tg_id},
+    )
+    assert val_res2.status_code == 200
+    assert val_res2.json()["valid"] is True
+    assert float(val_res2.json()["discount_amount"]) == 10.0
+
+    # 4. Stock alert subscription
+    catalog_res = await test_app_client.get("/api/webapp/catalog")
+    prod_id = catalog_res.json()["products"][0]["id"]
+
+    alert_res = await test_app_client.post(
+        "/api/webapp/stock-alert",
+        json={"product_id": prod_id, "telegram_id": tg_id},
+    )
+    assert alert_res.status_code == 200
+    assert alert_res.json()["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_webapp_reviews_api(test_app_client: AsyncClient):
+    """Test submitting and fetching reviews via WebApp API."""
+    tg_id = 443322
+    catalog_res = await test_app_client.get("/api/webapp/catalog")
+    prod_id = catalog_res.json()["products"][0]["id"]
+
+    # Give user balance and buy item to have a fulfilled order
+    from app.database.repositories import user_repo
+    async with get_session() as session:
+        u_res = await user_service.get_or_create_user(session, telegram_id=tg_id)
+        user = u_res["user"]
+        await user_repo.update_balance(session, user.id, Decimal("50.00"))
+        await session.commit()
+
+    await test_app_client.post(
+        "/api/webapp/cart/add",
+        json={"product_id": prod_id, "quantity": 1, "telegram_id": tg_id},
+    )
+    checkout_res = await test_app_client.post(
+        "/api/webapp/checkout",
+        json={"payment_method": "balance", "telegram_id": tg_id},
+    )
+    order_id = checkout_res.json()["order_id"]
+
+    # Submit review for fulfilled order
+    post_res = await test_app_client.post(
+        "/api/webapp/reviews",
+        json={
+            "order_id": order_id,
+            "product_id": prod_id,
+            "rating": 5,
+            "comment": "Super clean accounts!",
+            "telegram_id": tg_id,
+        },
+    )
+    assert post_res.status_code == 200
+    assert post_res.json()["success"] is True
+
+    # Fetch reviews
+    get_res = await test_app_client.get(f"/api/webapp/products/{prod_id}/reviews")
+    assert get_res.status_code == 200
+    data = get_res.json()
+    assert data["review_count"] >= 1
+    assert data["average_rating"] == 5.0
+    assert len(data["reviews"]) >= 1
+    assert data["reviews"][0]["comment"] == "Super clean accounts!"

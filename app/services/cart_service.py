@@ -161,6 +161,7 @@ async def get_cart_summary(
 async def checkout_cart(
     session: AsyncSession,
     user_id: int,
+    coupon_code: Optional[str] = None,
 ) -> dict:
     """Checkout all items in the user's cart.
 
@@ -168,14 +169,15 @@ async def checkout_cart(
     1. Validates cart is not empty.
     2. Validates stock for all items.
     3. Atomically reserves inventory items across all products.
-    4. Creates master Order record for the total amount.
-    5. Clears the cart.
+    4. Calculates coupon or first-order discount.
+    5. Creates master Order record for the total amount.
+    6. Clears the cart.
 
     Returns:
         Dict with 'order' and 'inventory_items'.
 
     Raises:
-        CartError: If cart empty or insufficient stock for any item.
+        CartError: If cart empty, insufficient stock, or invalid coupon.
     """
     summary = await get_cart_summary(session, user_id)
     items = summary["items"]
@@ -221,16 +223,36 @@ async def checkout_cart(
         raise
 
     # Calculate subtotal, discount, and final amount
-    from app.database.repositories import user_repo
+    from app.database.repositories import coupon_repo, user_repo
+    from app.services import coupon_service
     from app.services.order_service import compute_first_order_discount
 
     user = await user_repo.get_by_id(session, user_id)
     subtotal = summary["total_amount"]
-    discount = compute_first_order_discount(user, subtotal)
-    final_amount = max(subtotal - discount, Decimal("0.01"))
+    coupon_id: Optional[int] = None
+    discount = Decimal("0.00")
 
-    if discount > Decimal("0.00") and user:
-        user.channel_discount_used = True
+    if coupon_code and coupon_code.strip():
+        try:
+            coupon_res = await coupon_service.validate_and_calculate_discount(
+                session=session,
+                code=coupon_code.strip(),
+                subtotal=subtotal,
+                user_id=user_id,
+            )
+            discount = coupon_res["discount_amount"]
+            coupon_id = coupon_res["coupon_id"]
+            await coupon_repo.increment_uses(session, coupon_id)
+        except coupon_service.CouponError as e:
+            for r in all_reserved:
+                await inventory_repo.release_item(session, r.id)
+            raise CartError(str(e))
+    else:
+        discount = compute_first_order_discount(user, subtotal)
+        if discount > Decimal("0.00") and user:
+            user.channel_discount_used = True
+
+    final_amount = max(subtotal - discount, Decimal("0.01"))
 
     # Create master order
     settings = get_settings()
@@ -250,6 +272,7 @@ async def checkout_cart(
         currency=summary["currency"],
         quantity=summary["total_count"],
         warranty_expires_at=warranty_expires_at,
+        coupon_id=coupon_id,
     )
 
     # Link all reserved inventory items to this master order

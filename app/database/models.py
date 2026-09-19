@@ -85,6 +85,11 @@ class WarrantyClaimStatus(str, enum.Enum):
     REJECTED = "rejected"
 
 
+class CouponType(str, enum.Enum):
+    PERCENTAGE = "percentage"
+    FIXED = "fixed"
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -178,6 +183,9 @@ class Product(Base):
     inventory_items: Mapped[list[Inventory]] = relationship(
         "Inventory", back_populates="product", foreign_keys="Inventory.product_id"
     )
+    reviews: Mapped[list[ProductReview]] = relationship(
+        "ProductReview", back_populates="product", lazy="selectin"
+    )
 
 
 class Inventory(Base):
@@ -232,10 +240,15 @@ class Order(Base):
     delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     warranty_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    coupon_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("coupons.id"), nullable=True
+    )
+    expiry_warned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships
     user: Mapped[User] = relationship("User", back_populates="orders")
     product: Mapped[Optional[Product]] = relationship("Product", lazy="selectin")
+    coupon: Mapped[Optional[Coupon]] = relationship("Coupon", lazy="selectin")
     inventory_item: Mapped[Optional[Inventory]] = relationship(
         "Inventory", foreign_keys=[inventory_id]
     )
@@ -244,6 +257,9 @@ class Order(Base):
     )
     payment: Mapped[Optional[Payment]] = relationship("Payment", back_populates="order", uselist=False)
     warranty_claims: Mapped[list[WarrantyClaim]] = relationship("WarrantyClaim", back_populates="order")
+    review: Mapped[Optional[ProductReview]] = relationship(
+        "ProductReview", back_populates="order", uselist=False
+    )
 
 
 class Payment(Base):
@@ -422,4 +438,72 @@ class CartItem(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "product_id", name="uq_user_product_cart"),
     )
+
+
+class Coupon(Base):
+    __tablename__ = "coupons"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    discount_type: Mapped[CouponType] = mapped_column(
+        Enum(CouponType), default=CouponType.PERCENTAGE, nullable=False
+    )
+    discount_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    min_order_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
+    max_discount: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
+    max_uses: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    current_uses: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    expiry_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    affiliate_user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True
+    )
+    affiliate_commission_pct: Mapped[Decimal] = mapped_column(
+        Numeric(5, 2), default=Decimal("0.00"), nullable=False
+    )
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+    # Relationships
+    affiliate_user: Mapped[Optional[User]] = relationship("User", foreign_keys=[affiliate_user_id])
+
+
+class StockAlert(Base):
+    __tablename__ = "stock_alerts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    notified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    user: Mapped[User] = relationship("User")
+    product: Mapped[Product] = relationship("Product")
+
+    __table_args__ = (
+        Index("ix_stock_alert_pending", "product_id", "notified_at"),
+    )
+
+
+class ProductReview(Base):
+    __tablename__ = "product_reviews"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    order_id: Mapped[int] = mapped_column(Integer, ForeignKey("orders.id"), unique=True, nullable=False, index=True)
+    product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)  # 1 to 5
+    comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+    # Relationships
+    order: Mapped[Order] = relationship("Order", back_populates="review")
+    product: Mapped[Product] = relationship("Product", back_populates="reviews")
+    user: Mapped[User] = relationship("User")
 

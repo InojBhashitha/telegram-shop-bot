@@ -57,6 +57,7 @@
     activeModal: null,
     currentPaymentOrder: null,
     pollTimer: null,
+    appliedCoupon: null,
   };
 
   // --- DOM Elements Cache ---
@@ -86,13 +87,18 @@
     productModal: document.getElementById('productModal'),
     modalCategory: document.getElementById('modalCategory'),
     modalStockBadge: document.getElementById('modalStockBadge'),
+    modalRatingBadge: document.getElementById('modalRatingBadge'),
     modalTitle: document.getElementById('modalTitle'),
     modalPrice: document.getElementById('modalPrice'),
     modalDescription: document.getElementById('modalDescription'),
+    modalQtyRow: document.getElementById('modalQtyRow'),
     modalQtyMinus: document.getElementById('modalQtyMinus'),
     modalQtyPlus: document.getElementById('modalQtyPlus'),
     modalQtyValue: document.getElementById('modalQtyValue'),
     modalQtySubtotal: document.getElementById('modalQtySubtotal'),
+    modalOutOfStockBox: document.getElementById('modalOutOfStockBox'),
+    modalStockAlertBtn: document.getElementById('modalStockAlertBtn'),
+    modalActionFooter: document.getElementById('modalActionFooter'),
     modalAddToCartBtn: document.getElementById('modalAddToCartBtn'),
     modalBuyNowBtn: document.getElementById('modalBuyNowBtn'),
     closeProductModal: document.getElementById('closeProductModal'),
@@ -102,8 +108,12 @@
     cartItemsList: document.getElementById('cartItemsList'),
     emptyCartView: document.getElementById('emptyCartView'),
     cartSummaryCard: document.getElementById('cartSummaryCard'),
+    couponInput: document.getElementById('couponInput'),
+    applyCouponBtn: document.getElementById('applyCouponBtn'),
+    couponStatusMsg: document.getElementById('couponStatusMsg'),
     cartSubtotalAmount: document.getElementById('cartSubtotalAmount'),
     cartDiscountRow: document.getElementById('cartDiscountRow'),
+    cartDiscountLabel: document.getElementById('cartDiscountLabel'),
     cartDiscountAmount: document.getElementById('cartDiscountAmount'),
     cartFinalAmount: document.getElementById('cartFinalAmount'),
     btnCheckoutTotal: document.getElementById('btnCheckoutTotal'),
@@ -112,6 +122,7 @@
     closeCartModal: document.getElementById('closeCartModal'),
     executeCheckoutBtn: document.getElementById('executeCheckoutBtn'),
     cryptoMethodOption: document.getElementById('cryptoMethodOption'),
+    starsMethodOption: document.getElementById('starsMethodOption'),
     balanceMethodOption: document.getElementById('balanceMethodOption'),
     methodBalanceSub: document.getElementById('methodBalanceSub'),
 
@@ -438,6 +449,10 @@
         stockText = `Only ${p.stock} left`;
       }
 
+      const ratingHtml = (p.review_count && p.review_count > 0)
+        ? `<span class="product-rating-pill">⭐ ${parseFloat(p.average_rating || 5.0).toFixed(1)} <small>(${p.review_count})</small></span>`
+        : '';
+
       card.innerHTML = `
         <div class="card-top-row">
           <span class="category-tag">${p.category_icon || '📦'} ${p.category_name}</span>
@@ -451,7 +466,7 @@
           <p class="card-desc">${p.description || 'Instant digital credentials & keys.'}</p>
         </div>
         <div class="card-perk-badge">
-          <span>⚡ Instant Key Delivery</span> • <span>🛡 24h Warranty</span>
+          ${ratingHtml ? ratingHtml + ' • ' : ''}<span>⚡ Instant Key Delivery</span> • <span>🛡 24h Warranty</span>
         </div>
         <div class="card-bottom-row">
           <div class="card-price-block">
@@ -493,17 +508,36 @@
     el.modalPrice.textContent = `$${parseFloat(prod.price).toFixed(2)}`;
     el.modalDescription.textContent = prod.description || 'Verified working digital accounts delivered instantly upon payment.';
 
-    // Stock Badge
+    // Rating Badge
+    if (el.modalRatingBadge) {
+      if (prod.review_count && prod.review_count > 0) {
+        el.modalRatingBadge.textContent = `⭐ ${parseFloat(prod.average_rating || 5.0).toFixed(1)} (${prod.review_count})`;
+        el.modalRatingBadge.classList.remove('hidden');
+      } else {
+        el.modalRatingBadge.textContent = `⭐ New`;
+        el.modalRatingBadge.classList.remove('hidden');
+      }
+    }
+
+    // Stock Badge & Out of Stock Alert Box
     let stockText = `${prod.stock} in stock`;
     if (prod.stock === 0) {
       stockText = 'Out of Stock';
       el.modalStockBadge.className = 'badge badge-stock stock-out';
       el.modalStockBadge.style.color = 'var(--rose)';
-      el.modalAddToCartBtn.disabled = true;
-      el.modalBuyNowBtn.disabled = true;
+      el.modalOutOfStockBox?.classList.remove('hidden');
+      el.modalQtyRow?.classList.add('hidden');
+      el.modalActionFooter?.classList.add('hidden');
+      if (el.modalStockAlertBtn) {
+        el.modalStockAlertBtn.disabled = false;
+        el.modalStockAlertBtn.textContent = '🔔 Notify When Back in Stock';
+      }
     } else {
       el.modalStockBadge.className = 'badge badge-stock';
       el.modalStockBadge.style.color = 'var(--emerald)';
+      el.modalOutOfStockBox?.classList.add('hidden');
+      el.modalQtyRow?.classList.remove('hidden');
+      el.modalActionFooter?.classList.remove('hidden');
       el.modalAddToCartBtn.disabled = false;
       el.modalBuyNowBtn.disabled = false;
     }
@@ -538,6 +572,34 @@
       showToast(`Only ${state.selectedProduct.stock} available in stock`, 'normal');
     }
   });
+
+  // Restock notification alert click
+  if (el.modalStockAlertBtn) {
+    el.modalStockAlertBtn.addEventListener('click', async () => {
+      if (!state.selectedProduct) return;
+      haptic('medium');
+      el.modalStockAlertBtn.disabled = true;
+      el.modalStockAlertBtn.textContent = 'Setting alert...';
+      try {
+        const res = await api('/stock-alert', {
+          method: 'POST',
+          body: JSON.stringify({
+            product_id: state.selectedProduct.id,
+            init_data: state.initData || undefined,
+            telegram_id: state.telegramId || undefined,
+          }),
+        });
+        el.modalStockAlertBtn.textContent = '🔔 Notification Active!';
+        showToast(res.message || 'Alert set! You will be notified in Telegram upon restock.', 'success');
+        haptic('success');
+      } catch (err) {
+        el.modalStockAlertBtn.disabled = false;
+        el.modalStockAlertBtn.textContent = '🔔 Notify When Back in Stock';
+        showToast(err.message, 'error');
+        haptic('error');
+      }
+    });
+  }
 
   el.modalAddToCartBtn.addEventListener('click', async () => {
     if (!state.selectedProduct) return;
@@ -646,15 +708,80 @@
 
     // Summary Card
     el.cartSubtotalAmount.textContent = `$${parseFloat(c.subtotal).toFixed(2)}`;
-    const discount = parseFloat(c.discount_amount || 0);
-    if (discount > 0) {
+    let channelDiscount = parseFloat(c.discount_amount || 0);
+    let couponDiscount = state.appliedCoupon ? parseFloat(state.appliedCoupon.discount_amount || 0) : 0;
+    let totalDiscount = channelDiscount + couponDiscount;
+
+    if (totalDiscount > 0) {
       el.cartDiscountRow.classList.remove('hidden');
-      el.cartDiscountAmount.textContent = `-$${discount.toFixed(2)}`;
+      if (state.appliedCoupon && channelDiscount > 0) {
+        el.cartDiscountLabel.textContent = `🎟️ Promo (${state.appliedCoupon.code}) + 🎁 10% Off`;
+      } else if (state.appliedCoupon) {
+        el.cartDiscountLabel.textContent = `🎟️ Promo Code (${state.appliedCoupon.code})`;
+      } else {
+        el.cartDiscountLabel.textContent = `🎁 10% First Order Discount`;
+      }
+      el.cartDiscountAmount.textContent = `-$${totalDiscount.toFixed(2)}`;
     } else {
       el.cartDiscountRow.classList.add('hidden');
     }
-    el.cartFinalAmount.textContent = `$${parseFloat(c.final_amount).toFixed(2)}`;
-    el.btnCheckoutTotal.textContent = `$${parseFloat(c.final_amount).toFixed(2)}`;
+
+    const finalAmount = Math.max(0, parseFloat(c.subtotal || 0) - totalDiscount);
+    el.cartFinalAmount.textContent = `$${finalAmount.toFixed(2)}`;
+    el.btnCheckoutTotal.textContent = `$${finalAmount.toFixed(2)}`;
+  }
+
+  // --- Promo Code / Coupon Application ---
+  if (el.applyCouponBtn) {
+    el.applyCouponBtn.addEventListener('click', async () => {
+      const code = (el.couponInput?.value || '').trim();
+      if (!code) {
+        showToast('Please enter a coupon code', 'normal');
+        return;
+      }
+      haptic('medium');
+      el.applyCouponBtn.disabled = true;
+      el.applyCouponBtn.textContent = '...';
+      try {
+        const res = await api('/coupon/validate', {
+          method: 'POST',
+          body: JSON.stringify({
+            code: code,
+            cart_subtotal: state.cart.subtotal,
+            init_data: state.initData || undefined,
+            telegram_id: state.telegramId || undefined,
+          }),
+        });
+
+        if (res.valid) {
+          state.appliedCoupon = res;
+          el.couponStatusMsg.className = 'coupon-status-msg success';
+          const valStr = res.discount_type === 'PERCENTAGE' ? `${res.discount_value}%` : `$${res.discount_value}`;
+          el.couponStatusMsg.textContent = `🎉 Promo ${res.code} applied! (${valStr} off: -$${parseFloat(res.discount_amount).toFixed(2)})`;
+          el.couponStatusMsg.classList.remove('hidden');
+          renderCartUI();
+          showToast(`Coupon ${res.code} applied!`, 'success');
+          haptic('success');
+        } else {
+          state.appliedCoupon = null;
+          el.couponStatusMsg.className = 'coupon-status-msg error';
+          el.couponStatusMsg.textContent = res.message || 'Invalid coupon code';
+          el.couponStatusMsg.classList.remove('hidden');
+          renderCartUI();
+          haptic('error');
+        }
+      } catch (err) {
+        state.appliedCoupon = null;
+        el.couponStatusMsg.className = 'coupon-status-msg error';
+        el.couponStatusMsg.textContent = err.message;
+        el.couponStatusMsg.classList.remove('hidden');
+        renderCartUI();
+        haptic('error');
+      } finally {
+        el.applyCouponBtn.disabled = false;
+        el.applyCouponBtn.textContent = 'Apply';
+      }
+    });
   }
 
   async function updateCartQty(productId, newQty) {
@@ -703,6 +830,9 @@
           telegram_id: state.telegramId || undefined,
         }),
       });
+      state.appliedCoupon = null;
+      if (el.couponInput) el.couponInput.value = '';
+      if (el.couponStatusMsg) el.couponStatusMsg.classList.add('hidden');
       showToast('Cart cleared', 'normal');
       await fetchCart();
     } catch (err) {
@@ -719,19 +849,23 @@
   el.continueShoppingBtn.addEventListener('click', closeModal);
 
   // Payment Method Selection in Cart
-  el.cryptoMethodOption.addEventListener('click', () => {
-    el.cryptoMethodOption.classList.add('active');
-    el.balanceMethodOption.classList.remove('active');
-    el.cryptoMethodOption.querySelector('input').checked = true;
+  function selectPaymentMethod(activeOption) {
+    [el.cryptoMethodOption, el.starsMethodOption, el.balanceMethodOption].forEach((opt) => {
+      if (opt) {
+        const isMatch = (opt === activeOption);
+        opt.classList.toggle('active', isMatch);
+        const radio = opt.querySelector('input');
+        if (radio) radio.checked = isMatch;
+      }
+    });
     haptic('selection');
-  });
+  }
 
-  el.balanceMethodOption.addEventListener('click', () => {
-    el.balanceMethodOption.classList.add('active');
-    el.cryptoMethodOption.classList.remove('active');
-    el.balanceMethodOption.querySelector('input').checked = true;
-    haptic('selection');
-  });
+  el.cryptoMethodOption.addEventListener('click', () => selectPaymentMethod(el.cryptoMethodOption));
+  if (el.starsMethodOption) {
+    el.starsMethodOption.addEventListener('click', () => selectPaymentMethod(el.starsMethodOption));
+  }
+  el.balanceMethodOption.addEventListener('click', () => selectPaymentMethod(el.balanceMethodOption));
 
   // --- Checkout Execution ---
   el.executeCheckoutBtn.addEventListener('click', async () => {
@@ -746,12 +880,16 @@
         method: 'POST',
         body: JSON.stringify({
           payment_method: selectedMethod,
+          coupon_code: state.appliedCoupon ? state.appliedCoupon.code : undefined,
           init_data: state.initData || undefined,
           telegram_id: state.telegramId || undefined,
         }),
       });
 
       closeModal();
+      state.appliedCoupon = null;
+      if (el.couponInput) el.couponInput.value = '';
+      if (el.couponStatusMsg) el.couponStatusMsg.classList.add('hidden');
       await fetchCart();
 
       // OPTION A: STORE BALANCE (Instant Fulfillment)
@@ -765,7 +903,29 @@
         return;
       }
 
-      // OPTION B: CRYPTO PAYMENT INVOICE
+      // OPTION B: TELEGRAM STARS (1-Tap Native In-App Checkout)
+      if (selectedMethod === 'stars') {
+        if (res.payment_url && tg?.openInvoice) {
+          tg.openInvoice(res.payment_url, async (status) => {
+            if (status === 'paid') {
+              showToast('⭐ Telegram Stars payment confirmed!', 'success');
+              haptic('success');
+              state.currentPaymentOrder = res;
+              await pollOrderStatus();
+            } else if (status === 'cancelled' || status === 'failed') {
+              showToast('Stars payment was not completed.', 'normal');
+            }
+          });
+          return;
+        } else if (res.payment_url) {
+          // Fallback if tested outside Telegram WebApp
+          window.open(res.payment_url, '_blank');
+          openCryptoPaymentModal(res);
+          return;
+        }
+      }
+
+      // OPTION C: CRYPTO PAYMENT INVOICE
       openCryptoPaymentModal(res);
 
     } catch (err) {
