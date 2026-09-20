@@ -93,6 +93,11 @@ class CryptomusProvider(PaymentProvider):
                 headers=headers,
                 json=payload,
             )
+            if resp.status_code != 200:
+                logger.error(
+                    "Cryptomus payment failed: status=%s body=%s payload=%s",
+                    resp.status_code, resp.text, payload,
+                )
             resp.raise_for_status()
             data = resp.json()
 
