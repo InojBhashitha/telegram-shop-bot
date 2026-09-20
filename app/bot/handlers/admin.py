@@ -352,6 +352,117 @@ async def deactivate_product(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 # ---------------------------------------------------------------------------
+# Edit Product
+# ---------------------------------------------------------------------------
+
+_EDITABLE_FIELDS = {
+    "name": "📝 Name",
+    "description": "📄 Description",
+    "price": "💰 Price",
+    "image_url": "🖼 Image URL",
+}
+
+
+def _edit_field_keyboard(product_id: int) -> InlineKeyboardMarkup:
+    """Keyboard to pick which product field to edit."""
+    buttons = [
+        [InlineKeyboardButton(label, callback_data=f"adm:ef:{product_id}:{field}")]
+        for field, label in _EDITABLE_FIELDS.items()
+    ]
+    buttons.append([InlineKeyboardButton("⬅️ Back", callback_data=f"adm:prod:{product_id}")])
+    return InlineKeyboardMarkup(buttons)
+
+
+async def start_edit_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Show field-selection keyboard for editing a product."""
+    query = update.callback_query
+    if not _is_admin(query.from_user.id):
+        await query.answer("❌ Access denied.", show_alert=True)
+        return ConversationHandler.END
+    await query.answer()
+
+    product_id = int(query.data.split(":")[2])
+    context.user_data["edit_product_id"] = product_id
+
+    async with get_session() as session:
+        from app.database.repositories import product_repo
+        product = await product_repo.get_by_id(session, product_id)
+
+    if product is None:
+        await query.edit_message_text("❌ Product not found.")
+        return ConversationHandler.END
+
+    await query.edit_message_text(
+        f"✏️ *Edit: {product.name}*\n\n"
+        f"Select the field to edit:",
+        reply_markup=_edit_field_keyboard(product_id),
+        parse_mode="Markdown",
+    )
+    return EDIT_PROD_FIELD
+
+
+async def recv_edit_field(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """User picked a field — ask for the new value."""
+    query = update.callback_query
+    await query.answer()
+
+    parts = query.data.split(":")
+    product_id = int(parts[2])
+    field = parts[3]
+
+    context.user_data["edit_product_id"] = product_id
+    context.user_data["edit_field"] = field
+
+    label = _EDITABLE_FIELDS.get(field, field)
+    await query.edit_message_text(
+        f"✏️ Enter the new *{label}* value:\n\n"
+        f"Send /cancel to abort.",
+        parse_mode="Markdown",
+    )
+    return EDIT_PROD_VALUE
+
+
+async def recv_edit_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Receive new value and save it."""
+    product_id = context.user_data.get("edit_product_id")
+    field = context.user_data.get("edit_field")
+    raw_value = update.message.text.strip()
+
+    if not product_id or not field:
+        await update.message.reply_text("❌ Edit session expired. Try again.")
+        return ConversationHandler.END
+
+    # Validate & cast
+    if field == "price":
+        try:
+            from decimal import Decimal
+            value = Decimal(raw_value)
+            if value <= 0:
+                raise ValueError
+        except (ValueError, Exception):
+            await update.message.reply_text("❌ Invalid price. Enter a positive number (e.g. `4.99`):", parse_mode="Markdown")
+            return EDIT_PROD_VALUE
+    else:
+        value = raw_value
+
+    async with get_session() as session:
+        from app.database.repositories import product_repo
+        product = await product_repo.update_product(session, product_id, **{field: value})
+
+    if product is None:
+        await update.message.reply_text("❌ Product not found.")
+        return ConversationHandler.END
+
+    label = _EDITABLE_FIELDS.get(field, field)
+    await update.message.reply_text(
+        f"✅ *{label}* updated to: `{raw_value}`\n\n"
+        f"Use /admin to return to the admin panel.",
+        parse_mode="Markdown",
+    )
+    return ConversationHandler.END
+
+
+# ---------------------------------------------------------------------------
 # Inventory
 # ---------------------------------------------------------------------------
 
@@ -1106,6 +1217,22 @@ def get_handlers() -> list:
         per_message=False,
     )
 
+    edit_prod_conv = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(start_edit_product, pattern=r"^adm:edit_prod:\d+$"),
+        ],
+        states={
+            EDIT_PROD_FIELD: [
+                CallbackQueryHandler(recv_edit_field, pattern=r"^adm:ef:\d+:\w+$"),
+            ],
+            EDIT_PROD_VALUE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, recv_edit_value),
+            ],
+        },
+        fallbacks=[CommandHandler("cancel", _cancel_conv)],
+        per_message=False,
+    )
+
     return [
         CommandHandler("admin", admin_command),
         add_cat_conv,
@@ -1113,6 +1240,7 @@ def get_handlers() -> list:
         add_stock_conv,
         broadcast_conv,
         ticket_reply_conv,
+        edit_prod_conv,
         CallbackQueryHandler(admin_panel, pattern="^admin$"),
         CallbackQueryHandler(admin_categories, pattern="^adm:categories$"),
         CallbackQueryHandler(admin_category_detail, pattern=r"^adm:cat:\d+$"),
