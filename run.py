@@ -143,7 +143,7 @@ async def main() -> None:
         stop_event = asyncio.Event()
         await stop_event.wait()
 
-    except (KeyboardInterrupt, SystemExit):
+    except (KeyboardInterrupt, SystemExit, asyncio.CancelledError):
         logger.info("Shutting down...")
     finally:
         expiry_task.cancel()
@@ -162,4 +162,7 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
