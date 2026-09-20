@@ -22,7 +22,7 @@ def payment_keyboard(
     steps = _get_payment_steps(order_status)
 
     buttons = [
-        [InlineKeyboardButton(f"💳 Pay with Crypto", url=payment_url)],
+        [InlineKeyboardButton("🟡 Pay with Binance Pay (0% Fee)", url=payment_url)],
     ]
     if stars_invoice_url:
         buttons.append([InlineKeyboardButton("⭐ Pay with Telegram Stars", url=stars_invoice_url)])
@@ -98,7 +98,7 @@ def order_detail_keyboard(
     # If pending or payment processing, show Pay, Check Payment, and Cancel Order buttons
     if order.status in (OrderStatus.PENDING_PAYMENT, OrderStatus.PAYMENT_PROCESSING):
         if payment_url:
-            buttons.append([InlineKeyboardButton("💳 Pay with Crypto", url=payment_url)])
+            buttons.append([InlineKeyboardButton("🟡 Pay with Binance Pay (0% Fee)", url=payment_url)])
         buttons.append([
             InlineKeyboardButton("🔄 Check Payment", callback_data=f"check_pay:{order.id}"),
             InlineKeyboardButton("❌ Cancel Order", callback_data=f"cancel_order:{order.id}"),

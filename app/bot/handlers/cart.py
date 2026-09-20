@@ -511,23 +511,6 @@ async def checkout_cart_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
         payment_url = pay_result["payment_url"]
 
-        # Generate Telegram Stars payment invoice if enabled
-        stars_invoice_url = None
-        if settings.stars_usd_rate > 0:
-            try:
-                from telegram import LabeledPrice
-                stars_price = max(1, int(order.amount / Decimal(str(settings.stars_usd_rate))))
-                stars_invoice_url = await context.bot.create_invoice_link(
-                    title=f"Order {order.public_order_id}",
-                    description=f"{settings.store_name} Cart Checkout",
-                    payload=order.public_order_id,
-                    provider_token="",
-                    currency="XTR",
-                    prices=[LabeledPrice(label=f"Order {order.public_order_id}", amount=stars_price)],
-                )
-            except Exception as e:
-                logger.warning("Could not create Stars invoice link in cart checkout: %s", e)
-
     discount_line = f"🎁 Discount Applied: -${order.discount_amount}\n" if order.discount_amount > Decimal("0.00") else ""
 
     await query.edit_message_text(
@@ -539,7 +522,7 @@ async def checkout_cart_handler(update: Update, context: ContextTypes.DEFAULT_TY
         f"💰 Total Amount: ${order.amount}\n\n"
         f"🟡 Deposit → ⚪ Confirm → ⚪ Deliver\n\n"
         f"⏰ Payment expires in {settings.order_expiry_minutes} minutes.",
-        reply_markup=payment_keyboard(payment_url, order.id, stars_invoice_url=stars_invoice_url),
+        reply_markup=payment_keyboard(payment_url, order.id),
         parse_mode="Markdown",
     )
 

@@ -34,7 +34,11 @@ class Settings(BaseSettings):
     admin_telegram_ids: str = ""
 
     # --- Crypto Payment Provider ---
-    crypto_provider: str = "cryptomus"  # "cryptomus", "nowpayments", or "binancepay"
+    crypto_provider: str = "binancepay"  # "binancepay" (default 0% fee), "nowpayments", or "cryptomus"
+
+    # Binance Pay
+    binance_pay_api_key: str = ""
+    binance_pay_secret_key: str = ""
 
     # NOWPayments
     nowpayments_api_key: str = ""
@@ -44,10 +48,6 @@ class Settings(BaseSettings):
     # Cryptomus
     cryptomus_merchant_id: str = ""
     cryptomus_payment_key: str = ""
-
-    # Binance Pay
-    binance_pay_api_key: str = ""
-    binance_pay_secret_key: str = ""
 
     # --- Webhook & Mini App ---
     webhook_base_url: str = "http://localhost:8000"
@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     warranty_hours: int = 24
     force_channel_id: str = ""  # e.g. "@YourChannel" or "" to disable
     vouch_channel_id: str = ""  # e.g. "@CloudDealsVouches" or "" to disable
-    stars_usd_rate: float = 0.02  # 1 Telegram Star = $0.02 USD (50 Stars = $1.00 USD)
+    stars_usd_rate: float = 0.0  # 0.0 = disabled (no Telegram Stars); set > 0 to enable
     inventory_encryption_key: str = ""  # Fernet key or auto-derived from bot_token if empty
 
     # --- Logging ---

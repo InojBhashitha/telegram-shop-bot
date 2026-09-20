@@ -122,7 +122,6 @@
     closeCartModal: document.getElementById('closeCartModal'),
     executeCheckoutBtn: document.getElementById('executeCheckoutBtn'),
     cryptoMethodOption: document.getElementById('cryptoMethodOption'),
-    starsMethodOption: document.getElementById('starsMethodOption'),
     balanceMethodOption: document.getElementById('balanceMethodOption'),
     methodBalanceSub: document.getElementById('methodBalanceSub'),
 
@@ -850,7 +849,7 @@
 
   // Payment Method Selection in Cart
   function selectPaymentMethod(activeOption) {
-    [el.cryptoMethodOption, el.starsMethodOption, el.balanceMethodOption].forEach((opt) => {
+    [el.cryptoMethodOption, el.balanceMethodOption].forEach((opt) => {
       if (opt) {
         const isMatch = (opt === activeOption);
         opt.classList.toggle('active', isMatch);
@@ -861,11 +860,12 @@
     haptic('selection');
   }
 
-  el.cryptoMethodOption.addEventListener('click', () => selectPaymentMethod(el.cryptoMethodOption));
-  if (el.starsMethodOption) {
-    el.starsMethodOption.addEventListener('click', () => selectPaymentMethod(el.starsMethodOption));
+  if (el.cryptoMethodOption) {
+    el.cryptoMethodOption.addEventListener('click', () => selectPaymentMethod(el.cryptoMethodOption));
   }
-  el.balanceMethodOption.addEventListener('click', () => selectPaymentMethod(el.balanceMethodOption));
+  if (el.balanceMethodOption) {
+    el.balanceMethodOption.addEventListener('click', () => selectPaymentMethod(el.balanceMethodOption));
+  }
 
   // --- Checkout Execution ---
   el.executeCheckoutBtn.addEventListener('click', async () => {
@@ -903,29 +903,7 @@
         return;
       }
 
-      // OPTION B: TELEGRAM STARS (1-Tap Native In-App Checkout)
-      if (selectedMethod === 'stars') {
-        if (res.payment_url && tg?.openInvoice) {
-          tg.openInvoice(res.payment_url, async (status) => {
-            if (status === 'paid') {
-              showToast('⭐ Telegram Stars payment confirmed!', 'success');
-              haptic('success');
-              state.currentPaymentOrder = res;
-              await pollOrderStatus();
-            } else if (status === 'cancelled' || status === 'failed') {
-              showToast('Stars payment was not completed.', 'normal');
-            }
-          });
-          return;
-        } else if (res.payment_url) {
-          // Fallback if tested outside Telegram WebApp
-          window.open(res.payment_url, '_blank');
-          openCryptoPaymentModal(res);
-          return;
-        }
-      }
-
-      // OPTION C: CRYPTO PAYMENT INVOICE
+      // OPTION B: BINANCE PAY CHECKOUT
       openCryptoPaymentModal(res);
 
     } catch (err) {

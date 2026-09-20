@@ -180,7 +180,7 @@ class CartRemoveRequest(BaseModel):
 
 
 class CheckoutRequest(BaseModel):
-    payment_method: str = "crypto"  # "crypto", "balance", or "stars"
+    payment_method: str = "crypto"  # "crypto" (Binance Pay) or "balance"
     coupon_code: Optional[str] = None
     init_data: Optional[str] = None
     telegram_id: Optional[int] = None
@@ -551,41 +551,13 @@ async def checkout(req: CheckoutRequest):
                 "message": "Order paid with store balance and fulfilled instantly!",
             }
 
-        # --- OPTION B: TELEGRAM STARS (XTR) CHECKOUT ---
+        # --- OPTION B: TELEGRAM STARS (DISABLED) ---
         if req.payment_method.lower() == "stars":
-            from app.bot.bot import get_bot_instance
-            bot = get_bot_instance()
-            if not bot:
-                await order_service.cancel_order(session, order.id)
-                raise HTTPException(status_code=500, detail="Telegram bot service unavailable.")
-
-            stars_price = max(1, int(order.amount / Decimal(str(settings.stars_usd_rate))))
-            from telegram import LabeledPrice
-            try:
-                invoice_link = await bot.create_invoice_link(
-                    title=f"Order {order.public_order_id}",
-                    description=f"{settings.store_name} Checkout",
-                    payload=order.public_order_id,
-                    provider_token="",
-                    currency="XTR",
-                    prices=[LabeledPrice(label=f"Order {order.public_order_id}", amount=stars_price)],
-                )
-            except Exception as e:
-                logger.error("Failed to generate Stars invoice link: %s", e)
-                await order_service.cancel_order(session, order.id)
-                raise HTTPException(status_code=500, detail="Failed to create Telegram Stars invoice.")
-
-            return {
-                "success": True,
-                "payment_method": "stars",
-                "status": "pending_payment",
-                "public_order_id": order.public_order_id,
-                "amount": str(order.amount),
-                "discount": str(discount),
-                "subtotal": str(subtotal),
-                "payment_url": invoice_link,
-                "stars_amount": stars_price,
-            }
+            await order_service.cancel_order(session, order.id)
+            raise HTTPException(
+                status_code=400,
+                detail="Telegram Stars payment is disabled. Please pay using Binance Pay or store balance.",
+            )
 
         # --- OPTION C: CRYPTO INVOICE CHECKOUT (Cryptomus / NOWPayments) ---
         provider = get_payment_provider()
