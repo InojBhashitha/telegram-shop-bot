@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -47,6 +48,22 @@ _CRYPTOMUS_STATUS_MAP: dict[str, PaymentStatus] = {
     "refund_paid": PaymentStatus.REFUNDED,
 }
 
+# Mapping from Binance Pay status strings to internal PaymentStatus
+_BINANCEPAY_STATUS_MAP: dict[str, PaymentStatus] = {
+    "initial": PaymentStatus.WAITING,
+    "pending": PaymentStatus.CONFIRMING,
+    "paid": PaymentStatus.FINISHED,
+    "pay_success": PaymentStatus.FINISHED,
+    "success": PaymentStatus.FINISHED,
+    "canceled": PaymentStatus.FAILED,
+    "cancelled": PaymentStatus.FAILED,
+    "error": PaymentStatus.FAILED,
+    "refunding": PaymentStatus.REFUNDED,
+    "refunded": PaymentStatus.REFUNDED,
+    "expired": PaymentStatus.EXPIRED,
+    "pay_closed": PaymentStatus.EXPIRED,
+}
+
 # Internal payment statuses that map to order becoming PAID
 _PAID_STATUSES = {PaymentStatus.FINISHED}
 
@@ -85,7 +102,7 @@ async def create_payment_for_order(
     # Create invoice via payment provider
     result = await provider.create_invoice(
         price_amount=order.amount,
-        price_currency=order.currency.upper() if provider.provider_name == "cryptomus" else order.currency.lower(),
+        price_currency=order.currency.upper() if provider.provider_name in ("cryptomus", "binancepay") else order.currency.lower(),
         order_id=order.public_order_id,
         order_description=f"Cloud Deals Order {order.public_order_id}",
         ipn_callback_url=ipn_url,
@@ -138,6 +155,35 @@ async def process_webhook(
         actually_paid = webhook_data.get("payment_amount") or webhook_data.get("payer_amount")
         pay_currency = webhook_data.get("payer_currency") or webhook_data.get("currency")
         internal_status = _CRYPTOMUS_STATUS_MAP.get(provider_status, PaymentStatus.WAITING)
+    elif provider.provider_name == "binancepay":
+        data_raw = webhook_data.get("data", {})
+        if isinstance(data_raw, str):
+            try:
+                data_obj = json.loads(data_raw)
+            except Exception:
+                data_obj = {}
+        elif isinstance(data_raw, dict):
+            data_obj = data_raw
+        else:
+            data_obj = {}
+
+        provider_payment_id = str(
+            webhook_data.get("payment_id")
+            or webhook_data.get("prepay_id")
+            or webhook_data.get("uuid")
+            or data_obj.get("prepayId")
+            or ""
+        )
+        provider_status = str(
+            webhook_data.get("payment_status")
+            or webhook_data.get("bizStatus")
+            or data_obj.get("status")
+            or ""
+        ).lower()
+        order_id_str = str(webhook_data.get("order_id") or data_obj.get("merchantTradeNo") or "")
+        actually_paid = webhook_data.get("actually_paid") or data_obj.get("totalFee")
+        pay_currency = webhook_data.get("payer_currency") or data_obj.get("currency")
+        internal_status = _BINANCEPAY_STATUS_MAP.get(provider_status, PaymentStatus.WAITING)
     else:
         provider_payment_id = str(webhook_data.get("payment_id", ""))
         provider_status = str(webhook_data.get("payment_status", "")).lower()
@@ -154,12 +200,21 @@ async def process_webhook(
     payment = None
     if order_id_str:
         order = await order_repo.get_by_public_id(session, order_id_str)
+        if order is None and order_id_str.startswith("CD") and len(order_id_str) == 16 and "-" not in order_id_str:
+            reconstructed_id = f"{order_id_str[:2]}-{order_id_str[2:10]}-{order_id_str[10:]}"
+            order = await order_repo.get_by_public_id(session, reconstructed_id)
         if order:
             payment = await payment_repo.get_by_order_id(session, order.id)
 
     # Also try by provider payment ID
-    if payment is None:
+    if payment is None and provider_payment_id:
         payment = await payment_repo.get_by_provider_payment_id(
+            session, provider.provider_name, provider_payment_id
+        )
+
+    # Also try by provider invoice ID
+    if payment is None and provider_payment_id:
+        payment = await payment_repo.get_by_provider_invoice_id(
             session, provider.provider_name, provider_payment_id
         )
 

@@ -6,6 +6,7 @@ from typing import Optional
 
 from app.config import get_settings
 from app.payments.base import InvoiceResult, PaymentProvider, PaymentStatusResult
+from app.payments.binancepay import BinancePayProvider
 from app.payments.cryptomus import CryptomusProvider
 from app.payments.nowpayments import NOWPaymentsProvider
 
@@ -21,6 +22,12 @@ def get_payment_provider(provider_name: Optional[str] = None) -> PaymentProvider
             payment_key=settings.cryptomus_payment_key,
         )
 
+    if name == "binancepay":
+        return BinancePayProvider(
+            api_key=settings.binance_pay_api_key,
+            secret_key=settings.binance_pay_secret_key,
+        )
+
     # Default to NOWPayments
     return NOWPaymentsProvider(
         api_key=settings.nowpayments_api_key,
@@ -33,6 +40,7 @@ __all__ = [
     "PaymentProvider",
     "InvoiceResult",
     "PaymentStatusResult",
+    "BinancePayProvider",
     "CryptomusProvider",
     "NOWPaymentsProvider",
     "get_payment_provider",

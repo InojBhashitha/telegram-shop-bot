@@ -199,6 +199,8 @@ async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     is_configured = False
     if settings.crypto_provider.lower() == "cryptomus":
         is_configured = bool(settings.cryptomus_merchant_id and settings.cryptomus_payment_key)
+    elif settings.crypto_provider.lower() == "binancepay":
+        is_configured = bool(settings.binance_pay_api_key and settings.binance_pay_secret_key)
     else:
         is_configured = bool(settings.nowpayments_api_key)
 

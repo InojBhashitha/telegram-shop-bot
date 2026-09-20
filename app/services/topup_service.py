@@ -40,7 +40,7 @@ async def create_topup(
 
     result = await provider.create_invoice(
         price_amount=amount,
-        price_currency=currency.upper() if provider.provider_name == "cryptomus" else currency.lower(),
+        price_currency=currency.upper() if provider.provider_name in ("cryptomus", "binancepay") else currency.lower(),
         order_id=order_id,
         order_description=f"Cloud Deals Top-Up ${amount}",
         ipn_callback_url=ipn_url,
@@ -84,7 +84,8 @@ async def process_topup_webhook(
     if topup.status == TopUpStatus.PAID:
         return {"topup": topup, "action": "skipped"}
 
-    if status in ("finished", "paid", "paid_over"):
+    status_lower = status.lower()
+    if status_lower in ("finished", "paid", "paid_over", "pay_success", "success"):
         topup = await topup_repo.update_status(
             session, topup.id, TopUpStatus.PAID,
             confirmed_at=datetime.now(timezone.utc),
@@ -94,7 +95,7 @@ async def process_topup_webhook(
         logger.info("Top-up completed: user_id=%s amount=%s", topup.user_id, topup.amount)
         return {"topup": topup, "action": "credited"}
 
-    elif status in ("expired", "failed", "cancel", "fail", "system_fail"):
+    elif status_lower in ("expired", "failed", "cancel", "fail", "system_fail", "pay_closed", "canceled", "cancelled"):
         await topup_repo.update_status(session, topup.id, TopUpStatus.EXPIRED)
         return {"topup": topup, "action": "expired"}
 

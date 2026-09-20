@@ -147,11 +147,110 @@ async def nowpayments_webhook(request: Request) -> Response:
     return Response(status_code=200, content="ok")
 
 
+@router.post("/binancepay")
+async def binancepay_webhook(request: Request) -> Response:
+    """Handle Binance Pay IPN webhook.
+
+    This endpoint:
+    1. Reads raw request body and headers
+    2. Validates Binance Pay webhook notification
+    3. Parses the notification data payload
+    4. Processes payment updates and triggers order fulfillment
+    5. Returns {"returnCode": "SUCCESS", "returnMessage": null} as required by Binance
+    """
+    body = await request.body()
+    headers = dict(request.headers)
+
+    provider = get_payment_provider("binancepay")
+
+    # Verify webhook headers and format
+    if not provider.verify_webhook(headers, body):
+        logger.warning("Binance Pay webhook verification FAILED")
+        fail_body = json.dumps({"returnCode": "FAIL", "returnMessage": "verification_failed"})
+        return Response(status_code=200, content=fail_body, media_type="application/json")
+
+    try:
+        webhook_data = json.loads(body)
+    except json.JSONDecodeError:
+        logger.error("Binance Pay webhook body is not valid JSON")
+        fail_body = json.dumps({"returnCode": "FAIL", "returnMessage": "invalid_json"})
+        return Response(status_code=200, content=fail_body, media_type="application/json")
+
+    # Parse inner data if stringified JSON
+    data_raw = webhook_data.get("data", {})
+    if isinstance(data_raw, str):
+        try:
+            data_obj = json.loads(data_raw)
+        except Exception:
+            data_obj = {}
+    elif isinstance(data_raw, dict):
+        data_obj = data_raw
+    else:
+        data_obj = {}
+
+    merchant_trade_no = str(data_obj.get("merchantTradeNo", ""))
+    biz_status = webhook_data.get("bizStatus")
+    prepay_id = str(data_obj.get("prepayId") or webhook_data.get("bizId", ""))
+
+    logger.info(
+        "Binance Pay webhook received: tradeNo=%s prepayId=%s bizStatus=%s",
+        merchant_trade_no, prepay_id, biz_status,
+    )
+
+    success_resp = json.dumps({"returnCode": "SUCCESS", "returnMessage": None})
+
+    # Check if this is a top-up payment
+    if merchant_trade_no.upper().startswith("TOPUP"):
+        topup_data = {
+            "invoice_id": prepay_id,
+            "prepay_id": prepay_id,
+            "uuid": prepay_id,
+            "status": data_obj.get("status") or biz_status or "",
+        }
+        await _handle_topup_webhook(topup_data, provider)
+        return Response(status_code=200, content=success_resp, media_type="application/json")
+
+    # Process as order payment
+    async with get_session() as session:
+        result = await payment_service.process_webhook(
+            session, provider, webhook_data
+        )
+
+        if result is None:
+            logger.warning("Binance Pay webhook did not match any payment record")
+            return Response(status_code=200, content=success_resp, media_type="application/json")
+
+        order = result["order"]
+        action = result["action"]
+
+        # Trigger Telegram delivery for fulfilled orders
+        if action == "fulfilled":
+            await _deliver_order(order, session)
+
+        logger.info(
+            "Binance Pay webhook processed: order=%s action=%s",
+            order.public_order_id, action,
+        )
+
+    return Response(status_code=200, content=success_resp, media_type="application/json")
+
+
 async def _handle_topup_webhook(webhook_data: dict, provider) -> None:
     """Handle webhook for top-up payments."""
     async with get_session() as session:
-        invoice_id = str(webhook_data.get("uuid") or webhook_data.get("invoice_id", ""))
-        status = str(webhook_data.get("status") or webhook_data.get("payment_status", "")).lower()
+        invoice_id = str(
+            webhook_data.get("uuid")
+            or webhook_data.get("invoice_id")
+            or webhook_data.get("prepayId")
+            or webhook_data.get("prepay_id")
+            or ""
+        )
+        status = str(
+            webhook_data.get("status")
+            or webhook_data.get("payment_status")
+            or webhook_data.get("bizStatus")
+            or ""
+        ).lower()
 
         result = await topup_service.process_topup_webhook(
             session,

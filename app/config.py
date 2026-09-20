@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     admin_telegram_ids: str = ""
 
     # --- Crypto Payment Provider ---
-    crypto_provider: str = "cryptomus"  # "cryptomus" or "nowpayments"
+    crypto_provider: str = "cryptomus"  # "cryptomus", "nowpayments", or "binancepay"
 
     # NOWPayments
     nowpayments_api_key: str = ""
@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # Cryptomus
     cryptomus_merchant_id: str = ""
     cryptomus_payment_key: str = ""
+
+    # Binance Pay
+    binance_pay_api_key: str = ""
+    binance_pay_secret_key: str = ""
 
     # --- Webhook & Mini App ---
     webhook_base_url: str = "http://localhost:8000"
@@ -180,6 +184,11 @@ class Settings(BaseSettings):
                 warnings.append("CRYPTOMUS_MERCHANT_ID is empty — Cryptomus payments disabled")
             if not self.cryptomus_payment_key:
                 warnings.append("CRYPTOMUS_PAYMENT_KEY is empty — Cryptomus verification disabled")
+        elif self.crypto_provider.lower() == "binancepay":
+            if not self.binance_pay_api_key:
+                warnings.append("BINANCE_PAY_API_KEY is empty — Binance Pay payments disabled")
+            if not self.binance_pay_secret_key:
+                warnings.append("BINANCE_PAY_SECRET_KEY is empty — Binance Pay verification disabled")
         else:
             if not self.nowpayments_api_key:
                 warnings.append("NOWPAYMENTS_API_KEY is empty — payments disabled")
