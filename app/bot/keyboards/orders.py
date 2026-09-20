@@ -10,6 +10,19 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from app.database.models import Order, OrderStatus
 
 
+def _get_provider_button_label() -> str:
+    """Return friendly button label based on active crypto provider."""
+    from app.config import get_settings
+    provider = get_settings().crypto_provider.lower()
+    if provider == "cryptopay":
+        return "🤖 Pay with @CryptoBot"
+    elif provider == "oxapay":
+        return "💎 Pay with OxaPay"
+    elif provider == "binancepay":
+        return "🟡 Pay with Binance Pay"
+    return "💳 Pay with Crypto"
+
+
 def payment_keyboard(
     payment_url: str,
     order_id: int,
@@ -20,9 +33,10 @@ def payment_keyboard(
     """Payment keyboard with crypto checkout URL and live status tracker."""
     # Status step indicators
     steps = _get_payment_steps(order_status)
+    label = _get_provider_button_label()
 
     buttons = [
-        [InlineKeyboardButton("🟡 Pay with Binance Pay (0% Fee)", url=payment_url)],
+        [InlineKeyboardButton(label, url=payment_url)],
     ]
     if stars_invoice_url:
         buttons.append([InlineKeyboardButton("⭐ Pay with Telegram Stars", url=stars_invoice_url)])
@@ -98,7 +112,7 @@ def order_detail_keyboard(
     # If pending or payment processing, show Pay, Check Payment, and Cancel Order buttons
     if order.status in (OrderStatus.PENDING_PAYMENT, OrderStatus.PAYMENT_PROCESSING):
         if payment_url:
-            buttons.append([InlineKeyboardButton("🟡 Pay with Binance Pay (0% Fee)", url=payment_url)])
+            buttons.append([InlineKeyboardButton(_get_provider_button_label(), url=payment_url)])
         buttons.append([
             InlineKeyboardButton("🔄 Check Payment", callback_data=f"check_pay:{order.id}"),
             InlineKeyboardButton("❌ Cancel Order", callback_data=f"cancel_order:{order.id}"),

@@ -235,6 +235,125 @@ async def binancepay_webhook(request: Request) -> Response:
     return Response(status_code=200, content=success_resp, media_type="application/json")
 
 
+@router.post("/cryptopay")
+async def cryptopay_webhook(request: Request) -> Response:
+    """Handle Crypto Pay (@CryptoBot) webhook notification."""
+    body = await request.body()
+    headers = dict(request.headers)
+
+    provider = get_payment_provider("cryptopay")
+
+    if not provider.verify_webhook(headers, body):
+        logger.warning("Crypto Pay webhook signature verification FAILED")
+        return Response(status_code=400, content="signature_invalid")
+
+    try:
+        webhook_data = json.loads(body)
+    except json.JSONDecodeError:
+        logger.error("Crypto Pay webhook body is not valid JSON")
+        return Response(status_code=400, content="invalid_json")
+
+    p_data = webhook_data.get("payload") if isinstance(webhook_data.get("payload"), dict) else webhook_data
+    invoice_id = str(p_data.get("invoice_id") or "")
+    order_id_str = str(p_data.get("payload") or "")
+    status = str(p_data.get("status") or "").lower()
+
+    logger.info(
+        "Crypto Pay webhook received: invoice=%s order=%s status=%s",
+        invoice_id, order_id_str, status,
+    )
+
+    if order_id_str.startswith("TOPUP"):
+        topup_data = {
+            "invoice_id": invoice_id,
+            "uuid": invoice_id,
+            "status": status,
+        }
+        await _handle_topup_webhook(topup_data, provider)
+        return Response(status_code=200, content="ok")
+
+    async with get_session() as session:
+        result = await payment_service.process_webhook(
+            session, provider, webhook_data
+        )
+
+        if result is None:
+            logger.warning("Crypto Pay webhook did not match any payment record")
+            return Response(status_code=200, content="no_match")
+
+        order = result["order"]
+        action = result["action"]
+
+        if action == "fulfilled":
+            await _deliver_order(order, session)
+
+        logger.info(
+            "Crypto Pay webhook processed: order=%s action=%s",
+            order.public_order_id, action,
+        )
+
+    return Response(status_code=200, content="ok")
+
+
+@router.post("/oxapay")
+async def oxapay_webhook(request: Request) -> Response:
+    """Handle OxaPay IPN callback webhook."""
+    body = await request.body()
+    headers = dict(request.headers)
+
+    provider = get_payment_provider("oxapay")
+
+    if not provider.verify_webhook(headers, body):
+        logger.warning("OxaPay webhook signature verification FAILED")
+        return Response(status_code=400, content="signature_invalid")
+
+    try:
+        webhook_data = json.loads(body)
+    except json.JSONDecodeError:
+        logger.error("OxaPay webhook body is not valid JSON")
+        return Response(status_code=400, content="invalid_json")
+
+    track_id = str(webhook_data.get("trackId") or "")
+    order_id_str = str(webhook_data.get("orderId") or "")
+    status = str(webhook_data.get("status") or "").lower()
+
+    logger.info(
+        "OxaPay webhook received: trackId=%s order=%s status=%s",
+        track_id, order_id_str, status,
+    )
+
+    if order_id_str.startswith("TOPUP"):
+        topup_data = {
+            "invoice_id": track_id,
+            "uuid": track_id,
+            "status": status,
+        }
+        await _handle_topup_webhook(topup_data, provider)
+        return Response(status_code=200, content="ok")
+
+    async with get_session() as session:
+        result = await payment_service.process_webhook(
+            session, provider, webhook_data
+        )
+
+        if result is None:
+            logger.warning("OxaPay webhook did not match any payment record")
+            return Response(status_code=200, content="no_match")
+
+        order = result["order"]
+        action = result["action"]
+
+        if action == "fulfilled":
+            await _deliver_order(order, session)
+
+        logger.info(
+            "OxaPay webhook processed: order=%s action=%s",
+            order.public_order_id, action,
+        )
+
+    return Response(status_code=200, content="ok")
+
+
 async def _handle_topup_webhook(webhook_data: dict, provider) -> None:
     """Handle webhook for top-up payments."""
     async with get_session() as session:

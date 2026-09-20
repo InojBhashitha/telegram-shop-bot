@@ -40,7 +40,7 @@ async def create_topup(
 
     result = await provider.create_invoice(
         price_amount=amount,
-        price_currency=currency.upper() if provider.provider_name in ("cryptomus", "binancepay") else currency.lower(),
+        price_currency=currency.upper() if provider.provider_name in ("cryptomus", "binancepay", "cryptopay", "oxapay") else currency.lower(),
         order_id=order_id,
         order_description=f"Cloud Deals Top-Up ${amount}",
         ipn_callback_url=ipn_url,

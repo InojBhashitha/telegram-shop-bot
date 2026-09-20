@@ -8,7 +8,9 @@ from app.config import get_settings
 from app.payments.base import InvoiceResult, PaymentProvider, PaymentStatusResult
 from app.payments.binancepay import BinancePayProvider
 from app.payments.cryptomus import CryptomusProvider
+from app.payments.cryptopay import CryptoPayProvider
 from app.payments.nowpayments import NOWPaymentsProvider
+from app.payments.oxapay import OxaPayProvider
 
 
 def get_payment_provider(provider_name: Optional[str] = None) -> PaymentProvider:
@@ -16,16 +18,22 @@ def get_payment_provider(provider_name: Optional[str] = None) -> PaymentProvider
     settings = get_settings()
     name = (provider_name or settings.crypto_provider).lower()
 
-    if name == "cryptomus":
-        return CryptomusProvider(
-            merchant_id=settings.cryptomus_merchant_id,
-            payment_key=settings.cryptomus_payment_key,
-        )
+    if name == "cryptopay":
+        return CryptoPayProvider(api_token=settings.cryptopay_api_token)
+
+    if name == "oxapay":
+        return OxaPayProvider(merchant_key=settings.oxapay_merchant_key)
 
     if name == "binancepay":
         return BinancePayProvider(
             api_key=settings.binance_pay_api_key,
             secret_key=settings.binance_pay_secret_key,
+        )
+
+    if name == "cryptomus":
+        return CryptomusProvider(
+            merchant_id=settings.cryptomus_merchant_id,
+            payment_key=settings.cryptomus_payment_key,
         )
 
     # Default to NOWPayments
@@ -40,6 +48,8 @@ __all__ = [
     "PaymentProvider",
     "InvoiceResult",
     "PaymentStatusResult",
+    "CryptoPayProvider",
+    "OxaPayProvider",
     "BinancePayProvider",
     "CryptomusProvider",
     "NOWPaymentsProvider",

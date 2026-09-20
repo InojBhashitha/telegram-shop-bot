@@ -64,6 +64,23 @@ _BINANCEPAY_STATUS_MAP: dict[str, PaymentStatus] = {
     "pay_closed": PaymentStatus.EXPIRED,
 }
 
+# Mapping from Crypto Pay (@CryptoBot) status strings to internal PaymentStatus
+_CRYPTOPAY_STATUS_MAP: dict[str, PaymentStatus] = {
+    "active": PaymentStatus.WAITING,
+    "paid": PaymentStatus.FINISHED,
+    "expired": PaymentStatus.EXPIRED,
+}
+
+# Mapping from OxaPay status strings to internal PaymentStatus
+_OXAPAY_STATUS_MAP: dict[str, PaymentStatus] = {
+    "waiting": PaymentStatus.WAITING,
+    "confirming": PaymentStatus.CONFIRMING,
+    "paying": PaymentStatus.CONFIRMING,
+    "paid": PaymentStatus.FINISHED,
+    "failed": PaymentStatus.FAILED,
+    "expired": PaymentStatus.EXPIRED,
+}
+
 # Internal payment statuses that map to order becoming PAID
 _PAID_STATUSES = {PaymentStatus.FINISHED}
 
@@ -102,7 +119,7 @@ async def create_payment_for_order(
     # Create invoice via payment provider
     result = await provider.create_invoice(
         price_amount=order.amount,
-        price_currency=order.currency.upper() if provider.provider_name in ("cryptomus", "binancepay") else order.currency.lower(),
+        price_currency=order.currency.upper() if provider.provider_name in ("cryptomus", "binancepay", "cryptopay", "oxapay") else order.currency.lower(),
         order_id=order.public_order_id,
         order_description=f"Cloud Deals Order {order.public_order_id}",
         ipn_callback_url=ipn_url,
@@ -148,13 +165,21 @@ async def process_webhook(
         Dict with 'order', 'action' ('fulfilled', 'updated', 'skipped'),
         or None if payment not found.
     """
-    if provider.provider_name == "cryptomus":
-        provider_payment_id = str(webhook_data.get("uuid") or webhook_data.get("payment_id", ""))
-        provider_status = str(webhook_data.get("payment_status") or webhook_data.get("status", "")).lower()
-        order_id_str = webhook_data.get("order_id", "")
-        actually_paid = webhook_data.get("payment_amount") or webhook_data.get("payer_amount")
-        pay_currency = webhook_data.get("payer_currency") or webhook_data.get("currency")
-        internal_status = _CRYPTOMUS_STATUS_MAP.get(provider_status, PaymentStatus.WAITING)
+    if provider.provider_name == "cryptopay":
+        p_data = webhook_data.get("payload") if isinstance(webhook_data.get("payload"), dict) else webhook_data
+        provider_payment_id = str(p_data.get("invoice_id") or webhook_data.get("payment_id") or webhook_data.get("uuid") or "")
+        provider_status = str(p_data.get("status") or webhook_data.get("payment_status") or "").lower()
+        order_id_str = str(p_data.get("payload") or webhook_data.get("order_id") or "")
+        actually_paid = p_data.get("paid_amount") or p_data.get("amount") or webhook_data.get("actually_paid")
+        pay_currency = p_data.get("paid_asset") or p_data.get("asset") or webhook_data.get("payer_currency")
+        internal_status = _CRYPTOPAY_STATUS_MAP.get(provider_status, PaymentStatus.WAITING)
+    elif provider.provider_name == "oxapay":
+        provider_payment_id = str(webhook_data.get("trackId") or webhook_data.get("track_id") or webhook_data.get("payment_id") or webhook_data.get("uuid") or "")
+        provider_status = str(webhook_data.get("status") or webhook_data.get("payment_status") or "").lower()
+        order_id_str = str(webhook_data.get("orderId") or webhook_data.get("order_id") or "")
+        actually_paid = webhook_data.get("payAmount") or webhook_data.get("amount") or webhook_data.get("actually_paid")
+        pay_currency = webhook_data.get("payCurrency") or webhook_data.get("currency") or webhook_data.get("payer_currency")
+        internal_status = _OXAPAY_STATUS_MAP.get(provider_status, PaymentStatus.WAITING)
     elif provider.provider_name == "binancepay":
         data_raw = webhook_data.get("data", {})
         if isinstance(data_raw, str):
@@ -184,6 +209,13 @@ async def process_webhook(
         actually_paid = webhook_data.get("actually_paid") or data_obj.get("totalFee")
         pay_currency = webhook_data.get("payer_currency") or data_obj.get("currency")
         internal_status = _BINANCEPAY_STATUS_MAP.get(provider_status, PaymentStatus.WAITING)
+    elif provider.provider_name == "cryptomus":
+        provider_payment_id = str(webhook_data.get("uuid") or webhook_data.get("payment_id", ""))
+        provider_status = str(webhook_data.get("payment_status") or webhook_data.get("status", "")).lower()
+        order_id_str = webhook_data.get("order_id", "")
+        actually_paid = webhook_data.get("payment_amount") or webhook_data.get("payer_amount")
+        pay_currency = webhook_data.get("payer_currency") or webhook_data.get("currency")
+        internal_status = _CRYPTOMUS_STATUS_MAP.get(provider_status, PaymentStatus.WAITING)
     else:
         provider_payment_id = str(webhook_data.get("payment_id", ""))
         provider_status = str(webhook_data.get("payment_status", "")).lower()

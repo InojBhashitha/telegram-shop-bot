@@ -34,7 +34,13 @@ class Settings(BaseSettings):
     admin_telegram_ids: str = ""
 
     # --- Crypto Payment Provider ---
-    crypto_provider: str = "binancepay"  # "binancepay" (default 0% fee), "nowpayments", or "cryptomus"
+    crypto_provider: str = "cryptopay"  # "cryptopay" (@CryptoBot), "oxapay", "binancepay", "nowpayments", "cryptomus"
+
+    # Crypto Pay (@CryptoBot)
+    cryptopay_api_token: str = ""
+
+    # OxaPay
+    oxapay_merchant_key: str = ""
 
     # Binance Pay
     binance_pay_api_key: str = ""
@@ -179,16 +185,22 @@ class Settings(BaseSettings):
         if not self.admin_telegram_ids:
             warnings.append("ADMIN_TELEGRAM_IDS is empty — no admin access")
 
-        if self.crypto_provider.lower() == "cryptomus":
-            if not self.cryptomus_merchant_id:
-                warnings.append("CRYPTOMUS_MERCHANT_ID is empty — Cryptomus payments disabled")
-            if not self.cryptomus_payment_key:
-                warnings.append("CRYPTOMUS_PAYMENT_KEY is empty — Cryptomus verification disabled")
+        if self.crypto_provider.lower() == "cryptopay":
+            if not self.cryptopay_api_token:
+                warnings.append("CRYPTOPAY_API_TOKEN is empty — Crypto Pay payments disabled")
+        elif self.crypto_provider.lower() == "oxapay":
+            if not self.oxapay_merchant_key:
+                warnings.append("OXAPAY_MERCHANT_KEY is empty — OxaPay payments disabled")
         elif self.crypto_provider.lower() == "binancepay":
             if not self.binance_pay_api_key:
                 warnings.append("BINANCE_PAY_API_KEY is empty — Binance Pay payments disabled")
             if not self.binance_pay_secret_key:
                 warnings.append("BINANCE_PAY_SECRET_KEY is empty — Binance Pay verification disabled")
+        elif self.crypto_provider.lower() == "cryptomus":
+            if not self.cryptomus_merchant_id:
+                warnings.append("CRYPTOMUS_MERCHANT_ID is empty — Cryptomus payments disabled")
+            if not self.cryptomus_payment_key:
+                warnings.append("CRYPTOMUS_PAYMENT_KEY is empty — Cryptomus verification disabled")
         else:
             if not self.nowpayments_api_key:
                 warnings.append("NOWPAYMENTS_API_KEY is empty — payments disabled")

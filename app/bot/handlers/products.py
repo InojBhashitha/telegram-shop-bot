@@ -196,11 +196,14 @@ async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     # Check if active payment provider is configured
     from app.payments import get_payment_provider
-    is_configured = False
-    if settings.crypto_provider.lower() == "cryptomus":
-        is_configured = bool(settings.cryptomus_merchant_id and settings.cryptomus_payment_key)
+    if settings.crypto_provider.lower() == "cryptopay":
+        is_configured = bool(settings.cryptopay_api_token)
+    elif settings.crypto_provider.lower() == "oxapay":
+        is_configured = bool(settings.oxapay_merchant_key)
     elif settings.crypto_provider.lower() == "binancepay":
         is_configured = bool(settings.binance_pay_api_key and settings.binance_pay_secret_key)
+    elif settings.crypto_provider.lower() == "cryptomus":
+        is_configured = bool(settings.cryptomus_merchant_id and settings.cryptomus_payment_key)
     else:
         is_configured = bool(settings.nowpayments_api_key)
 
