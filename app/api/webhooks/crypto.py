@@ -404,51 +404,5 @@ async def _handle_topup_webhook(webhook_data: dict, provider) -> None:
 
 async def _deliver_order(order, session) -> None:
     """Send the fulfilled order's product to the customer via Telegram."""
-    try:
-        from app.bot.bot import get_bot_instance
-        bot = get_bot_instance()
-        if bot is None:
-            logger.error("Bot instance not available for delivery")
-            return
+    await delivery_service.deliver_order_if_fulfilled(session, order)
 
-        from app.database.repositories import inventory_repo, user_repo
-        user = await user_repo.get_by_id(session, order.user_id)
-        if user is None:
-            logger.error("User not found for delivery: order=%s", order.public_order_id)
-            return
-
-        # Get all inventory items linked to this order
-        items = await inventory_repo.get_items_by_order_id(session, order.id)
-        contents = [item.content for item in items if item.content]
-
-        # Fallback to single inventory_id
-        if not contents and order.inventory_id:
-            item = await inventory_repo.get_item_by_id(session, order.inventory_id)
-            if item:
-                contents = [item.content]
-
-        if not contents:
-            logger.error("No delivery content for order=%s", order.public_order_id)
-            return
-
-        # Group inventory items by product
-        items_by_product = {}
-        for item in items:
-            p_name = item.product.name if hasattr(item, 'product') and item.product else (order.product.name if order.product else "Product")
-            items_by_product.setdefault(p_name, []).append(item.content)
-
-        if len(items_by_product) > 1:
-            await delivery_service.deliver_cart_order_to_user(
-                bot, user.telegram_id, order, items_by_product
-            )
-        else:
-            p_name = list(items_by_product.keys())[0] if items_by_product else (order.product.name if order.product else "Product")
-            await delivery_service.deliver_bulk_to_user(
-                bot, user.telegram_id, order, contents, p_name
-            )
-
-    except Exception as e:
-        logger.error(
-            "Delivery failed for order=%s: %s",
-            order.public_order_id, e,
-        )

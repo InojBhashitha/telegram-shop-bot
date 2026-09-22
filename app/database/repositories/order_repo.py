@@ -192,3 +192,26 @@ async def generate_public_order_id(session: AsyncSession) -> str:
     count = result.scalar_one()
 
     return f"{prefix}{count + 1:06d}"
+
+
+async def get_pending_payment_orders(
+    session: AsyncSession,
+    max_age_minutes: int = 60,
+) -> list[Order]:
+    """Find orders in PENDING_PAYMENT or PAYMENT_PROCESSING with associated payment."""
+    from sqlalchemy.orm import selectinload
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=max_age_minutes)
+    stmt = (
+        select(Order)
+        .options(
+            selectinload(Order.user),
+            selectinload(Order.payment),
+            selectinload(Order.product),
+        )
+        .where(Order.status.in_([OrderStatus.PENDING_PAYMENT, OrderStatus.PAYMENT_PROCESSING]))
+        .where(Order.created_at >= cutoff)
+        .order_by(Order.id.asc())
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+

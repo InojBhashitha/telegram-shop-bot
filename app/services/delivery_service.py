@@ -8,6 +8,7 @@ from typing import Optional
 
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import TelegramError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import Order
 
@@ -275,3 +276,91 @@ async def send_payment_update(
             order_public_id, e,
         )
         return False
+
+
+async def deliver_order_if_fulfilled(
+    session: AsyncSession,
+    order: Order,
+    bot: Optional[Bot] = None,
+) -> bool:
+    """Send fulfilled digital order credentials to customer and notify admin."""
+    if bot is None:
+        from app.bot.bot import get_bot_instance
+        bot = get_bot_instance()
+    if bot is None:
+        logger.error("Bot instance not available for delivery")
+        return False
+
+    from app.database.repositories import inventory_repo, user_repo
+    user = await user_repo.get_by_id(session, order.user_id)
+    if user is None:
+        logger.error("User not found for delivery: order=%s", order.public_order_id)
+        return False
+
+    # Get all inventory items linked to this order
+    items = await inventory_repo.get_items_by_order_id(session, order.id)
+    contents = [item.content for item in items if item.content]
+
+    # Fallback to single inventory_id
+    if not contents and order.inventory_id:
+        item = await inventory_repo.get_item_by_id(session, order.inventory_id)
+        if item:
+            contents = [item.content]
+
+    if not contents:
+        logger.error("No delivery content for order=%s", order.public_order_id)
+        return False
+
+    # Decrypt contents if encrypted
+    from app.utils.crypto_vault import decrypt_content
+    decrypted_contents = [decrypt_content(c) for c in contents]
+
+    # Group inventory items by product
+    items_by_product: dict[str, list[str]] = {}
+    for i, item in enumerate(items):
+        p_name = item.product.name if hasattr(item, 'product') and item.product else (order.product.name if order.product else "Product")
+        content_val = decrypted_contents[i] if i < len(decrypted_contents) else decrypt_content(item.content)
+        items_by_product.setdefault(p_name, []).append(content_val)
+
+    if len(items_by_product) > 1:
+        success = await deliver_cart_order_to_user(
+            bot, user.telegram_id, order, items_by_product
+        )
+    else:
+        p_name = list(items_by_product.keys())[0] if items_by_product else (order.product.name if order.product else "Product")
+        success = await deliver_bulk_to_user(
+            bot, user.telegram_id, order, decrypted_contents, p_name
+        )
+
+    # Notify admin(s) if configured
+    if success:
+        try:
+            from app.config import get_settings
+            admin_ids_str = get_settings().admin_telegram_ids
+            if admin_ids_str:
+                p_display = order.product.name if order.product else f"{len(contents)} item(s)"
+                user_display = f"@{user.username}" if user.username else f"ID {user.telegram_id}"
+                admin_msg = (
+                    f"🎉 *New Sale Confirmed\\!*\n\n"
+                    f"📦 *Order:* `{order.public_order_id}`\n"
+                    f"💰 *Amount:* ${order.amount:.2f}\n"
+                    f"🏷 *Product:* {p_display}\n"
+                    f"👤 *Customer:* {user_display}\n"
+                    f"💳 *Status:* ✅ Fulfilled & Delivered"
+                )
+                for aid in admin_ids_str.split(","):
+                    aid = aid.strip()
+                    if aid.isdigit():
+                        try:
+                            await bot.send_message(
+                                chat_id=int(aid),
+                                text=admin_msg,
+                                parse_mode="Markdown",
+                            )
+                        except Exception:
+                            pass
+        except Exception as e:
+            logger.warning("Failed to send admin sale notification: %s", e)
+
+    return success
+

@@ -384,3 +384,102 @@ async def check_payment_status(
         logger.warning("Failed to check payment status for order %s: %s", order_id, e)
         order = await order_repo.get_by_id(session, order_id)
         return order.status.value if order else payment.status.value
+
+
+async def poll_pending_orders_and_topups(
+    session: AsyncSession,
+    bot=None,
+    max_age_minutes: int = 60,
+) -> dict:
+    """Poll all active pending orders and topups, auto-fulfilling any that are paid.
+
+    Returns:
+        Dict with counts: {'orders_checked': int, 'orders_fulfilled': int,
+                           'topups_checked': int, 'topups_credited': int}
+    """
+    from app.database.repositories import topup_repo, user_repo
+    from app.payments import get_payment_provider
+    from app.services import delivery_service, topup_service, user_service
+
+    stats = {
+        "orders_checked": 0,
+        "orders_fulfilled": 0,
+        "topups_checked": 0,
+        "topups_credited": 0,
+    }
+
+    # 1. Poll Pending Orders
+    pending_orders = await order_repo.get_pending_payment_orders(
+        session, max_age_minutes=max_age_minutes
+    )
+    for order in pending_orders:
+        stats["orders_checked"] += 1
+        payment = order.payment
+        if not payment or not payment.provider or not (payment.provider_payment_id or payment.provider_invoice_id):
+            continue
+
+        try:
+            provider = get_payment_provider(payment.provider)
+            prev_status = order.status
+            new_status = await check_payment_status(session, provider, order.id)
+
+            if new_status == OrderStatus.FULFILLED.value and prev_status != OrderStatus.FULFILLED:
+                stats["orders_fulfilled"] += 1
+                # Deliver to customer via Telegram
+                delivered = await delivery_service.deliver_order_if_fulfilled(
+                    session, order, bot=bot
+                )
+                logger.info(
+                    "Auto-poll: fulfilled and delivered order %s (success=%s)",
+                    order.public_order_id, delivered,
+                )
+        except Exception as e:
+            logger.warning("Auto-poll error for order %s: %s", order.public_order_id, e)
+
+    # 2. Poll Pending Top-Ups
+    pending_topups = await topup_repo.get_pending_topups(
+        session, max_age_minutes=max_age_minutes
+    )
+    for topup in pending_topups:
+        stats["topups_checked"] += 1
+        if not topup.provider or not (topup.provider_payment_id or topup.provider_invoice_id):
+            continue
+
+        try:
+            provider = get_payment_provider(topup.provider)
+            inv_id = topup.provider_invoice_id or topup.provider_payment_id
+            status_res = await provider.get_payment_status(inv_id)
+
+            res = await topup_service.process_topup_webhook(
+                session,
+                provider_invoice_id=inv_id,
+                provider_name=topup.provider,
+                status=status_res.status,
+            )
+
+            if res and res.get("action") == "credited":
+                stats["topups_credited"] += 1
+                logger.info("Auto-poll: credited topup %s ($%s)", topup.id, topup.amount)
+
+                # Send Telegram confirmation to user
+                if bot and topup.user and topup.user.telegram_id:
+                    try:
+                        user = await user_repo.get_by_id(session, topup.user_id)
+                        bal_str = f"{user.balance:.2f}" if user else f"{topup.amount:.2f}"
+                        await bot.send_message(
+                            chat_id=topup.user.telegram_id,
+                            text=(
+                                f"💰 *Balance Top-Up Confirmed\\!*\n\n"
+                                f"Your store balance has been credited with *${topup.amount:.2f}*\\.\n"
+                                f"💳 Current Balance: *${bal_str}*\n\n"
+                                f"You can now use your balance to checkout instantly\\!"
+                            ),
+                            parse_mode="Markdown",
+                        )
+                    except Exception as err:
+                        logger.warning("Failed to send topup notification: %s", err)
+        except Exception as e:
+            logger.warning("Auto-poll error for topup %s: %s", topup.id, e)
+
+    return stats
+

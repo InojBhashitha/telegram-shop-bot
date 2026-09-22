@@ -99,6 +99,28 @@ async def expire_orders_task(bot=None, interval_seconds: int = 60) -> None:
             await asyncio.sleep(60)
 
 
+async def auto_poll_payments_task(bot=None, interval_seconds: int = 20) -> None:
+    """Periodic task to poll payment providers for pending orders and topups.
+
+    Provides 100% automated delivery on phone-hosted or local environments without
+    requiring public incoming webhooks.
+    """
+    from app.database.database import get_session
+    from app.services import payment_service
+
+    while True:
+        try:
+            await asyncio.sleep(interval_seconds)
+            async with get_session() as session:
+                await payment_service.poll_pending_orders_and_topups(session, bot=bot)
+                await session.commit()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error("Auto-poll payments task error: %s", e)
+            await asyncio.sleep(interval_seconds)
+
+
 async def main() -> None:
     """Main async entry point."""
     settings = get_settings()
@@ -132,7 +154,12 @@ async def main() -> None:
         expire_orders_task(bot=bot_app.bot, interval_seconds=60)
     )
 
-    logger.info("☁️ Cloud Deals bot is running...")
+    # Start automatic payment polling task for phone/local hosting
+    poll_task = asyncio.create_task(
+        auto_poll_payments_task(bot=bot_app.bot, interval_seconds=20)
+    )
+
+    logger.info("☁️ Cloud Deals bot is running (expiry task: 60s, payment auto-poll: 20s)...")
 
     try:
         await bot_app.initialize()
@@ -147,8 +174,9 @@ async def main() -> None:
         logger.info("Shutting down...")
     finally:
         expiry_task.cancel()
+        poll_task.cancel()
         try:
-            await expiry_task
+            await asyncio.gather(expiry_task, poll_task, return_exceptions=True)
         except asyncio.CancelledError:
             pass
 

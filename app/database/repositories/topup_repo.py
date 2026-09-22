@@ -92,3 +92,23 @@ async def get_user_topups(
     )
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
+
+async def get_pending_topups(
+    session: AsyncSession,
+    max_age_minutes: int = 60,
+) -> list[TopUp]:
+    """Find topups in PENDING status within max_age_minutes."""
+    from datetime import timedelta
+    from sqlalchemy.orm import selectinload
+    cutoff = datetime.now(timezone.utc) - timedelta(minutes=max_age_minutes)
+    stmt = (
+        select(TopUp)
+        .options(selectinload(TopUp.user))
+        .where(TopUp.status == TopUpStatus.PENDING)
+        .where(TopUp.created_at >= cutoff)
+        .order_by(TopUp.id.asc())
+    )
+    result = await session.execute(stmt)
+    return list(result.scalars().all())
+
