@@ -442,12 +442,14 @@ async def poll_pending_orders_and_topups(
     )
     for topup in pending_topups:
         stats["topups_checked"] += 1
-        if not topup.provider or not (topup.provider_payment_id or topup.provider_invoice_id):
+        if not topup.provider:
+            continue
+        inv_id = topup.provider_invoice_id or topup.provider_payment_id
+        if not inv_id:
             continue
 
         try:
             provider = get_payment_provider(topup.provider)
-            inv_id = topup.provider_invoice_id or topup.provider_payment_id
             status_res = await provider.get_payment_status(inv_id)
 
             res = await topup_service.process_topup_webhook(
