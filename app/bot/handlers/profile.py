@@ -181,22 +181,75 @@ async def show_referral(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         if user is None:
             await query.edit_message_text("❌ Please /start the bot first.")
             return
-        referral_count = await user_repo.count_referrals(session, user.id)
+        from app.services import referral_service
+        summary = await referral_service.get_referral_summary(session, user.id)
 
     settings = get_settings()
-    bot_username = context.bot.username if context.bot else "bot"
-    referral_link = f"https://t.me/{bot_username}?start={user.referral_code}"
+    bot_username = context.bot.username if context.bot and context.bot.username else "bot"
+    ref_code = user.referral_code or f"ref_{user.telegram_id}"
+    referral_link = f"https://t.me/{bot_username}?start={ref_code}"
+
+    import urllib.parse
+    share_text = f"🔥 Check out {settings.store_name} for instant cloud accounts, keys & subscriptions!"
+    share_url = f"https://t.me/share/url?url={urllib.parse.quote(referral_link)}&text={urllib.parse.quote(share_text)}"
 
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("⬅️ Back", callback_data="profile")],
+        [InlineKeyboardButton("📤 Share with Friends", url=share_url)],
+        [InlineKeyboardButton("📋 Commission History", callback_data="ref_history")],
+        [InlineKeyboardButton("⬅️ Back to Profile", callback_data="profile")],
     ])
 
     await query.edit_message_text(
-        f"☁️ *Cloud Deals*\n\n"
-        f"🎁 *Referral Program*\n\n"
-        f"Your referral link:\n`{referral_link}`\n\n"
-        f"👥 Referrals: {referral_count}\n\n"
-        f"Share your link with friends!",
+        f"☁️ *{settings.store_name} — Referral Program*\n\n"
+        f"Invite your friends and earn *{summary['commission_rate']:.1f}% commission* in wallet credits on every purchase they make\\!\n\n"
+        f"🔗 *Your Referral Link:*\n`{referral_link}`\n\n"
+        f"👥 *Invited Friends:* {summary['referral_count']}\n"
+        f"💰 *Total Earned:* `${summary['total_earned']:.2f}`\n"
+        f"💼 *Wallet Balance:* `${user.balance:.2f}`\n\n"
+        f"Tap *Share with Friends* below or copy your link to start earning\\!",
+        reply_markup=keyboard,
+        parse_mode="Markdown",
+    )
+
+
+async def show_referral_history(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show recent referral commission payouts."""
+    query = update.callback_query
+    if query is None or query.from_user is None:
+        return
+    await query.answer()
+
+    async with get_session() as session:
+        user = await user_repo.get_by_telegram_id(session, query.from_user.id)
+        if user is None:
+            return
+        from app.services import referral_service
+        summary = await referral_service.get_referral_summary(session, user.id)
+
+    recent = summary["recent_commissions"]
+    if not recent:
+        text = (
+            "📋 *Referral Commission History*\n\n"
+            "You haven't earned any referral commissions yet.\n\n"
+            "Share your referral link with friends to start earning instant commissions when they make purchases!"
+        )
+    else:
+        lines = ["📋 *Recent Commission Earnings*\n"]
+        for comm in recent:
+            order_name = comm.order.public_order_id if comm.order else f"#{comm.order_id}"
+            dt_str = comm.created_at.strftime("%d %b %H:%M")
+            lines.append(
+                f"• `{dt_str}` — *+${comm.commission_amount:.2f}* "
+                f"({comm.commission_rate:.1f}% on ${comm.order_amount:.2f} order `{order_name}`)"
+            )
+        text = "\n".join(lines)
+
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("⬅️ Back to Referral", callback_data="referral")],
+    ])
+
+    await query.edit_message_text(
+        text,
         reply_markup=keyboard,
         parse_mode="Markdown",
     )
@@ -215,4 +268,5 @@ def get_handlers() -> list:
         CallbackQueryHandler(show_topup, pattern="^topup$"),
         CallbackQueryHandler(process_topup, pattern=r"^topup_amt:\d+$"),
         CallbackQueryHandler(show_referral, pattern="^referral$"),
+        CallbackQueryHandler(show_referral_history, pattern="^ref_history$"),
     ]

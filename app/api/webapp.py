@@ -233,6 +233,9 @@ async def auth_user(req: AuthRequest):
         cart_count = await cart_repo.get_cart_item_count(session, user.id)
         settings = get_settings()
 
+        from app.services import referral_service
+        ref_summary = await referral_service.get_referral_summary(session, user.id)
+
         return {
             "authenticated": True,
             "user": {
@@ -244,7 +247,10 @@ async def auth_user(req: AuthRequest):
                 "channel_discount_claimed": user.channel_discount_claimed,
                 "channel_discount_used": user.channel_discount_used,
                 "is_admin": settings.is_admin(user.telegram_id),
-                "referral_code": user.referral_code,
+                "referral_code": user.referral_code or f"ref_{user.telegram_id}",
+                "referral_count": ref_summary["referral_count"],
+                "referral_earnings": str(ref_summary["total_earned"]),
+                "referral_commission_percent": ref_summary["commission_rate"],
             },
             "store": {
                 "name": settings.store_name,
@@ -268,6 +274,8 @@ async def get_user_profile(
         user = await resolve_user(session, init_data=raw_init, telegram_id=telegram_id)
         cart_count = await cart_repo.get_cart_item_count(session, user.id)
         settings = get_settings()
+        from app.services import referral_service
+        ref_summary = await referral_service.get_referral_summary(session, user.id)
 
         return {
             "user": {
@@ -279,8 +287,52 @@ async def get_user_profile(
                 "channel_discount_claimed": user.channel_discount_claimed,
                 "channel_discount_used": user.channel_discount_used,
                 "is_admin": settings.is_admin(user.telegram_id),
+                "referral_code": user.referral_code or f"ref_{user.telegram_id}",
+                "referral_count": ref_summary["referral_count"],
+                "referral_earnings": str(ref_summary["total_earned"]),
+                "referral_commission_percent": ref_summary["commission_rate"],
             },
             "cart_count": cart_count,
+        }
+
+
+@router.get("/referral")
+async def get_referral_info(
+    init_data: Optional[str] = Query(None),
+    telegram_id: Optional[int] = Query(None),
+    x_telegram_init_data: Optional[str] = Header(None),
+):
+    """Get full referral statistics, link, and recent commissions for the user."""
+    raw_init = init_data or x_telegram_init_data
+    async with get_session() as session:
+        user = await resolve_user(session, init_data=raw_init, telegram_id=telegram_id)
+        from app.services import referral_service
+        summary = await referral_service.get_referral_summary(session, user.id)
+        settings = get_settings()
+
+        bot_name = settings.support_username or "CloudDealsBot"
+        ref_code = user.referral_code or f"ref_{user.telegram_id}"
+        link = f"https://t.me/{bot_name}?start={ref_code}"
+
+        recent = []
+        for c in summary["recent_commissions"]:
+            order_name = c.order.public_order_id if c.order else f"#{c.order_id}"
+            recent.append({
+                "id": c.id,
+                "order_id": order_name,
+                "order_amount": str(c.order_amount),
+                "commission_rate": str(c.commission_rate),
+                "commission_amount": str(c.commission_amount),
+                "created_at": c.created_at.isoformat() if c.created_at else None,
+            })
+
+        return {
+            "referral_link": link,
+            "referral_code": ref_code,
+            "referral_count": summary["referral_count"],
+            "total_earned": str(summary["total_earned"]),
+            "commission_rate": summary["commission_rate"],
+            "recent_commissions": recent,
         }
 
 

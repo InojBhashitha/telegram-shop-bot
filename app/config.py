@@ -76,6 +76,10 @@ class Settings(BaseSettings):
     stars_usd_rate: float = 0.0  # 0.0 = disabled (no Telegram Stars); set > 0 to enable
     inventory_encryption_key: str = ""  # Fernet key or auto-derived from bot_token if empty
 
+    # --- Referral & Affiliate Program ---
+    referral_commission_percent: float = 5.0  # Percentage of order amount credited to referrer (e.g. 5.0 = 5%)
+    referral_bonus_amount: float = 0.00  # Optional fixed signup bonus for new referred users
+
     # --- Logging ---
     log_level: str = "INFO"
 

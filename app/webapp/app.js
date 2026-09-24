@@ -154,6 +154,7 @@
     profBalance: document.getElementById('profBalance'),
     topupActionCard: document.getElementById('topupActionCard'),
     referralActionCard: document.getElementById('referralActionCard'),
+    referralSubText: document.getElementById('referralSubText'),
     copyRefLinkBtn: document.getElementById('copyRefLinkBtn'),
     supportActionCard: document.getElementById('supportActionCard'),
     closeProfileModal: document.getElementById('closeProfileModal'),
@@ -313,6 +314,14 @@
     el.profId.textContent = `Telegram ID: ${u.telegram_id}`;
     el.profBalance.textContent = `$${parseFloat(u.balance || 0).toFixed(2)}`;
     el.methodBalanceSub.textContent = `Available: $${parseFloat(u.balance || 0).toFixed(2)}`;
+
+    // Referral stats in profile
+    if (el.referralSubText) {
+      const count = u.referral_count || 0;
+      const earned = parseFloat(u.referral_earnings || 0).toFixed(2);
+      const rate = u.referral_commission_percent ? `${u.referral_commission_percent}%` : '5%';
+      el.referralSubText.textContent = `${count} invited • $${earned} earned (${rate} per order)`;
+    }
   }
 
   // --- Promo Banner Rendering ---
@@ -1080,11 +1089,30 @@
 
   el.userChipBtn.addEventListener('click', openProfileDrawer);
 
-  el.copyRefLinkBtn.addEventListener('click', () => {
+  el.copyRefLinkBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     if (!state.user) return;
     const botUser = state.store?.support_username || 'CloudDealsBot';
-    const link = `https://t.me/${botUser}?start=ref_${state.user.referral_code || state.user.telegram_id}`;
+    const rawCode = state.user.referral_code || state.user.telegram_id;
+    const code = String(rawCode).startsWith('ref_') ? rawCode : `ref_${rawCode}`;
+    const link = `https://t.me/${botUser}?start=${code}`;
     copyToClipboard(link, 'Referral link copied! 🎁');
+  });
+
+  el.referralActionCard.addEventListener('click', () => {
+    if (!state.user) return;
+    haptic('light');
+    const botUser = state.store?.support_username || 'CloudDealsBot';
+    const rawCode = state.user.referral_code || state.user.telegram_id;
+    const code = String(rawCode).startsWith('ref_') ? rawCode : `ref_${rawCode}`;
+    const link = `https://t.me/${botUser}?start=${code}`;
+    const shareText = encodeURIComponent('🔥 Check out Cloud Deals for instant cloud accounts, keys & subscriptions!');
+    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${shareText}`;
+    if (tg?.openTelegramLink) {
+      tg.openTelegramLink(shareUrl);
+    } else {
+      window.open(shareUrl, '_blank');
+    }
   });
 
   el.supportActionCard.addEventListener('click', () => {

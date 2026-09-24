@@ -270,6 +270,13 @@ async def fulfill_order(session: AsyncSession, order_id: int) -> Optional[dict]:
     except Exception as e:
         logger.warning("Error crediting affiliate commission for order %s: %s", order.public_order_id, e)
 
+    # Credit referral commission for the buyer's referrer
+    try:
+        from app.services import referral_service
+        await referral_service.process_order_commission(session, order)
+    except Exception as e:
+        logger.warning("Error crediting referral commission for order %s: %s", order.public_order_id, e)
+
     logger.info("Order fulfilled: %s (%d items)", order.public_order_id, len(contents))
     return {"order": order, "contents": contents, "content": contents[0] if contents else None}
 

@@ -181,9 +181,9 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 )
                 return
 
-        # Parse referral code from deep link
+        # Parse referral code from deep link (supports ref_xxxx or numeric id)
         referral_code = None
-        if context.args and context.args[0].startswith("ref_"):
+        if context.args and (context.args[0].startswith("ref_") or context.args[0].isdigit()):
             referral_code = context.args[0]
 
         result = await user_service.get_or_create_user(
@@ -193,6 +193,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             first_name=user.first_name,
             last_name=user.last_name,
             referral_code=referral_code,
+            bot=context.bot,
         )
 
         db_user = result["user"]

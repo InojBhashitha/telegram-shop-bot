@@ -73,10 +73,27 @@ async def get_by_id(session: AsyncSession, user_id: int) -> Optional[User]:
 
 
 async def get_by_referral_code(session: AsyncSession, code: str) -> Optional[User]:
-    """Find a user by their referral code."""
-    stmt = select(User).where(User.referral_code == code)
+    """Find a user by their referral code or telegram_id."""
+    if not code:
+        return None
+    clean_code = code.strip()
+    stmt = select(User).where(User.referral_code == clean_code)
     result = await session.execute(stmt)
-    return result.scalar_one_or_none()
+    user = result.scalar_one_or_none()
+    if user:
+        return user
+
+    # Check if referral code is numeric telegram_id or ref_<numeric_telegram_id>
+    potential_tg_id = None
+    if clean_code.startswith("ref_") and clean_code[4:].isdigit():
+        potential_tg_id = int(clean_code[4:])
+    elif clean_code.isdigit():
+        potential_tg_id = int(clean_code)
+
+    if potential_tg_id is not None:
+        return await get_by_telegram_id(session, potential_tg_id)
+
+    return None
 
 
 async def update_balance(

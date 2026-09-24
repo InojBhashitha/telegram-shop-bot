@@ -340,6 +340,26 @@ class Referral(Base):
     referred: Mapped[User] = relationship("User", foreign_keys=[referred_user_id])
 
 
+class ReferralCommission(Base):
+    __tablename__ = "referral_commissions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    referrer_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    referred_user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    order_id: Mapped[int] = mapped_column(Integer, ForeignKey("orders.id"), nullable=False, index=True)
+    order_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    commission_rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+    commission_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+
+    # Relationships
+    referrer: Mapped[User] = relationship("User", foreign_keys=[referrer_user_id])
+    referred: Mapped[User] = relationship("User", foreign_keys=[referred_user_id])
+    order: Mapped[Order] = relationship("Order")
+
+
 class SupportTicket(Base):
     __tablename__ = "support_tickets"
 

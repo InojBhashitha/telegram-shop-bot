@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +20,7 @@ async def get_or_create_user(
     first_name: Optional[str] = None,
     last_name: Optional[str] = None,
     referral_code: Optional[str] = None,
+    bot: Optional[Any] = None,
 ) -> dict:
     """Get or create a user, optionally processing a referral code.
 
@@ -35,19 +36,13 @@ async def get_or_create_user(
 
     # Process referral for new users
     if is_new and referral_code:
-        referrer = await user_repo.get_by_referral_code(session, referral_code)
-        if referrer and referrer.id != user.id:
-            user.referred_by = referrer.id
-            await user_repo.create_referral(
-                session,
-                referrer_user_id=referrer.id,
-                referred_user_id=user.id,
-            )
-            logger.info(
-                "Referral recorded: user=%s referred by user=%s",
-                user.telegram_id, referrer.telegram_id,
-            )
-            await session.flush()
+        from app.services import referral_service
+        await referral_service.bind_referral(
+            session=session,
+            new_user=user,
+            referral_code=referral_code,
+            bot=bot,
+        )
 
     return {"user": user, "is_new": is_new}
 
