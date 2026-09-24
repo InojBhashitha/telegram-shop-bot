@@ -229,3 +229,10 @@ async def get_item_by_id(session: AsyncSession, inventory_id: int) -> Optional[I
     stmt = select(Inventory).where(Inventory.id == inventory_id)
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def get_items_by_product_id(session: AsyncSession, product_id: int) -> list[Inventory]:
+    """Get all inventory items for a given product."""
+    stmt = select(Inventory).where(Inventory.product_id == product_id)
+    result = await session.execute(stmt)
+    return list(result.scalars().all())

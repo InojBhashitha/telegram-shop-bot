@@ -508,7 +508,7 @@ async def show_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         return
 
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("➕ Add Stock", callback_data=f"adm:addstock:{product_id}")],
+        [InlineKeyboardButton("📥 Add Stock (.txt file or text)", callback_data=f"adm:addstock:{product_id}")],
         [InlineKeyboardButton("⬅️ Back", callback_data="adm:inventory")],
     ])
 
@@ -532,56 +532,125 @@ async def start_add_stock(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     product_id = int(query.data.split(":")[2])
     context.user_data["stock_product_id"] = product_id
     await query.edit_message_text(
-        "📥 *Add Inventory / Account Stock*\n\n"
-        "You can send accounts in either format:\n\n"
-        "🔹 *Option 1: One line per account*\n"
+        "📥 *Add Inventory / Restock Stock*\n\n"
+        "You can restock using any of the following methods:\n\n"
+        "📁 *Option 1: Upload a File (.txt / .csv)*\n"
+        "Send a `.txt` file attachment with one account/key per line.\n\n"
+        "🔹 *Option 2: Paste single-line accounts*\n"
         "`mail1@gmail.com:mailpass1:accpass1`\n"
         "`mail2@gmail.com:mailpass2:accpass2`\n\n"
-        "🔹 *Option 2: Multi-line blocks (separated by `---`)*\n"
+        "🔹 *Option 3: Paste multi-line accounts (separated by `---`)*\n"
         "```\n"
         "Email: user1@gmail.com\n"
-        "Mail Password: mailpass1\n"
-        "Account Password: accpass1\n"
+        "Password: pass1\n"
         "---\n"
         "Email: user2@gmail.com\n"
-        "Mail Password: mailpass2\n"
-        "Account Password: accpass2\n"
+        "Password: pass2\n"
         "```\n\n"
-        "Send your accounts now (or /cancel):",
+        "👉 *Send your file or paste your accounts now (or /cancel):*",
         parse_mode="Markdown",
     )
     return ADD_STOCK_ITEMS
 
 
 async def recv_stock_items(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """Receive and add inventory items (single-line or multi-line blocks)."""
+    """Receive and add inventory items from uploaded file or text message."""
+    if update.message is None:
+        return ADD_STOCK_ITEMS
+
     product_id = context.user_data.get("stock_product_id")
     if not product_id:
         await update.message.reply_text("❌ Error. Please try again.")
         return ConversationHandler.END
 
-    raw_text = update.message.text.strip()
+    raw_text = ""
+    filename = None
+
+    # Handle document / file upload (.txt, .csv, etc.)
+    if update.message.document:
+        doc = update.message.document
+        filename = doc.file_name or "document.txt"
+        allowed_exts = (".txt", ".csv", ".log", ".text", ".dat", ".json")
+        if not any(filename.lower().endswith(ext) for ext in allowed_exts) and "." in filename:
+            await update.message.reply_text(
+                "❌ *Invalid file format*\\.\n\nPlease upload a plain text file \\(`.txt` or `.csv`\\)\\.",
+                parse_mode="MarkdownV2",
+            )
+            return ADD_STOCK_ITEMS
+
+        if doc.file_size and doc.file_size > 10 * 1024 * 1024:
+            await update.message.reply_text("❌ File is too large (maximum size is 10MB).")
+            return ADD_STOCK_ITEMS
+
+        try:
+            tg_file = await doc.get_file()
+            file_bytes = await tg_file.download_as_bytearray()
+            raw_text = file_bytes.decode("utf-8", errors="replace").strip()
+        except Exception as e:
+            logger.error("Failed to read uploaded inventory file: %s", e)
+            await update.message.reply_text("❌ Failed to read uploaded file. Please try again or /cancel.")
+            return ADD_STOCK_ITEMS
+
+    elif update.message.text:
+        raw_text = update.message.text.strip()
+
+    if not raw_text:
+        await update.message.reply_text("❌ No text content received. Please send a .txt file or paste accounts.")
+        return ADD_STOCK_ITEMS
+
+    # Parse items
     if "---" in raw_text:
-        items = [item.strip() for item in raw_text.split("---") if item.strip()]
+        raw_items = [item.strip() for item in raw_text.split("---")]
     else:
-        items = [item.strip() for item in raw_text.split("\n") if item.strip()]
+        raw_items = [line.strip() for line in raw_text.splitlines()]
+
+    # Filter out empty items and comment lines, and deduplicate within batch
+    items = []
+    seen = set()
+    duplicates_count = 0
+    for it in raw_items:
+        if not it:
+            continue
+        if "\n" not in it and (it.startswith("#") or it.startswith("//")):
+            continue
+        if it in seen:
+            duplicates_count += 1
+            continue
+        seen.add(it)
+        items.append(it)
 
     if not items:
-        await update.message.reply_text("❌ No valid items found. Please try again or /cancel.")
+        await update.message.reply_text("❌ No valid items found in the input. Please try again or /cancel.")
         return ADD_STOCK_ITEMS
 
     async with get_session() as session:
+        from app.database.repositories import product_repo
+        product = await product_repo.get_by_id(session, product_id)
+        prod_name = product.name if product else "Product"
+
         count = await inventory_service.add_stock(session, product_id, items)
         from app.services import stock_alert_service
         notified = await stock_alert_service.notify_subscribers_of_restock(
             context.bot, session, product_id
         )
+        summary = await inventory_service.get_stock_summary(session, product_id)
 
     context.user_data.pop("stock_product_id", None)
-    alert_text = f"\n🔔 Notified {notified} waiting customer(s)!" if notified > 0 else ""
+
+    source_info = f"📄 *File:* `{filename}`\n" if filename else "📝 *Format:* Text Paste\n"
+    dup_info = f"⚠️ *Duplicates Skipped:* {duplicates_count}\n" if duplicates_count > 0 else ""
+    alert_info = f"🔔 *Restock Alerts:* {notified} customer(s) notified\n" if notified > 0 else ""
+
     await update.message.reply_text(
-        f"✅ Added {count} account(s) to stock successfully!{alert_text}",
+        f"✅ *Stock Restocked Successfully!*\n\n"
+        f"🏷 *Product:* {prod_name}\n"
+        f"{source_info}"
+        f"📥 *Accounts Added:* +{count}\n"
+        f"{dup_info}"
+        f"📦 *Total In Stock:* {summary.get('available', 0)} available\n"
+        f"{alert_info}",
         reply_markup=admin_main_keyboard(),
+        parse_mode="Markdown",
     )
     return ConversationHandler.END
 
@@ -1186,7 +1255,7 @@ def get_handlers() -> list:
         ],
         states={
             ADD_STOCK_ITEMS: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, recv_stock_items),
+                MessageHandler((filters.TEXT | filters.Document.ALL) & ~filters.COMMAND, recv_stock_items),
             ],
         },
         fallbacks=[CommandHandler("cancel", _cancel_conv)],
