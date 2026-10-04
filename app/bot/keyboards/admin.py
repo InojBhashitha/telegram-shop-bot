@@ -22,7 +22,7 @@ def admin_main_keyboard() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton("🛡 Warranty Claims", callback_data="adm:warranty"),
-            InlineKeyboardButton("📊 Statistics", callback_data="adm:stats"),
+            InlineKeyboardButton("📊 Analytics & Export", callback_data="adm:stats"),
         ],
         [
             InlineKeyboardButton("📢 Broadcast", callback_data="adm:broadcast"),

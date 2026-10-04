@@ -121,6 +121,38 @@ async def auto_poll_payments_task(bot=None, interval_seconds: int = 20) -> None:
             await asyncio.sleep(interval_seconds)
 
 
+async def daily_digest_task(bot=None, check_interval_seconds: int = 300) -> None:
+    """Periodic task to automatically send 24h sales summary to admins once per day."""
+    from datetime import datetime, timezone
+    from app.database.database import get_session
+    from app.services import analytics_service
+
+    last_sent_date: str | None = None
+
+    while True:
+        try:
+            await asyncio.sleep(check_interval_seconds)
+            settings = get_settings()
+            if not settings.daily_digest_enabled:
+                continue
+
+            now = datetime.now(timezone.utc)
+            today_str = now.strftime("%Y-%m-%d")
+
+            # Check if current hour matches configured hour and hasn't been sent today
+            if now.hour == settings.daily_digest_utc_hour and last_sent_date != today_str:
+                async with get_session() as session:
+                    await analytics_service.send_digest_to_admins(session, bot=bot, hours=24)
+                last_sent_date = today_str
+                logger.info("Daily sales digest sent for date %s", today_str)
+
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error("Daily digest task error: %s", e)
+            await asyncio.sleep(check_interval_seconds)
+
+
 async def main() -> None:
     """Main async entry point."""
     settings = get_settings()
@@ -159,7 +191,12 @@ async def main() -> None:
         auto_poll_payments_task(bot=bot_app.bot, interval_seconds=20)
     )
 
-    logger.info("☁️ Cloud Deals bot is running (expiry task: 60s, payment auto-poll: 20s)...")
+    # Start daily digest task
+    digest_task = asyncio.create_task(
+        daily_digest_task(bot=bot_app.bot, check_interval_seconds=300)
+    )
+
+    logger.info("☁️ Cloud Deals bot is running (expiry task: 60s, payment auto-poll: 20s, daily digest: active)...")
 
     try:
         await bot_app.initialize()
@@ -175,8 +212,9 @@ async def main() -> None:
     finally:
         expiry_task.cancel()
         poll_task.cancel()
+        digest_task.cancel()
         try:
-            await asyncio.gather(expiry_task, poll_task, return_exceptions=True)
+            await asyncio.gather(expiry_task, poll_task, digest_task, return_exceptions=True)
         except asyncio.CancelledError:
             pass
 

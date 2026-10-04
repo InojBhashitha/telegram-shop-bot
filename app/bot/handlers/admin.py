@@ -846,27 +846,145 @@ async def admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 # ---------------------------------------------------------------------------
 
 async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show statistics."""
+    """Show comprehensive analytics overview and CSV export options."""
     query = update.callback_query
     await query.answer()
 
+    from app.services import analytics_service
     async with get_session() as session:
         user_count = await user_repo.count_users(session)
         order_stats = await order_service.get_order_stats(session)
         open_tickets = await support_repo.count_open(session)
+        summary_24h = await analytics_service.get_analytics_summary(session, hours=24)
+
+    low_stock_count = len(summary_24h.get("low_stock_products", []))
+    low_stock_info = f"⚠️ *Low Stock Alerts:* {low_stock_count} item(s)\n" if low_stock_count > 0 else "✅ *Stock Health:* Healthy\n"
+
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("📥 Export Orders (.csv)", callback_data="adm:export:orders"),
+            InlineKeyboardButton("📦 Export Inventory (.csv)", callback_data="adm:export:inventory"),
+        ],
+        [
+            InlineKeyboardButton("👥 Export Customers (.csv)", callback_data="adm:export:customers"),
+            InlineKeyboardButton("📈 Send Daily Digest", callback_data="adm:digest:now"),
+        ],
+        [InlineKeyboardButton("⬅️ Back", callback_data="admin")],
+    ])
 
     await query.edit_message_text(
-        f"⚙️ *Statistics*\n\n"
-        f"👥 Total Users: {user_count}\n\n"
-        f"📦 Total Orders: {order_stats['total_orders']}\n"
-        f"✅ Paid/Fulfilled: {order_stats['paid_orders']}\n"
-        f"❌ Cancelled: {order_stats['cancelled_orders']}\n"
-        f"⏰ Expired: {order_stats['expired_orders']}\n\n"
-        f"💰 Revenue: ${order_stats['revenue']}\n\n"
-        f"🎫 Open Tickets: {open_tickets}",
-        reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("⬅️ Back", callback_data="admin")],
-        ]),
+        f"📊 *Cloud Deals — Sales Analytics & Exports*\n\n"
+        f"🕒 *Past 24 Hours Performance:*\n"
+        f"💰 Revenue: `${summary_24h['revenue']:.2f}`\n"
+        f"📦 Completed Orders: `{summary_24h['completed_orders']}`\n"
+        f"👥 New Customers: `{summary_24h['new_users']}`\n"
+        f"💳 Top-Ups: `${summary_24h['topup_revenue']:.2f}`\n"
+        f"{low_stock_info}\n"
+        f"📈 *All-Time Store Totals:*\n"
+        f"👥 Total Users: `{user_count}`\n"
+        f"📦 Total Orders: `{order_stats['total_orders']}` (`{order_stats['paid_orders']}` fulfilled)\n"
+        f"💰 Total Revenue: `${order_stats['revenue']:.2f}`\n"
+        f"🎫 Open Tickets: `{open_tickets}`\n\n"
+        f"Tap an export button below to download `.csv` data directly to this chat:",
+        reply_markup=keyboard,
+        parse_mode="Markdown",
+    )
+
+
+async def admin_export_orders(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Generate and send orders CSV document to admin."""
+    query = update.callback_query
+    if not _is_admin(query.from_user.id):
+        await query.answer("❌ Access denied.", show_alert=True)
+        return
+    await query.answer("⏳ Generating Orders CSV...")
+
+    from app.services import analytics_service
+    async with get_session() as session:
+        csv_bytes = await analytics_service.export_orders_csv(session)
+
+    from datetime import datetime, timezone
+    import io
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+    filename = f"orders_export_{date_str}.csv"
+
+    await context.bot.send_document(
+        chat_id=query.from_user.id,
+        document=io.BytesIO(csv_bytes),
+        filename=filename,
+        caption="📥 *Cloud Deals — Orders Export*\n\nIncludes historical order records, timestamps, payment statuses, and amounts.",
+        parse_mode="Markdown",
+    )
+
+
+async def admin_export_inventory(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Generate and send inventory & catalog CSV document to admin."""
+    query = update.callback_query
+    if not _is_admin(query.from_user.id):
+        await query.answer("❌ Access denied.", show_alert=True)
+        return
+    await query.answer("⏳ Generating Inventory CSV...")
+
+    from app.services import analytics_service
+    async with get_session() as session:
+        csv_bytes = await analytics_service.export_inventory_csv(session)
+
+    from datetime import datetime, timezone
+    import io
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+    filename = f"inventory_export_{date_str}.csv"
+
+    await context.bot.send_document(
+        chat_id=query.from_user.id,
+        document=io.BytesIO(csv_bytes),
+        filename=filename,
+        caption="📦 *Cloud Deals — Inventory & Products Export*\n\nIncludes product pricing, categories, active statuses, and stock levels.",
+        parse_mode="Markdown",
+    )
+
+
+async def admin_export_customers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Generate and send customers CSV document to admin."""
+    query = update.callback_query
+    if not _is_admin(query.from_user.id):
+        await query.answer("❌ Access denied.", show_alert=True)
+        return
+    await query.answer("⏳ Generating Customers CSV...")
+
+    from app.services import analytics_service
+    async with get_session() as session:
+        csv_bytes = await analytics_service.export_customers_csv(session)
+
+    from datetime import datetime, timezone
+    import io
+    date_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+    filename = f"customers_export_{date_str}.csv"
+
+    await context.bot.send_document(
+        chat_id=query.from_user.id,
+        document=io.BytesIO(csv_bytes),
+        filename=filename,
+        caption="👥 *Cloud Deals — Customers Export*\n\nIncludes registered users, wallet balances, completed orders, and referral metrics.",
+        parse_mode="Markdown",
+    )
+
+
+async def admin_send_digest_now(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Trigger the daily digest on-demand for the current admin."""
+    query = update.callback_query
+    if not _is_admin(query.from_user.id):
+        await query.answer("❌ Access denied.", show_alert=True)
+        return
+    await query.answer("📈 Generating Digest...")
+
+    from app.services import analytics_service
+    async with get_session() as session:
+        summary = await analytics_service.get_analytics_summary(session, hours=24)
+        digest_text = analytics_service.format_digest_message(summary, hours=24)
+
+    await context.bot.send_message(
+        chat_id=query.from_user.id,
+        text=digest_text,
         parse_mode="Markdown",
     )
 
@@ -1327,6 +1445,10 @@ def get_handlers() -> list:
         CallbackQueryHandler(admin_payments, pattern="^adm:payments$"),
         CallbackQueryHandler(admin_users, pattern="^adm:users$"),
         CallbackQueryHandler(admin_stats, pattern="^adm:stats$"),
+        CallbackQueryHandler(admin_export_orders, pattern="^adm:export:orders$"),
+        CallbackQueryHandler(admin_export_inventory, pattern="^adm:export:inventory$"),
+        CallbackQueryHandler(admin_export_customers, pattern="^adm:export:customers$"),
+        CallbackQueryHandler(admin_send_digest_now, pattern="^adm:digest:now$"),
         CallbackQueryHandler(admin_tickets, pattern="^adm:tickets$"),
         CallbackQueryHandler(admin_ticket_detail, pattern=r"^adm:ticket:\d+$"),
         CallbackQueryHandler(close_ticket_handler, pattern=r"^adm:close_ticket:\d+$"),

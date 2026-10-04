@@ -80,6 +80,10 @@ class Settings(BaseSettings):
     referral_commission_percent: float = 5.0  # Percentage of order amount credited to referrer (e.g. 5.0 = 5%)
     referral_bonus_amount: float = 0.00  # Optional fixed signup bonus for new referred users
 
+    # --- Analytics & Daily Digest ---
+    daily_digest_enabled: bool = True  # Automatically send 24h sales summary to admins
+    daily_digest_utc_hour: int = 0  # Hour of day (0-23 UTC) to send the daily digest (0 = midnight UTC)
+
     # --- Logging ---
     log_level: str = "INFO"
 
