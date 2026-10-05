@@ -16,9 +16,11 @@
   <link rel="stylesheet" href="/webapp/style.css">
 </head>
 <body class="theme-obsidian">
-  <!-- Ambient background lighting mesh -->
+  <!-- Ambient background lighting mesh & futuristic cyber grid -->
+  <div class="ambient-grid"></div>
   <div class="ambient-glow glow-cyan"></div>
   <div class="ambient-glow glow-violet"></div>
+  <div class="ambient-glow glow-emerald"></div>
 
   <!-- Main Container -->
   <div id="app" class="app-shell">
@@ -56,6 +58,55 @@
         </div>
       </div>
     </header>
+
+    <!-- Live Store Activity & Trust Ticker -->
+    <div class="trust-ticker-container">
+      <div class="trust-ticker-track">
+        <span class="ticker-item"><span class="ticker-bullet">⚡</span> 100% Automated Instant Key Delivery</span>
+        <span class="ticker-sep">•</span>
+        <span class="ticker-item"><span class="ticker-bullet">🛡</span> 24h Replacement Warranty Guaranteed</span>
+        <span class="ticker-sep">•</span>
+        <span class="ticker-item"><span class="ticker-bullet">⭐</span> 4.9/5 Rating (Verified Customer Vouches)</span>
+        <span class="ticker-sep">•</span>
+        <span class="ticker-item"><span class="ticker-bullet">🔒</span> Fernet-256 Encrypted Security Vault</span>
+        <span class="ticker-sep">•</span>
+        <span class="ticker-item"><span class="ticker-bullet">🎁</span> 5% Lifetime Referral Rewards</span>
+        <span class="ticker-sep">•</span>
+        <!-- Duplicated for seamless loop -->
+        <span class="ticker-item"><span class="ticker-bullet">⚡</span> 100% Automated Instant Key Delivery</span>
+        <span class="ticker-sep">•</span>
+        <span class="ticker-item"><span class="ticker-bullet">🛡</span> 24h Replacement Warranty Guaranteed</span>
+        <span class="ticker-sep">•</span>
+        <span class="ticker-item"><span class="ticker-bullet">⭐</span> 4.9/5 Rating (Verified Customer Vouches)</span>
+      </div>
+    </div>
+
+    <!-- Hero Spotlight Showcase -->
+    <section class="hero-spotlight">
+      <div class="hero-card">
+        <div class="hero-glow-edge"></div>
+        <div class="hero-top-badge">
+          <span class="hero-pill-badge">🔥 EXCLUSIVE DEALS</span>
+          <span class="hero-pulse-status"><span class="pulse-indicator"></span> Verified Stock</span>
+        </div>
+        <h1 class="hero-heading">Premium Digital Accounts & Subscriptions</h1>
+        <p class="hero-subtext">Instant automated delivery straight to your Telegram chat. 100% tested with 24h replacement warranty.</p>
+        <div class="hero-feature-row">
+          <div class="hero-feature-tag">
+            <span class="feat-icon">⚡</span>
+            <span>Instant Access</span>
+          </div>
+          <div class="hero-feature-tag">
+            <span class="feat-icon">🛡</span>
+            <span>24h Warranty</span>
+          </div>
+          <div class="hero-feature-tag">
+            <span class="feat-icon">⭐</span>
+            <span>4.9 / 5 Rating</span>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- Promotional / First-Order Discount Banner -->
     <div id="promoBanner" class="promo-card hidden">

@@ -446,15 +446,25 @@
       card.className = 'product-card';
       card.dataset.productId = p.id;
 
-      // Stock indicator classes
+      // Stock indicator classes & meter calculation
       let stockClass = 'in-stock';
       let stockText = `${p.stock} in stock`;
+      let stockPct = 100;
+      let stockPctLabel = 'Optimal';
+
       if (p.stock === 0) {
         stockClass = 'out-of-stock';
         stockText = 'Sold Out';
+        stockPct = 0;
+        stockPctLabel = '0%';
       } else if (p.stock <= 2) {
         stockClass = 'low-stock';
         stockText = `Only ${p.stock} left`;
+        stockPct = p.stock === 1 ? 25 : 45;
+        stockPctLabel = 'Low Stock';
+      } else {
+        stockPct = Math.min(100, Math.max(50, Math.round((p.stock / 10) * 100)));
+        stockPctLabel = `${p.stock} left`;
       }
 
       const ratingHtml = (p.review_count && p.review_count > 0)
@@ -468,6 +478,18 @@
             <span class="stock-dot"></span>
             ${stockText}
           </span>
+        </div>
+        <div class="stock-meter-wrap">
+          <div class="stock-meter-label">
+            <span class="stock-meter-status ${stockClass}">
+              <span class="stock-pulse-dot"></span>
+              ${p.stock > 0 ? 'Live Stock' : 'Restock Pending'}
+            </span>
+            <span class="stock-meter-pct">${stockPctLabel}</span>
+          </div>
+          <div class="stock-progress-track">
+            <div class="stock-progress-fill ${stockClass}" style="width: ${stockPct}%"></div>
+          </div>
         </div>
         <div class="card-info">
           <h3 class="card-title">${p.name}</h3>
