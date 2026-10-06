@@ -1,0 +1,41 @@
+# fly.toml app configuration file for Cloud Deals Telegram Shop Bot & Mini App
+# Reference: https://fly.io/docs/reference/configuration/
+
+app = "cloud-deals-bot"
+primary_region = "iad"
+
+[build]
+dockerfile = "Dockerfile"
+
+[env]
+PORT = "8000"
+STORE_NAME = "Cloud Deals"
+ORDER_EXPIRY_MINUTES = "30"
+WARRANTY_HOURS = "24"
+DAILY_DIGEST_ENABLED = "true"
+LOG_LEVEL = "INFO"
+
+# Persistent storage for SQLite database and backups
+[mounts]
+source = "cloud_deals_data"
+destination = "/app/data"
+initial_size = "1gb"
+
+[http_service]
+internal_port = 8000
+force_https = true
+auto_stop_machines = "stop"
+auto_start_machines = true
+min_machines_running = 1
+
+[http_service.concurrency]
+type = "requests"
+soft_limit = 200
+hard_limit = 250
+
+[[http_service.checks]]
+interval = "30s"
+timeout = "5s"
+grace_period = "15s"
+method = "GET"
+path = "/health"

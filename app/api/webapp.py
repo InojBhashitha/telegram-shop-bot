@@ -25,6 +25,12 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.auth import (
+    create_access_token,
+    decode_access_token,
+    extract_bearer_token,
+    get_user_from_token,
+)
 from app.config import Settings, get_settings
 from app.database.database import get_session
 from app.database.models import OrderStatus, PaymentStatus, User
@@ -108,16 +114,30 @@ async def resolve_user(
     telegram_id: Optional[int] = None,
     username: Optional[str] = None,
     first_name: Optional[str] = None,
+    authorization: Optional[str] = None,
+    token: Optional[str] = None,
 ) -> User:
-    """Resolve or create database user from Telegram initData or dev parameters."""
+    """Resolve or create database user from JWT token, Telegram initData, or dev parameters."""
     settings = get_settings()
+
+    # 1. Check JWT token if provided
+    raw_token = token or (extract_bearer_token(authorization) if authorization else None)
+    if raw_token:
+        user = await get_user_from_token(session, raw_token)
+        if user:
+            return user
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired session token. Please authenticate again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     tg_id: Optional[int] = None
     uname: Optional[str] = username
     fname: Optional[str] = first_name
     lname: Optional[str] = None
 
-    # Try validating initData first
+    # 2. Try validating initData
     if init_data:
         validated = validate_telegram_init_data(init_data, settings.bot_token)
         if validated and "user_data" in validated:
@@ -127,11 +147,11 @@ async def resolve_user(
             fname = ud.get("first_name", fname)
             lname = ud.get("last_name")
 
-    # Fallback to direct telegram_id (for dev mode or preview when running locally)
+    # 3. Fallback to direct telegram_id (for dev mode or preview when running locally)
     if tg_id is None and telegram_id:
         tg_id = telegram_id
 
-    # Fallback to demo user if no user specified
+    # 4. Fallback to demo user if no user specified
     if tg_id is None:
         tg_id = 999001
         uname = uname or "DemoUser"
@@ -157,6 +177,7 @@ class AuthRequest(BaseModel):
     dev_telegram_id: Optional[int] = None
     dev_username: Optional[str] = None
     dev_first_name: Optional[str] = None
+    token: Optional[str] = None
 
 
 class CartItemActionRequest(BaseModel):
@@ -164,6 +185,7 @@ class CartItemActionRequest(BaseModel):
     quantity: int = 1
     init_data: Optional[str] = None
     telegram_id: Optional[int] = None
+    token: Optional[str] = None
 
 
 class CartUpdateQuantityRequest(BaseModel):
@@ -171,12 +193,14 @@ class CartUpdateQuantityRequest(BaseModel):
     quantity: int
     init_data: Optional[str] = None
     telegram_id: Optional[int] = None
+    token: Optional[str] = None
 
 
 class CartRemoveRequest(BaseModel):
     product_id: int
     init_data: Optional[str] = None
     telegram_id: Optional[int] = None
+    token: Optional[str] = None
 
 
 class CheckoutRequest(BaseModel):
@@ -184,11 +208,13 @@ class CheckoutRequest(BaseModel):
     coupon_code: Optional[str] = None
     init_data: Optional[str] = None
     telegram_id: Optional[int] = None
+    token: Optional[str] = None
 
 
 class ClaimDiscountRequest(BaseModel):
     init_data: Optional[str] = None
     telegram_id: Optional[int] = None
+    token: Optional[str] = None
 
 
 class ValidateCouponRequest(BaseModel):
@@ -197,12 +223,14 @@ class ValidateCouponRequest(BaseModel):
     cart_subtotal: Optional[float] = None
     init_data: Optional[str] = None
     telegram_id: Optional[int] = None
+    token: Optional[str] = None
 
 
 class StockAlertRequest(BaseModel):
     product_id: int
     init_data: Optional[str] = None
     telegram_id: Optional[int] = None
+    token: Optional[str] = None
 
 
 class CreateReviewRequest(BaseModel):
@@ -212,6 +240,7 @@ class CreateReviewRequest(BaseModel):
     comment: Optional[str] = None
     init_data: Optional[str] = None
     telegram_id: Optional[int] = None
+    token: Optional[str] = None
 
 
 # ---------------------------------------------------------------------------
@@ -219,8 +248,11 @@ class CreateReviewRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 @router.post("/auth")
-async def auth_user(req: AuthRequest):
-    """Authenticate Telegram WebApp user, returning user profile and state."""
+async def auth_user(
+    req: AuthRequest,
+    authorization: Optional[str] = Header(None),
+):
+    """Authenticate Telegram WebApp user, returning JWT session token and user profile."""
     async with get_session() as session:
         user = await resolve_user(
             session,
@@ -228,6 +260,8 @@ async def auth_user(req: AuthRequest):
             telegram_id=req.dev_telegram_id,
             username=req.dev_username,
             first_name=req.dev_first_name,
+            authorization=authorization,
+            token=req.token,
         )
 
         cart_count = await cart_repo.get_cart_item_count(session, user.id)
@@ -236,8 +270,16 @@ async def auth_user(req: AuthRequest):
         from app.services import referral_service
         ref_summary = await referral_service.get_referral_summary(session, user.id)
 
+        token = create_access_token(
+            user_id=user.id,
+            telegram_id=user.telegram_id,
+            is_admin=settings.is_admin(user.telegram_id),
+        )
+
         return {
             "authenticated": True,
+            "token": token,
+            "token_type": "bearer",
             "user": {
                 "id": user.id,
                 "telegram_id": user.telegram_id,
@@ -266,12 +308,20 @@ async def auth_user(req: AuthRequest):
 async def get_user_profile(
     init_data: Optional[str] = Query(None),
     telegram_id: Optional[int] = Query(None),
+    token: Optional[str] = Query(None),
     x_telegram_init_data: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None),
 ):
     """Get current user details and balance."""
     raw_init = init_data or x_telegram_init_data
     async with get_session() as session:
-        user = await resolve_user(session, init_data=raw_init, telegram_id=telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=raw_init,
+            telegram_id=telegram_id,
+            authorization=authorization,
+            token=token,
+        )
         cart_count = await cart_repo.get_cart_item_count(session, user.id)
         settings = get_settings()
         from app.services import referral_service
@@ -300,12 +350,20 @@ async def get_user_profile(
 async def get_referral_info(
     init_data: Optional[str] = Query(None),
     telegram_id: Optional[int] = Query(None),
+    token: Optional[str] = Query(None),
     x_telegram_init_data: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None),
 ):
     """Get full referral statistics, link, and recent commissions for the user."""
     raw_init = init_data or x_telegram_init_data
     async with get_session() as session:
-        user = await resolve_user(session, init_data=raw_init, telegram_id=telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=raw_init,
+            telegram_id=telegram_id,
+            authorization=authorization,
+            token=token,
+        )
         from app.services import referral_service
         summary = await referral_service.get_referral_summary(session, user.id)
         settings = get_settings()
@@ -441,12 +499,20 @@ async def get_product_detail(product_id: int):
 async def get_cart(
     init_data: Optional[str] = Query(None),
     telegram_id: Optional[int] = Query(None),
+    token: Optional[str] = Query(None),
     x_telegram_init_data: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None),
 ):
     """Get current user's cart summary, items, and calculated discount."""
     raw_init = init_data or x_telegram_init_data
     async with get_session() as session:
-        user = await resolve_user(session, init_data=raw_init, telegram_id=telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=raw_init,
+            telegram_id=telegram_id,
+            authorization=authorization,
+            token=token,
+        )
         summary = await cart_service.get_cart_summary(session, user.id)
 
         from app.services.order_service import compute_first_order_discount
@@ -480,10 +546,19 @@ async def get_cart(
 
 
 @router.post("/cart/add")
-async def add_to_cart(req: CartItemActionRequest):
+async def add_to_cart(
+    req: CartItemActionRequest,
+    authorization: Optional[str] = Header(None),
+):
     """Add a product to cart with live stock check."""
     async with get_session() as session:
-        user = await resolve_user(session, init_data=req.init_data, telegram_id=req.telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=req.init_data,
+            telegram_id=req.telegram_id,
+            authorization=authorization,
+            token=req.token,
+        )
         try:
             result = await cart_service.add_to_cart(
                 session, user.id, req.product_id, req.quantity
@@ -498,10 +573,19 @@ async def add_to_cart(req: CartItemActionRequest):
 
 
 @router.post("/cart/update")
-async def update_cart_item(req: CartUpdateQuantityRequest):
+async def update_cart_item(
+    req: CartUpdateQuantityRequest,
+    authorization: Optional[str] = Header(None),
+):
     """Update item quantity in cart."""
     async with get_session() as session:
-        user = await resolve_user(session, init_data=req.init_data, telegram_id=req.telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=req.init_data,
+            telegram_id=req.telegram_id,
+            authorization=authorization,
+            token=req.token,
+        )
         try:
             await cart_service.update_cart_quantity(
                 session, user.id, req.product_id, req.quantity
@@ -512,19 +596,37 @@ async def update_cart_item(req: CartUpdateQuantityRequest):
 
 
 @router.post("/cart/remove")
-async def remove_from_cart(req: CartRemoveRequest):
+async def remove_from_cart(
+    req: CartRemoveRequest,
+    authorization: Optional[str] = Header(None),
+):
     """Remove product from cart."""
     async with get_session() as session:
-        user = await resolve_user(session, init_data=req.init_data, telegram_id=req.telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=req.init_data,
+            telegram_id=req.telegram_id,
+            authorization=authorization,
+            token=req.token,
+        )
         await cart_service.remove_from_cart(session, user.id, req.product_id)
         return {"success": True, "message": "Item removed"}
 
 
 @router.post("/cart/clear")
-async def clear_cart(req: ClaimDiscountRequest):
+async def clear_cart(
+    req: ClaimDiscountRequest,
+    authorization: Optional[str] = Header(None),
+):
     """Clear all items from cart."""
     async with get_session() as session:
-        user = await resolve_user(session, init_data=req.init_data, telegram_id=req.telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=req.init_data,
+            telegram_id=req.telegram_id,
+            authorization=authorization,
+            token=req.token,
+        )
         await cart_service.clear_cart(session, user.id)
         return {"success": True, "message": "Cart cleared"}
 
@@ -534,12 +636,21 @@ async def clear_cart(req: ClaimDiscountRequest):
 # ---------------------------------------------------------------------------
 
 @router.post("/checkout")
-async def checkout(req: CheckoutRequest):
+async def checkout(
+    req: CheckoutRequest,
+    authorization: Optional[str] = Header(None),
+):
     """Checkout cart items via Crypto payment invoice or Account Balance."""
     settings = get_settings()
 
     async with get_session() as session:
-        user = await resolve_user(session, init_data=req.init_data, telegram_id=req.telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=req.init_data,
+            telegram_id=req.telegram_id,
+            authorization=authorization,
+            token=req.token,
+        )
 
         # 1. Validate and execute cart checkout
         try:
@@ -651,12 +762,20 @@ async def checkout(req: CheckoutRequest):
 async def list_orders(
     init_data: Optional[str] = Query(None),
     telegram_id: Optional[int] = Query(None),
+    token: Optional[str] = Query(None),
     x_telegram_init_data: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None),
 ):
     """List customer orders with status and delivered credentials."""
     raw_init = init_data or x_telegram_init_data
     async with get_session() as session:
-        user = await resolve_user(session, init_data=raw_init, telegram_id=telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=raw_init,
+            telegram_id=telegram_id,
+            authorization=authorization,
+            token=token,
+        )
         orders = await order_repo.get_user_orders(session, user.id, limit=30)
 
         orders_data = []
@@ -697,12 +816,20 @@ async def get_order_status(
     order_id: int,
     init_data: Optional[str] = Query(None),
     telegram_id: Optional[int] = Query(None),
+    token: Optional[str] = Query(None),
     x_telegram_init_data: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None),
 ):
     """Get live status of order; checks payment provider if pending."""
     raw_init = init_data or x_telegram_init_data
     async with get_session() as session:
-        user = await resolve_user(session, init_data=raw_init, telegram_id=telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=raw_init,
+            telegram_id=telegram_id,
+            authorization=authorization,
+            token=token,
+        )
         order = await order_service.get_order_by_id(session, order_id)
 
         if not order or order.user_id != user.id:
@@ -742,10 +869,17 @@ async def get_order_status(
 async def cancel_order(
     order_id: int,
     req: ClaimDiscountRequest,
+    authorization: Optional[str] = Header(None),
 ):
     """Cancel pending order and release reserved inventory."""
     async with get_session() as session:
-        user = await resolve_user(session, init_data=req.init_data, telegram_id=req.telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=req.init_data,
+            telegram_id=req.telegram_id,
+            authorization=authorization,
+            token=req.token,
+        )
         order = await order_service.get_order_by_id(session, order_id)
 
         if not order or order.user_id != user.id:
@@ -763,12 +897,21 @@ async def cancel_order(
 # ---------------------------------------------------------------------------
 
 @router.post("/discount/claim")
-async def claim_channel_discount(req: ClaimDiscountRequest):
+async def claim_channel_discount(
+    req: ClaimDiscountRequest,
+    authorization: Optional[str] = Header(None),
+):
     """Check membership in required channel and activate 10% first-order discount."""
     settings = get_settings()
 
     async with get_session() as session:
-        user = await resolve_user(session, init_data=req.init_data, telegram_id=req.telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=req.init_data,
+            telegram_id=req.telegram_id,
+            authorization=authorization,
+            token=req.token,
+        )
 
         if user.channel_discount_used:
             return {
@@ -820,10 +963,19 @@ async def claim_channel_discount(req: ClaimDiscountRequest):
 # ---------------------------------------------------------------------------
 
 @router.post("/coupon/validate")
-async def validate_coupon(req: ValidateCouponRequest):
+async def validate_coupon(
+    req: ValidateCouponRequest,
+    authorization: Optional[str] = Header(None),
+):
     """Validate a promo code and calculate discount deduction for checkout."""
     async with get_session() as session:
-        user = await resolve_user(session, init_data=req.init_data, telegram_id=req.telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=req.init_data,
+            telegram_id=req.telegram_id,
+            authorization=authorization,
+            token=req.token,
+        )
         from app.services import coupon_service
 
         subtotal_val = req.subtotal if req.subtotal is not None else (req.cart_subtotal or 0.0)
@@ -857,10 +1009,19 @@ async def validate_coupon(req: ValidateCouponRequest):
 # ---------------------------------------------------------------------------
 
 @router.post("/stock-alert")
-async def subscribe_stock_alert(req: StockAlertRequest):
+async def subscribe_stock_alert(
+    req: StockAlertRequest,
+    authorization: Optional[str] = Header(None),
+):
     """Subscribe current user to restock alerts for an out-of-stock product."""
     async with get_session() as session:
-        user = await resolve_user(session, init_data=req.init_data, telegram_id=req.telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=req.init_data,
+            telegram_id=req.telegram_id,
+            authorization=authorization,
+            token=req.token,
+        )
         from app.services import stock_alert_service
 
         alert, created = await stock_alert_service.subscribe_user(session, user.id, req.product_id)
@@ -912,10 +1073,19 @@ async def get_product_reviews(product_id: int):
 
 
 @router.post("/reviews")
-async def create_review(req: CreateReviewRequest):
+async def create_review(
+    req: CreateReviewRequest,
+    authorization: Optional[str] = Header(None),
+):
     """Submit a rating and optional review for an order or product."""
     async with get_session() as session:
-        user = await resolve_user(session, init_data=req.init_data, telegram_id=req.telegram_id)
+        user = await resolve_user(
+            session,
+            init_data=req.init_data,
+            telegram_id=req.telegram_id,
+            authorization=authorization,
+            token=req.token,
+        )
         from app.bot.bot import get_bot_instance
         from app.services import review_service
 

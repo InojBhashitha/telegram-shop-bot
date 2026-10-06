@@ -36,6 +36,13 @@
   // --- Application State ---
   const state = {
     initData: tg?.initData || '',
+    token: (function () {
+      try {
+        return sessionStorage.getItem('cloud_deals_jwt') || null;
+      } catch (e) {
+        return null;
+      }
+    })(),
     telegramId: null,
     user: null,
     store: null,
@@ -180,6 +187,9 @@
       ...options.headers,
     };
 
+    if (state.token) {
+      headers['Authorization'] = `Bearer ${state.token}`;
+    }
     if (state.initData) {
       headers['X-Telegram-Init-Data'] = state.initData;
     }
@@ -191,6 +201,13 @@
       const response = await fetch(url, { ...options, headers });
       const data = await response.json();
       if (!response.ok) {
+        if (response.status === 401 && state.token) {
+          // Token expired or invalid, clear cached token
+          state.token = null;
+          try {
+            sessionStorage.removeItem('cloud_deals_jwt');
+          } catch (e) {}
+        }
         throw new Error(data.detail || data.message || 'Request failed');
       }
       return data;
@@ -274,8 +291,16 @@
         body: JSON.stringify({
           init_data: state.initData || undefined,
           dev_telegram_id: state.telegramId || undefined,
+          token: state.token || undefined,
         }),
       });
+
+      if (authData.token) {
+        state.token = authData.token;
+        try {
+          sessionStorage.setItem('cloud_deals_jwt', authData.token);
+        } catch (e) {}
+      }
 
       state.user = authData.user;
       state.store = authData.store;
@@ -1218,6 +1243,10 @@
       if (newId) {
         state.telegramId = newId;
         state.initData = '';
+        state.token = null;
+        try {
+          sessionStorage.removeItem('cloud_deals_jwt');
+        } catch (e) {}
         showToast(`Switched preview user to Telegram ID: ${newId}`, 'success');
         initAuth();
       }

@@ -1,36 +1,47 @@
-version: "3.8"
-
 services:
   cloud-deals:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: cloud-deals
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - .env
+    environment:
+      - PORT=8000
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
-      - ./cloud_deals.db:/app/cloud_deals.db
+      - ./data:/app/data
       - ./backups:/app/backups
+      - ./cloud_deals.db:/app/cloud_deals.db
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health').raise_for_status()"]
+      test: ["CMD", "python", "-c", "import os, httpx; p = os.environ.get('PORT', '8000'); httpx.get(f'http://localhost:{p}/health').raise_for_status()"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
 
-  # Optional: PostgreSQL for production
-  # postgres:
-  #   image: postgres:16-alpine
-  #   container_name: cloud-deals-db
-  #   restart: unless-stopped
-  #   environment:
-  #     POSTGRES_DB: cloud_deals
-  #     POSTGRES_USER: cloud_deals
-  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-  #   volumes:
-  #     - pgdata:/var/lib/postgresql/data
-  #   ports:
-  #     - "5432:5432"
+  # Optional: Production PostgreSQL service (uncomment or run with: docker compose --profile postgres up)
+  postgres:
+    image: postgres:16-alpine
+    container_name: cloud-deals-postgres
+    restart: unless-stopped
+    profiles:
+      - postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cloud_deals}
+      POSTGRES_USER: ${POSTGRES_USER:-cloud_deals}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cloud_deals_secret}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cloud_deals} -d ${POSTGRES_DB:-cloud_deals}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-# volumes:
-#   pgdata:
+volumes:
+  pgdata:

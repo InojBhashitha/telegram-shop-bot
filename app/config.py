@@ -66,6 +66,11 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("API_PORT", "PORT"),
     )
 
+    # --- JWT Authentication ---
+    jwt_secret: str = ""  # Secret for signing WebApp JWT tokens; auto-derived from bot_token if empty
+    jwt_algorithm: str = "HS256"
+    jwt_expiration_hours: int = 168  # 7 days
+
     # --- Store Settings ---
     store_name: str = "Cloud Deals"
     support_username: str = ""
@@ -136,6 +141,16 @@ class Settings(BaseSettings):
         return v if v is not None else ""
 
     @property
+    def effective_jwt_secret(self) -> str:
+        """Return effective secret key used for signing JWT access tokens."""
+        if self.jwt_secret and self.jwt_secret.strip():
+            return self.jwt_secret.strip()
+        if self.bot_token:
+            import hashlib
+            return hashlib.sha256(f"jwt_{self.bot_token}".encode()).hexdigest()
+        return "cloud-deals-default-jwt-secret-key-change-in-production"
+
+    @property
     def admin_ids_list(self) -> list[int]:
         """Parse comma-separated admin IDs into a list of integers."""
         if not self.admin_telegram_ids:
@@ -161,7 +176,9 @@ class Settings(BaseSettings):
         Prioritizes:
         1. Explicit webapp_url if set.
         2. RENDER_EXTERNAL_URL (automatically provided by Render).
-        3. webhook_base_url if configured with https.
+        3. RAILWAY_PUBLIC_DOMAIN (automatically provided by Railway).
+        4. FLY_APP_NAME (automatically provided by Fly.io).
+        5. webhook_base_url if configured with https.
         """
         if self.webapp_url and self.webapp_url.strip():
             return self.webapp_url.strip().rstrip("/")
@@ -170,6 +187,16 @@ class Settings(BaseSettings):
         render_url = os.environ.get("RENDER_EXTERNAL_URL", "").strip().rstrip("/")
         if render_url:
             return f"{render_url}/webapp"
+
+        # Auto-detect Railway deployment environment variable
+        railway_domain = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "").strip().rstrip("/")
+        if railway_domain:
+            return f"https://{railway_domain}/webapp"
+
+        # Auto-detect Fly.io deployment environment variable
+        fly_app = os.environ.get("FLY_APP_NAME", "").strip().rstrip("/")
+        if fly_app:
+            return f"https://{fly_app}.fly.dev/webapp"
 
         # Check webhook_base_url if configured with https
         if self.webhook_base_url and self.webhook_base_url.startswith("https://"):
