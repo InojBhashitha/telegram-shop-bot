@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100" fill="none">
+  <!-- DigitalOcean Clean Transparent Logo -->
+  <g transform="translate(56, 12)">
+    <path d="M24 0C10.7 0 0 10.7 0 24c0 10.3 6.5 19.1 15.6 22.5V36.2c-4.4-2.8-7.3-7.7-7.3-13.2 0-8.8 7.2-16 16-16 8.8 0 16 7.2 16 16 0 5.5-2.9 10.4-7.3 13.2V48c13.3 0 24-10.7 24-24C47.3 10.7 37.3 0 24 0Z" fill="#0080FF"/>
+    <rect x="15" y="36" width="8" height="8" fill="#0080FF"/>
+    <rect x="7" y="44" width="8" height="8" fill="#0080FF"/>
+    <rect x="0" y="36" width="7" height="7" fill="#0080FF"/>
+  </g>
+  <text x="80" y="86" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif" font-weight="700" font-size="12" fill="#FFFFFF" letter-spacing="0.5">DigitalOcean</text>
+</svg>

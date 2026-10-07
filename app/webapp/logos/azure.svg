@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100" fill="none">
+  <!-- Microsoft Azure Clean Transparent Logo -->
+  <g transform="translate(56, 12)">
+    <path d="M19.3 46H2.2c-.8 0-1.4-.8-1.1-1.6L20.2 1.4c.4-.8 1.5-.9 2-.2l12.4 17.5-12.7 25.8c-.5.9-1.6 1.5-2.6 1.5Z" fill="#0078D4"/>
+    <path d="M22.8 19.3 35.2 2c.5-.7 1.6-.6 2 .2L47 44.5c.3.8-.3 1.5-1.1 1.5H30.4l-7.6-26.7Z" fill="#50E6FF" fill-opacity="0.9"/>
+  </g>
+  <text x="80" y="86" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif" font-weight="700" font-size="12" fill="#FFFFFF" letter-spacing="0.5">Azure</text>
+</svg>

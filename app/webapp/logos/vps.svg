@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100" fill="none">
+  <!-- Clean Transparent Cloud Server / VPS Logo -->
+  <g transform="translate(56, 12)">
+    <rect x="0" y="4" width="48" height="16" rx="4" fill="#242428" stroke="#38383e" stroke-width="2"/>
+    <circle cx="8" cy="12" r="2.5" fill="#10B981"/>
+    <rect x="16" y="10" width="24" height="4" rx="2" fill="#4B5563"/>
+    
+    <rect x="0" y="24" width="48" height="16" rx="4" fill="#242428" stroke="#38383e" stroke-width="2"/>
+    <circle cx="8" cy="32" r="2.5" fill="#3B82F6"/>
+    <rect x="16" y="30" width="24" height="4" rx="2" fill="#4B5563"/>
+
+    <path d="M12 40c0 4 5 7 12 7s12-3 12-7" stroke="#2997ff" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  <text x="80" y="86" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif" font-weight="700" font-size="12" fill="#FFFFFF" letter-spacing="1">CLOUD VPS</text>
+</svg>

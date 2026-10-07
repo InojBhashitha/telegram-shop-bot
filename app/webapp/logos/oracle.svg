@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 100" fill="none">
+  <!-- Oracle Clean Transparent Cloud Logo -->
+  <path d="M48 64c-11 0-20-9-20-20 0-10 7-18 17-20 2-10 11-18 22-18 8 0 15 4 19 11 3-2 7-3 11-3 10 0 18 8 18 18 0 1 0 2-.2 3 7 2 12 8 12 15 0 9-7 16-16 16H48Z" fill="#242428" stroke="#38383e" stroke-width="2"/>
+  <path d="M125 45c0 14-11 25-25 25H60c-14 0-25-11-25-25s11-25 25-25h40c14 0 25 11 25 25Z" fill="none" stroke="#F80000" stroke-width="9"/>
+  <path d="M100 35H60c-5.5 0-10 4.5-10 10s4.5 10 10 10h40c5.5 0 10-4.5 10-10s-4.5-10-10-10Z" fill="none" stroke="#FFFFFF" stroke-width="3" opacity="0.9"/>
+  <text x="80" y="88" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif" font-weight="700" font-size="14" fill="#FFFFFF" letter-spacing="2">ORACLE</text>
+</svg>

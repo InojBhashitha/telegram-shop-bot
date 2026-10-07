@@ -105,6 +105,8 @@
     modalQtySubtotal: document.getElementById('modalQtySubtotal'),
     modalOutOfStockBox: document.getElementById('modalOutOfStockBox'),
     modalStockAlertBtn: document.getElementById('modalStockAlertBtn'),
+    modalLogoPreview: document.getElementById('modalLogoPreview'),
+    modalLogoImg: document.getElementById('modalLogoImg'),
     modalActionFooter: document.getElementById('modalActionFooter'),
     modalAddToCartBtn: document.getElementById('modalAddToCartBtn'),
     modalBuyNowBtn: document.getElementById('modalBuyNowBtn'),
@@ -166,11 +168,14 @@
     supportActionCard: document.getElementById('supportActionCard'),
     closeProfileModal: document.getElementById('closeProfileModal'),
 
-    // Navigation Dock
+    // Navigation Dock & Search
     dockCatalogBtn: document.getElementById('dockCatalogBtn'),
-    dockCartBtn: document.getElementById('dockCartBtn'),
+    dockProductsBtn: document.getElementById('dockProductsBtn'),
     dockOrdersBtn: document.getElementById('dockOrdersBtn'),
+    dockCartBtn: document.getElementById('dockCartBtn'),
     dockProfileBtn: document.getElementById('dockProfileBtn'),
+    dockSearchBtn: document.getElementById('dockSearchBtn'),
+    searchSection: document.getElementById('searchSection'),
 
     // Dev preview
     devPreviewBar: document.getElementById('devPreviewBar'),
@@ -438,6 +443,45 @@
     });
   }
 
+  // --- Cloud Provider Logo Resolver ---
+  function resolveCloudLogo(prod) {
+    if (!prod) return '/webapp/logos/vps.svg';
+
+    // 1. Explicit image_url
+    if (prod.image_url && typeof prod.image_url === 'string') {
+      const url = prod.image_url.trim();
+      if (url.startsWith('/') || url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+      }
+    }
+
+    // 2. Keyword fallback matching
+    const name = (prod.name || '').toLowerCase();
+    const cat = (prod.category_name || '').toLowerCase();
+    const haystack = `${name} ${cat}`;
+
+    if (haystack.includes('oracle') || haystack.includes('oci')) {
+      return '/webapp/logos/oracle.png';
+    }
+    if (haystack.includes('aws') || haystack.includes('amazon')) {
+      return '/webapp/logos/aws.png';
+    }
+    if (haystack.includes('digitalocean') || haystack.includes('digital ocean') || haystack.includes('do ')) {
+      return '/webapp/logos/digitalocean.png';
+    }
+    if (haystack.includes('google') || haystack.includes('gcp')) {
+      return '/webapp/logos/gcp.png';
+    }
+    if (haystack.includes('upcloud')) {
+      return '/webapp/logos/upcloud.png';
+    }
+    if (haystack.includes('azure') || haystack.includes('microsoft')) {
+      return '/webapp/logos/azure.svg';
+    }
+
+    return '/webapp/logos/vps.svg';
+  }
+
   function renderProducts() {
     let list = state.products;
 
@@ -468,86 +512,51 @@
 
     list.forEach((p) => {
       const card = document.createElement('div');
-      card.className = 'product-card';
+      card.className = 'apple-product-card';
       card.dataset.productId = p.id;
 
-      // Stock indicator classes & meter calculation
-      let stockClass = 'in-stock';
-      let stockText = `${p.stock} in stock`;
-      let stockPct = 100;
-      let stockPctLabel = 'Optimal';
+      const logoSrc = resolveCloudLogo(p);
+      const isOutOfStock = p.stock === 0;
 
-      if (p.stock === 0) {
-        stockClass = 'out-of-stock';
-        stockText = 'Sold Out';
-        stockPct = 0;
-        stockPctLabel = '0%';
-      } else if (p.stock <= 2) {
-        stockClass = 'low-stock';
-        stockText = `Only ${p.stock} left`;
-        stockPct = p.stock === 1 ? 25 : 45;
-        stockPctLabel = 'Low Stock';
+      // Apple Tag (e.g., "Saved for you ›", "Instant Stock ›", "Low Stock ›")
+      let tagText = 'Saved for you';
+      let tagIcon = '🔖';
+      if (p.stock > 0 && p.stock <= 2) {
+        tagText = 'Low Stock';
+        tagIcon = '⚡';
+      } else if (p.stock > 0) {
+        tagText = 'Instant Stock';
+        tagIcon = '⚡';
       } else {
-        stockPct = Math.min(100, Math.max(50, Math.round((p.stock / 10) * 100)));
-        stockPctLabel = `${p.stock} left`;
+        tagText = 'Restock Soon';
+        tagIcon = '⏳';
       }
 
-      const ratingHtml = (p.review_count && p.review_count > 0)
-        ? `<span class="product-rating-pill">⭐ ${parseFloat(p.average_rating || 5.0).toFixed(1)} <small>(${p.review_count})</small></span>`
-        : '';
-
       card.innerHTML = `
-        <div class="card-top-row">
-          <span class="category-tag">${p.category_icon || '📦'} ${p.category_name}</span>
-          <span class="stock-indicator ${stockClass}">
-            <span class="stock-dot"></span>
-            ${stockText}
-          </span>
+        <div class="card-top-tag">
+          <span class="tag-icon">${tagIcon}</span>
+          <span>${tagText}</span>
+          <span class="tag-chevron">›</span>
         </div>
-        <div class="stock-meter-wrap">
-          <div class="stock-meter-label">
-            <span class="stock-meter-status ${stockClass}">
-              <span class="stock-pulse-dot"></span>
-              ${p.stock > 0 ? 'Live Stock' : 'Restock Pending'}
-            </span>
-            <span class="stock-meter-pct">${stockPctLabel}</span>
+        <div class="card-logo-container">
+          <img src="${logoSrc}" alt="${escapeHtml(p.name)}" class="card-cloud-logo" loading="lazy">
+        </div>
+        <div class="card-bottom-info">
+          <h3 class="card-item-title" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</h3>
+          <div class="card-meta-line">
+            <span class="card-price-text">$${parseFloat(p.price).toFixed(2)}</span>
+            <div class="card-stock-dot-wrap">
+              <span class="stock-indicator-dot ${isOutOfStock ? 'out' : ''}"></span>
+              <span>${isOutOfStock ? 'Sold out' : `${p.stock} left`}</span>
+            </div>
           </div>
-          <div class="stock-progress-track">
-            <div class="stock-progress-fill ${stockClass}" style="width: ${stockPct}%"></div>
-          </div>
-        </div>
-        <div class="card-info">
-          <h3 class="card-title">${p.name}</h3>
-          <p class="card-desc">${p.description || 'Instant digital credentials & keys.'}</p>
-        </div>
-        <div class="card-perk-badge">
-          ${ratingHtml ? ratingHtml + ' • ' : ''}<span>⚡ Instant Key Delivery</span> • <span>🛡 24h Warranty</span>
-        </div>
-        <div class="card-bottom-row">
-          <div class="card-price-block">
-            <span class="price-currency">$</span>
-            <span class="price-value">${parseFloat(p.price).toFixed(2)}</span>
-          </div>
-          <button class="btn-card-add" ${p.stock === 0 ? 'disabled' : ''} data-add-id="${p.id}">
-            🛒 Add
-          </button>
         </div>
       `;
 
-      // Card tap opens Product Sheet
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('.btn-card-add')) return; // Handled separately
+      // Card tap opens Apple Product Sheet
+      card.addEventListener('click', () => {
         openProductSheet(p);
       });
-
-      // Quick Add Button
-      const addBtn = card.querySelector('.btn-card-add');
-      if (addBtn && p.stock > 0) {
-        addBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          quickAddToCart(p.id, 1);
-        });
-      }
 
       el.productsGrid.appendChild(card);
     });
@@ -557,6 +566,12 @@
   function openProductSheet(prod) {
     state.selectedProduct = prod;
     state.modalQuantity = 1;
+
+    // Centered Floating Logo
+    if (el.modalLogoImg) {
+      el.modalLogoImg.src = resolveCloudLogo(prod);
+      el.modalLogoImg.alt = prod.name;
+    }
 
     el.modalCategory.textContent = `${prod.category_icon || '📦'} ${prod.category_name}`;
     el.modalTitle.textContent = prod.name;
@@ -569,7 +584,7 @@
         el.modalRatingBadge.textContent = `⭐ ${parseFloat(prod.average_rating || 5.0).toFixed(1)} (${prod.review_count})`;
         el.modalRatingBadge.classList.remove('hidden');
       } else {
-        el.modalRatingBadge.textContent = `⭐ New`;
+        el.modalRatingBadge.textContent = `⭐ 5.0`;
         el.modalRatingBadge.classList.remove('hidden');
       }
     }
@@ -578,8 +593,7 @@
     let stockText = `${prod.stock} in stock`;
     if (prod.stock === 0) {
       stockText = 'Out of Stock';
-      el.modalStockBadge.className = 'badge badge-stock stock-out';
-      el.modalStockBadge.style.color = 'var(--rose)';
+      el.modalStockBadge.className = 'apple-badge-stock stock-out';
       el.modalOutOfStockBox?.classList.remove('hidden');
       el.modalQtyRow?.classList.add('hidden');
       el.modalActionFooter?.classList.add('hidden');
@@ -588,8 +602,8 @@
         el.modalStockAlertBtn.textContent = '🔔 Notify When Back in Stock';
       }
     } else {
-      el.modalStockBadge.className = 'badge badge-stock';
-      el.modalStockBadge.style.color = 'var(--emerald)';
+      stockText = 'In Stock';
+      el.modalStockBadge.className = 'apple-badge-stock';
       el.modalOutOfStockBox?.classList.add('hidden');
       el.modalQtyRow?.classList.remove('hidden');
       el.modalActionFooter?.classList.remove('hidden');
@@ -736,19 +750,27 @@
 
     c.items.forEach((item) => {
       const row = document.createElement('div');
-      row.className = 'cart-item-card';
+      row.className = 'cart-item-row';
+
+      // Find product to resolve its logo
+      const prod = state.products.find((p) => p.id === item.product_id);
+      const logoSrc = resolveCloudLogo(prod);
+
       row.innerHTML = `
-        <div class="cart-item-left">
-          <span class="cart-item-title">${item.product_name}</span>
-          <span class="cart-item-price">$${parseFloat(item.unit_price).toFixed(2)} each</span>
+        <div class="cart-item-thumb-box">
+          <img src="${logoSrc}" alt="" class="cart-item-thumb">
         </div>
-        <div class="cart-item-right">
-          <div class="qty-stepper">
-            <button class="btn-step btn-cart-dec" data-id="${item.product_id}" data-qty="${item.quantity - 1}">&minus;</button>
-            <span class="step-value">${item.quantity}</span>
-            <button class="btn-step btn-cart-inc" data-id="${item.product_id}" data-qty="${item.quantity + 1}">&plus;</button>
+        <div class="item-left">
+          <span class="item-title">${escapeHtml(item.product_name)}</span>
+          <span class="item-sub">$${parseFloat(item.unit_price).toFixed(2)} each</span>
+        </div>
+        <div class="item-right">
+          <div class="apple-stepper">
+            <button class="step-btn btn-cart-dec" data-id="${item.product_id}" data-qty="${item.quantity - 1}">&minus;</button>
+            <span class="step-count">${item.quantity}</span>
+            <button class="step-btn btn-cart-inc" data-id="${item.product_id}" data-qty="${item.quantity + 1}">&plus;</button>
           </div>
-          <span class="cart-item-subtotal">$${parseFloat(item.subtotal).toFixed(2)}</span>
+          <span class="item-price">$${parseFloat(item.subtotal).toFixed(2)}</span>
           <button class="btn-remove-item" data-remove-id="${item.product_id}" title="Remove">&times;</button>
         </div>
       `;
@@ -1182,34 +1204,67 @@
   });
 
   // --- Navigation Dock Handlers ---
-  el.dockCatalogBtn.addEventListener('click', () => {
-    haptic('light');
-    setActiveDockBtn(el.dockCatalogBtn);
-    closeModal();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-
-  el.dockCartBtn.addEventListener('click', () => {
-    haptic('light');
-    setActiveDockBtn(el.dockCartBtn);
-    openCartSheet();
-  });
-
-  el.dockOrdersBtn.addEventListener('click', () => {
-    haptic('light');
-    setActiveDockBtn(el.dockOrdersBtn);
-    openOrdersDrawer();
-  });
-
-  el.dockProfileBtn.addEventListener('click', () => {
-    haptic('light');
-    setActiveDockBtn(el.dockProfileBtn);
-    openProfileDrawer();
-  });
-
   function setActiveDockBtn(activeBtn) {
-    document.querySelectorAll('.dock-btn').forEach((b) => b.classList.remove('active'));
-    activeBtn.classList.add('active');
+    document.querySelectorAll('.apple-dock-tab').forEach((b) => b.classList.remove('active'));
+    if (activeBtn) {
+      activeBtn.classList.add('active');
+    }
+  }
+
+  if (el.dockCatalogBtn) {
+    el.dockCatalogBtn.addEventListener('click', () => {
+      haptic('light');
+      setActiveDockBtn(el.dockCatalogBtn);
+      closeModal();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  if (el.dockProductsBtn) {
+    el.dockProductsBtn.addEventListener('click', () => {
+      haptic('light');
+      setActiveDockBtn(el.dockProductsBtn);
+      closeModal();
+      const main = document.getElementById('mainContent');
+      if (main) {
+        main.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
+
+  if (el.dockCartBtn) {
+    el.dockCartBtn.addEventListener('click', () => {
+      haptic('light');
+      setActiveDockBtn(el.dockCartBtn);
+      openCartSheet();
+    });
+  }
+
+  if (el.dockOrdersBtn) {
+    el.dockOrdersBtn.addEventListener('click', () => {
+      haptic('light');
+      setActiveDockBtn(el.dockOrdersBtn);
+      openOrdersDrawer();
+    });
+  }
+
+  if (el.dockProfileBtn) {
+    el.dockProfileBtn.addEventListener('click', () => {
+      haptic('light');
+      setActiveDockBtn(el.dockProfileBtn);
+      openProfileDrawer();
+    });
+  }
+
+  // Circular Search Button on Right (Matching Apple reference)
+  if (el.dockSearchBtn) {
+    el.dockSearchBtn.addEventListener('click', () => {
+      haptic('light');
+      if (el.searchInput) {
+        el.searchInput.focus();
+        el.searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
   }
 
   // --- Search & Filters ---

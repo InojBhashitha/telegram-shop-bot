@@ -1,58 +1,49 @@
 /* ==========================================================================
-   Cloud Deals — Premium Obsidian Glassmorphism Design System
-   Optimized for Telegram Mini App (TMA) & Responsive Mobile Web
+   Cloud Deals — Apple Store iOS Design System (Dark Theme)
+   Faithfully inspired by the official Apple Store iOS App
    ========================================================================== */
 
 :root {
-  --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
-
-  /* Color Palette: Luxury Obsidian & Digital Cyan/Violet */
-  --bg-space: #070a11;
-  --bg-card: rgba(15, 23, 42, 0.75);
-  --bg-card-hover: rgba(24, 34, 60, 0.85);
-  --bg-glass: rgba(18, 26, 47, 0.72);
-  --bg-sheet: rgba(10, 15, 28, 0.95);
-
-  /* Borders & Dividers */
-  --border-glass: rgba(255, 255, 255, 0.09);
-  --border-glass-bright: rgba(255, 255, 255, 0.16);
-  --border-cyan: rgba(0, 240, 255, 0.4);
-
-  /* Accents */
-  --cyan: #00f0ff;
-  --cyan-hover: #33f3ff;
-  --cyan-glow: rgba(0, 240, 255, 0.35);
-  --violet: #a855f7;
-  --violet-glow: rgba(168, 85, 247, 0.35);
-  
-  /* Status Colors */
-  --emerald: #10b981;
-  --emerald-glow: rgba(16, 185, 129, 0.3);
-  --amber: #f59e0b;
-  --amber-glow: rgba(245, 158, 11, 0.3);
-  --rose: #f43f5e;
-
   /* Typography */
-  --text-white: #ffffff;
-  --text-main: #f1f5f9;
-  --text-muted: #94a3b8;
-  --text-sub: #64748b;
+  --font-apple: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", sans-serif;
+  --font-heading: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 
-  /* Elevations & Shadows */
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
-  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.45);
-  --shadow-cyan-glow: 0 0 25px rgba(0, 240, 255, 0.25);
+  /* Apple Dark Palette */
+  --apple-bg: #000000;                     /* Pure OLED Black */
+  --apple-surface: #121214;                /* Base surface */
+  --apple-card: #1c1c1e;                   /* iOS Secondary Grouped Background */
+  --apple-card-hover: #242428;
+  --apple-elevated: #2c2c2e;               /* iOS Tertiary Grouped Background */
+  --apple-sheet: #1c1c1e;                  /* Bottom Sheet Surface */
+  
+  /* Borders & Dividers */
+  --apple-border: rgba(255, 255, 255, 0.08);
+  --apple-border-strong: rgba(255, 255, 255, 0.16);
+  --apple-separator: rgba(255, 255, 255, 0.06);
 
-  /* Transitions */
-  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
-  --duration-fast: 0.18s;
-  --duration-normal: 0.28s;
+  /* Apple Accent Colors */
+  --apple-blue: #0071e3;                   /* Apple Primary Blue */
+  --apple-blue-tint: #2997ff;              /* Apple Tint Blue */
+  --apple-blue-pill: rgba(41, 151, 255, 0.18);
+  --apple-green: #30d158;                  /* iOS Emerald */
+  --apple-orange: #ff9f0a;                 /* iOS Amber */
+  --apple-red: #ff453a;                    /* iOS Coral Red */
 
-  /* Safe Area / Bottom Navigation Height */
-  --dock-height: 64px;
-  --safe-bottom: env(safe-area-inset-bottom, 16px);
+  /* Text Colors */
+  --text-primary: #ffffff;
+  --text-secondary: #86868b;
+  --text-tertiary: #636366;
+
+  /* Shadows */
+  --apple-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --apple-shadow-dock: 0 14px 34px rgba(0, 0, 0, 0.65);
+
+  /* Radii */
+  --radius-card: 20px;
+  --radius-pill: 9999px;
+  --radius-sheet: 28px;
 }
 
 /* Reset & Box Sizing */
@@ -66,1490 +57,995 @@
 html, body {
   width: 100%;
   min-height: 100%;
-  background-color: var(--bg-space);
-  color: var(--text-main);
-  font-family: var(--font-body);
+  background-color: var(--apple-bg);
+  color: var(--text-primary);
+  font-family: var(--font-apple);
   font-size: 15px;
-  line-height: 1.5;
+  line-height: 1.45;
   overflow-x: hidden;
   user-select: none;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Ambient Cyber Grid & Radial Aurora Mesh */
-.ambient-grid {
-  position: fixed;
-  inset: 0;
-  background-image: 
-    radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px),
-    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-  background-size: 24px 24px, 72px 72px, 72px 72px;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.75;
-}
-
-.ambient-glow {
-  position: fixed;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(110px);
-  opacity: 0.22;
-  will-change: transform;
-}
-
-.glow-cyan {
-  width: 440px;
-  height: 440px;
-  top: -120px;
-  left: -100px;
-  background: radial-gradient(circle, var(--cyan) 0%, rgba(0, 240, 255, 0.2) 50%, transparent 75%);
-  animation: float-aurora-1 18s ease-in-out infinite alternate;
-}
-
-.glow-violet {
-  width: 420px;
-  height: 420px;
-  top: 320px;
-  right: -140px;
-  background: radial-gradient(circle, var(--violet) 0%, rgba(168, 85, 247, 0.2) 50%, transparent 75%);
-  animation: float-aurora-2 22s ease-in-out infinite alternate;
-}
-
-.glow-emerald {
-  width: 380px;
-  height: 380px;
-  bottom: 80px;
-  left: -90px;
-  background: radial-gradient(circle, var(--emerald) 0%, rgba(16, 185, 129, 0.2) 50%, transparent 75%);
-  animation: float-aurora-3 20s ease-in-out infinite alternate;
-}
-
-@keyframes float-aurora-1 {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(60px, 80px) scale(1.15); }
-  100% { transform: translate(-40px, 40px) scale(0.92); }
-}
-
-@keyframes float-aurora-2 {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-70px, -50px) scale(1.1); }
-  100% { transform: translate(30px, 60px) scale(0.95); }
-}
-
-@keyframes float-aurora-3 {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(80px, -60px) scale(1.08); }
-  100% { transform: translate(-50px, -30px) scale(0.96); }
-}
-
-
-/* App Shell Structure */
+/* App Shell */
 .app-shell {
-  position: relative;
-  z-index: 1;
-  max-width: 580px;
+  width: 100%;
+  max-width: 540px;
   margin: 0 auto;
   min-height: 100vh;
-  padding-bottom: calc(var(--dock-height) + var(--safe-bottom) + 30px);
   display: flex;
   flex-direction: column;
+  padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 90px);
 }
 
-/* --------------------------------------------------------------------------
-   Header Bar
-   -------------------------------------------------------------------------- */
-.app-header {
+/* ==========================================================================
+   Apple Store Top Bar / Header
+   ========================================================================== */
+
+.apple-header {
+  padding: max(16px, env(safe-area-inset-top, 16px)) 18px 10px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  padding: 16px 18px 12px;
-  position: sticky;
-  top: 0;
-  z-index: 30;
-  background: rgba(7, 10, 17, 0.82);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border-glass);
 }
 
-.brand-block {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.logo-emblem {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(0, 240, 255, 0.12), rgba(168, 85, 247, 0.15));
-  border: 1px solid rgba(0, 240, 255, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 16px rgba(0, 240, 255, 0.18);
-}
-
-.cloud-icon {
-  width: 24px;
-  height: 24px;
-}
-
-.brand-info {
+.apple-title-block {
   display: flex;
   flex-direction: column;
 }
 
-.brand-title-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.brand-name {
-  font-family: var(--font-heading);
-  font-size: 1.15rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text-white);
-  background: linear-gradient(135deg, #ffffff 40%, var(--cyan) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.live-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: var(--emerald);
-  box-shadow: 0 0 8px var(--emerald);
-  animation: pulse-dot 2.2s infinite ease-in-out;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.85); }
-}
-
-.brand-tagline {
-  font-size: 0.72rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-sub);
-}
-
-/* User Balance / Profile Pill */
-.user-chip {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 5px 12px 5px 6px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
-  border-radius: 30px;
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-spring);
-}
-
-.user-chip:hover, .user-chip:active {
-  background: var(--bg-card-hover);
-  border-color: var(--border-cyan);
-  transform: translateY(-1px);
-}
-
-.user-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--cyan), var(--violet));
-  color: #000;
-  font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 0.75rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.user-meta {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.15;
-}
-
-.user-name {
-  font-size: 0.76rem;
+.apple-eyebrow {
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text-main);
-  max-width: 90px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--apple-blue-tint);
+  letter-spacing: -0.2px;
+  margin-bottom: 2px;
 }
 
-.user-balance {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--cyan);
+.apple-large-title {
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.8px;
+  line-height: 1.1;
 }
 
-/* --------------------------------------------------------------------------
-   Live Trust & Security Activity Ticker
-   -------------------------------------------------------------------------- */
-.trust-ticker-container {
-  overflow: hidden;
-  background: rgba(10, 15, 29, 0.65);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  padding: 8px 0;
-  position: relative;
-  mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
-}
-
-.trust-ticker-track {
+/* Apple Avatar / Balance Chip */
+.apple-profile-chip {
   display: flex;
   align-items: center;
-  gap: 16px;
-  white-space: nowrap;
-  width: max-content;
-  animation: ticker-slide 28s linear infinite;
-}
-
-.trust-ticker-track:hover {
-  animation-play-state: paused;
-}
-
-.ticker-item {
-  font-family: var(--font-body);
-  font-size: 0.73rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  letter-spacing: 0.01em;
-}
-
-.ticker-bullet {
-  font-size: 0.85rem;
-  filter: drop-shadow(0 0 5px rgba(0, 240, 255, 0.45));
-}
-
-.ticker-sep {
-  color: rgba(255, 255, 255, 0.2);
-  font-size: 0.75rem;
-}
-
-@keyframes ticker-slide {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-/* --------------------------------------------------------------------------
-   Hero Spotlight Showcase
-   -------------------------------------------------------------------------- */
-.hero-spotlight {
-  padding: 14px 16px 4px;
-}
-
-.hero-card {
-  position: relative;
-  background: linear-gradient(145deg, rgba(20, 28, 52, 0.85) 0%, rgba(11, 16, 32, 0.88) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 20px;
-  padding: 20px 18px 18px;
-  overflow: hidden;
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-}
-
-.hero-glow-edge {
-  position: absolute;
-  top: 0;
-  left: 12%;
-  right: 12%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--cyan), var(--violet), transparent);
-  filter: drop-shadow(0 0 8px var(--cyan));
-}
-
-.hero-top-badge {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.hero-pill-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-family: var(--font-heading);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  padding: 4px 10px;
-  border-radius: 20px;
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
-}
-
-.hero-pulse-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--emerald);
-}
-
-.pulse-indicator {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--emerald);
-  box-shadow: 0 0 8px var(--emerald);
-  animation: pulse-dot 1.8s infinite;
-}
-
-.hero-heading {
-  font-family: var(--font-heading);
-  font-size: 1.35rem;
-  font-weight: 800;
-  line-height: 1.25;
-  letter-spacing: -0.02em;
-  color: #ffffff;
-  margin-bottom: 8px;
-  background: linear-gradient(135deg, #ffffff 30%, #e0f2fe 65%, #c084fc 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.hero-subtext {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  line-height: 1.45;
-  margin-bottom: 16px;
-}
-
-.hero-feature-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.hero-feature-tag {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  padding: 7px 8px;
-  border-radius: 10px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-main);
-  white-space: nowrap;
-}
-
-.hero-feature-tag .feat-icon {
-  font-size: 0.9rem;
-  flex-shrink: 0;
-}
-
-/* --------------------------------------------------------------------------
-   Promotional & Discount Banners
-   -------------------------------------------------------------------------- */
-.promo-card {
-  margin: 12px 16px 0;
-  padding: 12px 14px;
-  background: linear-gradient(135deg, rgba(168, 85, 247, 0.16), rgba(0, 240, 255, 0.12));
-  border: 1px solid rgba(168, 85, 247, 0.35);
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  box-shadow: 0 6px 20px rgba(168, 85, 247, 0.14);
-  animation: slide-in 0.35s var(--ease-spring);
-}
-
-.promo-icon {
-  font-size: 1.5rem;
-}
-
-.promo-content {
-  flex: 1;
-}
-
-.promo-title {
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.promo-desc {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-}
-
-.btn-claim {
-  padding: 7px 12px;
-  background: linear-gradient(135deg, var(--cyan), var(--violet));
-  border: none;
-  border-radius: 8px;
-  color: #040810;
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 0.75rem;
+  background: var(--apple-card);
+  border: 1px solid var(--apple-border);
+  border-radius: var(--radius-pill);
+  padding: 4px 12px 4px 4px;
   cursor: pointer;
-  white-space: nowrap;
-  transition: transform var(--duration-fast);
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
-.btn-claim:active {
+.apple-profile-chip:active {
   transform: scale(0.96);
+  background: var(--apple-elevated);
 }
 
-.discount-active-card {
-  margin: 10px 16px 0;
-  padding: 8px 14px;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  border-radius: 10px;
-  font-size: 0.75rem;
-  color: #6ee7b7;
+.apple-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2997ff, #0071e3);
+  color: #ffffff;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
 }
 
-/* --------------------------------------------------------------------------
-   Search & Filter Section
-   -------------------------------------------------------------------------- */
-.search-section {
-  padding: 12px 16px 8px;
+.apple-avatar-meta {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
 
-.search-box {
-  position: relative;
+.apple-user-name {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.1;
+}
+
+.apple-user-balance {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+/* ==========================================================================
+   Apple Trust Strip
+   ========================================================================== */
+
+.apple-trust-strip {
   display: flex;
   align-items: center;
-  background: var(--bg-glass);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--border-glass);
-  border-radius: 12px;
-  padding: 0 12px;
-  transition: all var(--duration-fast);
-}
-
-.search-box:focus-within {
-  border-color: var(--cyan);
-  box-shadow: 0 0 14px rgba(0, 240, 255, 0.2);
-  background: rgba(18, 26, 47, 0.95);
-}
-
-.search-icon {
-  width: 17px;
-  height: 17px;
-  color: var(--text-sub);
-  margin-right: 8px;
-  flex-shrink: 0;
-}
-
-.search-box input {
-  width: 100%;
-  height: 42px;
-  background: transparent;
-  border: none;
-  color: var(--text-white);
-  font-family: var(--font-body);
-  font-size: 0.88rem;
-  outline: none;
-}
-
-.search-box input::placeholder {
-  color: var(--text-sub);
-}
-
-.btn-clear {
-  background: none;
-  border: none;
-  color: var(--text-sub);
-  font-size: 1.2rem;
-  cursor: pointer;
-  padding: 4px;
-}
-
-/* Categories Horizontal Scroll Strip */
-.categories-scroll {
-  display: flex;
   gap: 8px;
+  padding: 0 18px 12px;
   overflow-x: auto;
-  padding-bottom: 4px;
   scrollbar-width: none;
 }
 
-.categories-scroll::-webkit-scrollbar {
+.apple-trust-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.trust-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--apple-card);
+  border: 1px solid var(--apple-border);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.chip-icon {
+  font-size: 12px;
+}
+
+/* ==========================================================================
+   Promotions & First-Order Discount
+   ========================================================================== */
+
+.apple-promo-card {
+  margin: 0 18px 14px;
+  background: linear-gradient(135deg, #1c1c1e, #242429);
+  border: 1px solid rgba(41, 151, 255, 0.25);
+  border-radius: var(--radius-card);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.promo-leading-icon {
+  font-size: 22px;
+}
+
+.promo-text-wrap {
+  flex: 1;
+}
+
+.promo-headline {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.promo-subheadline {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.apple-pill-btn {
+  background: var(--apple-blue);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.apple-pill-btn:active {
+  transform: scale(0.95);
+}
+
+.apple-discount-active {
+  margin: 0 18px 14px;
+  background: rgba(48, 209, 88, 0.1);
+  border: 1px solid rgba(48, 209, 88, 0.25);
+  border-radius: var(--radius-card);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--apple-green);
+}
+
+.discount-check {
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   Search Box (Clean iOS Style)
+   ========================================================================== */
+
+.apple-search-section {
+  padding: 0 18px 12px;
+}
+
+.apple-search-box {
+  display: flex;
+  align-items: center;
+  background: rgba(118, 118, 128, 0.22);
+  border-radius: 12px;
+  padding: 8px 12px;
+  gap: 8px;
+  transition: background 0.15s ease;
+}
+
+.apple-search-box:focus-within {
+  background: rgba(118, 118, 128, 0.32);
+}
+
+.search-svg {
+  width: 17px;
+  height: 17px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.apple-search-box input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-apple);
+  font-size: 15px;
+}
+
+.apple-search-box input::placeholder {
+  color: var(--text-secondary);
+}
+
+.apple-clear-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+/* ==========================================================================
+   Category Segmented Strip (iOS Style)
+   ========================================================================== */
+
+.apple-categories-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 18px 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.apple-categories-strip::-webkit-scrollbar {
   display: none;
 }
 
 .cat-pill {
-  flex-shrink: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
-  border-radius: 20px;
-  color: var(--text-muted);
-  font-family: var(--font-body);
-  font-size: 0.82rem;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 7px 16px;
+  font-size: 13px;
   font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-spring);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.cat-pill:hover {
-  background: var(--bg-card-hover);
-  color: var(--text-white);
+.cat-pill:active {
+  transform: scale(0.96);
 }
 
 .cat-pill.active {
-  background: linear-gradient(135deg, rgba(0, 240, 255, 0.16), rgba(168, 85, 247, 0.18));
-  border-color: var(--cyan);
-  color: #ffffff;
-  box-shadow: 0 0 16px rgba(0, 240, 255, 0.22);
+  background: #ffffff;
+  color: #000000;
+  font-weight: 600;
 }
 
-.cat-icon {
-  font-size: 1rem;
-}
+/* ==========================================================================
+   Catalog Section Header
+   ========================================================================== */
 
-/* --------------------------------------------------------------------------
-   Main Content & Products Grid
-   -------------------------------------------------------------------------- */
 .content-area {
-  padding: 10px 16px 20px;
-  flex: 1;
+  padding: 0 18px;
 }
 
-.section-header {
+.apple-section-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
-.section-title {
-  font-family: var(--font-heading);
-  font-size: 1.15rem;
+.apple-section-title {
+  font-size: 20px;
   font-weight: 700;
-  color: var(--text-white);
-  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  letter-spacing: -0.4px;
 }
 
-.catalog-count {
-  font-size: 0.75rem;
-  color: var(--text-sub);
-  font-weight: 500;
+.apple-count-badge {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
-.products-grid {
+/* ==========================================================================
+   2-Column Products Grid (Exact Match to Apple Store App Reference)
+   ========================================================================== */
+
+.apple-products-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 14px;
-}
-
-@media (max-width: 480px) {
-  .products-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-}
-
-/* Product Card (Neo-Glassmorphism) */
-.product-card {
-  position: relative;
-  background: linear-gradient(165deg, rgba(20, 29, 54, 0.72) 0%, rgba(12, 17, 34, 0.82) 100%);
-  border: 1px solid var(--border-glass-bright);
-  border-radius: 18px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+}
+
+.apple-product-card {
+  background: var(--apple-card);
+  border-radius: var(--radius-card);
+  border: 1px solid var(--apple-border);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   cursor: pointer;
-  transition: all var(--duration-normal) var(--ease-spring);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.18s ease;
+  min-height: 220px;
 }
 
-.product-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 12%;
-  right: 12%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
-  pointer-events: none;
+.apple-product-card:active {
+  transform: scale(0.97);
+  background: var(--apple-card-hover);
 }
 
-.product-card:hover {
-  background: linear-gradient(165deg, rgba(26, 38, 70, 0.82) 0%, rgba(16, 23, 44, 0.9) 100%);
-  border-color: rgba(0, 240, 255, 0.38);
-  transform: translateY(-4px);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 24px rgba(0, 240, 255, 0.12);
-}
-
-.card-top-row {
+/* Card Top Row / Tag */
+.card-top-tag {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-}
-
-.category-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.72rem;
+  gap: 4px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--cyan);
-  background: rgba(0, 240, 255, 0.08);
-  border: 1px solid rgba(0, 240, 255, 0.18);
-  padding: 3px 8px;
-  border-radius: 7px;
+  color: var(--apple-blue-tint);
+  margin-bottom: 10px;
+  line-height: 1;
 }
 
-.stock-indicator {
+.tag-icon {
+  font-size: 11px;
+}
+
+.tag-chevron {
+  color: var(--text-secondary);
+  font-weight: 400;
+  margin-left: 1px;
+}
+
+/* Centered Transparent Cloud Logo Container */
+.card-logo-container {
+  height: 84px;
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 0.72rem;
-  font-weight: 600;
+  justify-content: center;
+  margin: 4px 0 14px;
 }
 
-.stock-indicator.in-stock {
-  color: var(--emerald);
+.card-cloud-logo {
+  max-width: 100%;
+  max-height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.45));
+  transition: transform 0.2s ease;
 }
 
-.stock-indicator.low-stock {
-  color: var(--amber);
+.apple-product-card:hover .card-cloud-logo {
+  transform: scale(1.04);
 }
 
-.stock-indicator.out-of-stock {
-  color: var(--rose);
-}
-
-.stock-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: currentColor;
-}
-
-.in-stock .stock-dot {
-  box-shadow: 0 0 6px var(--emerald);
-}
-
-/* Stock Meter Health Bar */
-.stock-meter-wrap {
+/* Card Info / Bottom */
+.card-bottom-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 1px;
 }
 
-.stock-meter-label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.7rem;
+.card-item-title {
+  font-size: 14px;
   font-weight: 600;
-}
-
-.stock-meter-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.stock-meter-status.in-stock { color: var(--emerald); }
-.stock-meter-status.low-stock { color: var(--amber); }
-.stock-meter-status.out-of-stock { color: var(--rose); }
-
-.stock-pulse-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: currentColor;
-  box-shadow: 0 0 6px currentColor;
-  animation: pulse-dot 2s infinite;
-}
-
-.stock-meter-pct {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  color: var(--text-sub);
-}
-
-.stock-progress-track {
-  width: 100%;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.07);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.stock-progress-fill {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.6s var(--ease-spring);
-}
-
-.stock-progress-fill.in-stock {
-  background: linear-gradient(90deg, #059669, #10b981);
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
-}
-
-.stock-progress-fill.low-stock {
-  background: linear-gradient(90deg, #d97706, #f59e0b);
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
-}
-
-.stock-progress-fill.out-of-stock {
-  background: #f43f5e;
-  width: 0% !important;
-}
-
-.card-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.card-title {
-  font-family: var(--font-heading);
-  font-size: 1rem;
-  font-weight: 700;
-  color: #ffffff;
-  line-height: 1.3;
-}
-
-.card-desc {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  line-height: 1.4;
+  color: var(--text-primary);
+  line-height: 1.25;
+  margin-bottom: 4px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
-  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.card-perk-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.68rem;
-  color: var(--text-sub);
-}
-
-.product-rating-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  padding: 2px 7px;
-  border-radius: 6px;
-}
-
-.product-rating-pill small {
-  color: var(--text-sub);
-  font-size: 0.65rem;
-}
-
-.card-bottom-row {
+.card-meta-line {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: auto;
-  padding-top: 8px;
-  border-top: 1px solid var(--border-glass);
+  margin-top: 2px;
 }
 
-.card-price-block {
-  display: flex;
-  align-items: baseline;
-  gap: 3px;
-}
-
-.price-currency {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--cyan);
-}
-
-.price-value {
-  font-family: var(--font-heading);
-  font-size: 1.25rem;
-  font-weight: 800;
-  color: #ffffff;
-}
-
-.btn-card-add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: linear-gradient(135deg, rgba(0, 240, 255, 0.12), rgba(168, 85, 247, 0.12));
-  border: 1px solid rgba(0, 240, 255, 0.35);
-  border-radius: 12px;
-  color: #ffffff;
-  font-family: var(--font-heading);
+.card-price-text {
+  font-size: 14px;
   font-weight: 700;
-  font-size: 0.8rem;
-  letter-spacing: 0.02em;
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-spring);
+  color: var(--text-primary);
 }
 
-.btn-card-add:hover {
-  background: linear-gradient(135deg, var(--cyan), #38bdf8);
-  color: #040810;
-  border-color: var(--cyan);
-  box-shadow: 0 0 16px var(--cyan-glow);
-  transform: scale(1.03);
+.card-stock-dot-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
-.btn-card-add:active {
-  transform: scale(0.97);
+.stock-indicator-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--apple-green);
 }
 
-.btn-card-add:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  background: rgba(255, 255, 255, 0.05);
-  border-color: transparent;
-  color: var(--text-sub);
+.stock-indicator-dot.out {
+  background: var(--apple-red);
 }
 
-/* Skeleton Loading State */
-.skeleton {
-  min-height: 160px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+/* Skeleton Loading */
+.apple-product-card.skeleton {
+  min-height: 220px;
+  background: linear-gradient(90deg, #1c1c1e 25%, #242428 50%, #1c1c1e 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: 16px;
+  animation: appleSkeleton 1.4s ease-in-out infinite;
 }
 
-@keyframes shimmer {
+@keyframes appleSkeleton {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
 
 /* Empty State */
-.empty-state {
+.apple-empty-state {
+  padding: 48px 24px;
   text-align: center;
-  padding: 50px 20px;
-  color: var(--text-muted);
 }
 
-.empty-icon {
-  font-size: 3rem;
+.empty-icon-wrap {
+  font-size: 40px;
   margin-bottom: 12px;
 }
 
-.empty-state h3 {
-  font-family: var(--font-heading);
-  color: #ffffff;
+.apple-empty-state h3 {
+  font-size: 18px;
+  font-weight: 700;
   margin-bottom: 6px;
 }
 
-.empty-state p {
-  font-size: 0.82rem;
-  margin-bottom: 18px;
+.apple-empty-state p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
 }
 
-/* --------------------------------------------------------------------------
-   Floating Bottom Navigation Dock
-   -------------------------------------------------------------------------- */
-.bottom-dock {
+/* ==========================================================================
+   Floating Apple Bottom Navigation Dock (Exact Match to Reference)
+   ========================================================================== */
+
+.apple-dock-container {
   position: fixed;
-  bottom: var(--safe-bottom);
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 32px);
-  max-width: 480px;
-  height: var(--dock-height);
-  background: rgba(12, 18, 33, 0.88);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--border-glass-bright);
-  border-radius: 24px;
+  bottom: calc(env(safe-area-inset-bottom, 16px) + 6px);
+  left: 0;
+  right: 0;
   display: flex;
   align-items: center;
-  justify-content: space-around;
-  padding: 0 10px;
-  z-index: 40;
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.55), 0 0 1px rgba(255, 255, 255, 0.15);
+  justify-content: center;
+  gap: 8px;
+  z-index: 90;
+  pointer-events: none;
 }
 
-.dock-btn {
+.apple-dock-capsule {
+  pointer-events: auto;
+  background: rgba(28, 28, 30, 0.84);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--apple-border-strong);
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  box-shadow: var(--apple-shadow-dock);
+}
+
+.apple-dock-tab {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  background: none;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 18px;
   border: none;
-  color: var(--text-sub);
-  font-family: var(--font-body);
-  font-size: 0.7rem;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-apple);
+  font-size: 10px;
   font-weight: 500;
+  gap: 2px;
   cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 12px;
-  transition: all var(--duration-fast);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.dock-btn svg {
-  width: 22px;
-  height: 22px;
-  transition: transform var(--duration-fast) var(--ease-spring);
+.apple-dock-tab:active {
+  transform: scale(0.94);
 }
 
-.dock-btn.active {
-  color: var(--cyan);
+.apple-dock-tab.active {
+  background: var(--apple-blue-pill);
+  color: var(--apple-blue-tint);
+  font-weight: 600;
 }
 
-.dock-btn.active svg {
-  transform: translateY(-2px);
-  filter: drop-shadow(0 0 6px var(--cyan-glow));
+.dock-svg {
+  width: 20px;
+  height: 20px;
 }
 
-.dock-icon-wrapper {
+.dock-bag-wrap {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .dock-badge {
   position: absolute;
   top: -4px;
   right: -8px;
-  background: linear-gradient(135deg, var(--rose), #e11d48);
-  color: #fff;
-  font-size: 0.65rem;
+  background: var(--apple-blue);
+  color: #ffffff;
+  font-size: 10px;
   font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 10px;
-  box-shadow: 0 0 8px rgba(244, 63, 94, 0.5);
-  animation: badge-pop 0.25s var(--ease-spring);
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
 }
 
-@keyframes badge-pop {
-  0% { transform: scale(0); }
-  70% { transform: scale(1.2); }
-  100% { transform: scale(1); }
+/* Circular Search Button on Right (Matching Reference) */
+.apple-dock-search {
+  pointer-events: auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(28, 28, 30, 0.84);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid var(--apple-border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  cursor: pointer;
+  box-shadow: var(--apple-shadow-dock);
+  transition: transform 0.16s ease, background 0.16s ease;
 }
 
-/* Sticky Floating Checkout Bar */
-.sticky-checkout-bar {
+.apple-dock-search:active {
+  transform: scale(0.92);
+  background: var(--apple-card);
+}
+
+.apple-dock-search svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ==========================================================================
+   Sticky Floating Bag Checkout Bar
+   ========================================================================== */
+
+.apple-sticky-bar {
   position: fixed;
-  bottom: calc(var(--dock-height) + var(--safe-bottom) + 12px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 32px);
-  max-width: 480px;
-  padding: 10px 14px;
-  background: linear-gradient(135deg, rgba(14, 21, 38, 0.95), rgba(20, 29, 52, 0.95));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--border-cyan);
+  bottom: calc(env(safe-area-inset-bottom, 16px) + 70px);
+  left: 18px;
+  right: 18px;
+  max-width: 504px;
+  margin: 0 auto;
+  background: rgba(44, 44, 46, 0.94);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--apple-border-strong);
   border-radius: 18px;
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  z-index: 39;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 240, 255, 0.2);
-  animation: slide-up 0.3s var(--ease-spring);
+  box-shadow: var(--apple-shadow-dock);
+  z-index: 85;
 }
 
-.sticky-info {
+.sticky-meta {
   display: flex;
   flex-direction: column;
 }
 
-.sticky-label {
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  letter-spacing: 0.05em;
+.sticky-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
-.sticky-amount {
-  font-family: var(--font-heading);
-  font-size: 1.15rem;
-  font-weight: 800;
+.sticky-price {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.apple-sticky-btn {
+  background: var(--apple-blue);
   color: #ffffff;
-}
-
-.btn-checkout-glow {
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  background: linear-gradient(135deg, var(--cyan), #00c8ff);
-  border: none;
-  border-radius: 12px;
-  color: #040810;
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 0.85rem;
   cursor: pointer;
-  box-shadow: 0 0 16px var(--cyan-glow);
-  transition: transform var(--duration-fast);
+  transition: transform 0.15s ease;
 }
 
-.btn-checkout-glow:active {
+.apple-sticky-btn:active {
   transform: scale(0.96);
 }
 
-.btn-checkout-glow svg {
-  width: 16px;
-  height: 16px;
+.apple-sticky-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
-/* --------------------------------------------------------------------------
-   Modals & Sliding Bottom Sheets
-   -------------------------------------------------------------------------- */
-.modal-overlay {
+/* ==========================================================================
+   Apple Bottom Sheets & Drawers (Modals)
+   ========================================================================== */
+
+.apple-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 50;
-  animation: fade-in 0.2s ease-out;
+  z-index: 100;
+  transition: opacity 0.25s ease;
 }
 
-.bottom-sheet {
+.apple-bottom-sheet {
   position: fixed;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 580px;
-  max-height: 88vh;
-  background: var(--bg-sheet);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border-top: 1px solid var(--border-glass-bright);
-  border-radius: 28px 28px 0 0;
+  left: 0;
+  right: 0;
+  max-width: 540px;
+  margin: 0 auto;
+  max-height: 90vh;
+  background: var(--apple-sheet);
+  border: 1px solid var(--apple-border-strong);
+  border-bottom: none;
+  border-top-left-radius: var(--radius-sheet);
+  border-top-right-radius: var(--radius-sheet);
+  z-index: 101;
   display: flex;
   flex-direction: column;
-  z-index: 60;
-  box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.7);
-  animation: sheet-slide-up 0.35s var(--ease-spring);
   overflow: hidden;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.7);
+  animation: appleSheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes sheet-slide-up {
-  from { transform: translate(-50%, 100%); }
-  to { transform: translate(-50%, 0); }
+@keyframes appleSheetSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.sheet-handle {
-  width: 40px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  margin: 10px auto 4px;
+.sheet-drag-handle {
+  width: 36px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.22);
+  margin: 8px auto 4px;
 }
 
 .sheet-header {
-  padding: 12px 20px;
+  padding: 12px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--border-glass);
+  border-bottom: 1px solid var(--apple-separator);
 }
 
-.sheet-header h2 {
-  font-family: var(--font-heading);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #ffffff;
+.product-header-badge, .cart-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.btn-close-sheet {
-  width: 32px;
-  height: 32px;
+.apple-badge-category {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--apple-blue-tint);
+  background: var(--apple-blue-pill);
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.apple-badge-stock {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--apple-green);
+  background: rgba(48, 209, 88, 0.12);
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.apple-badge-rating, .apple-badge-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.apple-close-btn {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
-  color: var(--text-muted);
-  font-size: 1.3rem;
+  background: var(--apple-elevated);
+  border: none;
+  color: var(--text-secondary);
+  font-size: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all var(--duration-fast);
 }
 
-.btn-close-sheet:hover {
-  background: var(--bg-card-hover);
-  color: #ffffff;
+.apple-text-btn {
+  background: transparent;
+  border: none;
+  color: var(--apple-blue-tint);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-right: 8px;
 }
 
 .sheet-body {
-  padding: 16px 20px;
+  padding: 18px;
   overflow-y: auto;
   flex: 1;
 }
 
-.sheet-footer {
-  padding: 14px 20px calc(var(--safe-bottom) + 14px);
-  background: rgba(7, 10, 17, 0.95);
-  border-top: 1px solid var(--border-glass);
-  display: flex;
-  gap: 12px;
-}
-
-/* Buttons System */
-.btn-primary {
-  flex: 1;
-  padding: 14px 20px;
-  background: linear-gradient(135deg, var(--cyan), #00c4f5);
-  border: none;
-  border-radius: 14px;
-  color: #040810;
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 0.95rem;
-  cursor: pointer;
+/* Modal Transparent Cloud Logo Preview */
+.modal-logo-preview {
+  height: 110px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  box-shadow: 0 0 20px var(--cyan-glow);
-  transition: transform var(--duration-fast), box-shadow var(--duration-fast);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--apple-border);
 }
 
-.btn-primary:active {
-  transform: scale(0.98);
-}
-
-.btn-secondary {
-  flex: 1;
-  padding: 14px 20px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass-bright);
-  border-radius: 14px;
-  color: #ffffff;
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 0.95rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: background var(--duration-fast);
-}
-
-.btn-secondary:hover {
-  background: var(--bg-card-hover);
-}
-
-.btn-danger-outline {
-  padding: 12px 18px;
-  background: transparent;
-  border: 1px solid rgba(244, 63, 94, 0.4);
-  border-radius: 14px;
-  color: var(--rose);
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: background var(--duration-fast);
-}
-
-.btn-danger-outline:hover {
-  background: rgba(244, 63, 94, 0.1);
-}
-
-/* --------------------------------------------------------------------------
-   Product Detail Sheet Styling
-   -------------------------------------------------------------------------- */
-.product-badge-row {
-  display: flex;
-  gap: 8px;
-}
-
-.badge {
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.badge-category {
-  background: rgba(0, 240, 255, 0.1);
-  color: var(--cyan);
-}
-
-.badge-stock {
-  background: rgba(16, 185, 129, 0.12);
-  color: var(--emerald);
-}
-
-.badge-rating {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+.modal-floating-logo {
+  max-height: 80px;
+  max-width: 80%;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5));
 }
 
 .modal-product-title {
-  font-family: var(--font-heading);
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: #ffffff;
-  margin-bottom: 8px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  letter-spacing: -0.4px;
 }
 
-.modal-price-row {
+.modal-price-strip {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
-.modal-price {
-  font-family: var(--font-heading);
-  font-size: 1.6rem;
+.modal-main-price {
+  font-size: 24px;
   font-weight: 800;
-  color: var(--cyan);
+  color: var(--text-primary);
 }
 
-.modal-currency {
-  font-size: 0.85rem;
-  color: var(--text-muted);
+.modal-currency-tag {
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
-.modal-delivery-tag {
+.modal-instant-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--apple-blue-tint);
   margin-left: auto;
-  font-size: 0.72rem;
-  color: #6ee7b7;
-  background: rgba(16, 185, 129, 0.1);
-  padding: 3px 8px;
-  border-radius: 6px;
 }
 
-.perks-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+/* Apple Specs Box */
+.apple-specs-box {
+  background: var(--apple-elevated);
+  border-radius: 14px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--apple-border);
+}
+
+.spec-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--apple-separator);
+}
+
+.spec-row:last-child {
+  border-bottom: none;
+}
+
+.spec-label {
+  color: var(--text-secondary);
+}
+
+.spec-val {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.modal-desc-section {
   margin-bottom: 18px;
 }
 
-.perk-item {
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
-  border-radius: 12px;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.perk-icon {
-  font-size: 1.2rem;
-}
-
-.perk-item strong {
-  font-size: 0.75rem;
-  color: #ffffff;
-}
-
-.perk-item small {
-  font-size: 0.65rem;
-  color: var(--text-sub);
-}
-
-.product-desc-block {
-  margin-bottom: 20px;
-}
-
-.product-desc-block h3 {
-  font-size: 0.85rem;
-  color: var(--text-sub);
+.modal-desc-heading {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.5px;
   margin-bottom: 6px;
 }
 
-.product-desc-block p {
-  color: var(--text-muted);
-  font-size: 0.88rem;
-  line-height: 1.55;
-  white-space: pre-line;
+.modal-desc-text {
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.45;
 }
 
+/* iOS Stepper */
 .quantity-picker-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
+  background: var(--apple-elevated);
   border-radius: 14px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border: 1px solid var(--apple-border);
 }
 
 .qty-label {
+  font-size: 14px;
   font-weight: 600;
-  color: var(--text-main);
 }
 
-.qty-stepper {
+.apple-stepper {
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid var(--border-glass);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 10px;
-  padding: 3px 6px;
+  padding: 2px;
 }
 
-.btn-step {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
+.step-btn {
+  width: 32px;
+  height: 30px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.step-count {
+  min-width: 28px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.qty-total {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--apple-blue-tint);
+}
+
+/* Sheet Footer */
+.sheet-footer {
+  padding: 14px 18px calc(14px + env(safe-area-inset-bottom, 12px));
+  border-top: 1px solid var(--apple-separator);
+  display: flex;
+  gap: 10px;
+}
+
+.apple-btn-primary {
+  flex: 1;
+  background: var(--apple-blue);
   color: #ffffff;
-  font-size: 1rem;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
-.btn-step:active {
-  background: var(--cyan);
-  color: #000;
+.apple-btn-primary:active {
+  transform: scale(0.98);
+  background: #0060c4;
 }
 
-.step-value {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 0.95rem;
-  min-width: 24px;
-  text-align: center;
-}
-
-.qty-subtotal {
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  color: var(--cyan);
-  font-weight: 600;
-}
-
-/* Stock Alert Box for Out-of-Stock Items */
-.stock-alert-box {
-  background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+.apple-btn-secondary {
+  flex: 1;
+  background: var(--apple-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--apple-border);
   border-radius: 14px;
-  padding: 16px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.stock-alert-box p {
-  font-size: 0.84rem;
-  color: #fbbf24;
-  line-height: 1.4;
-}
-
-.btn-notify-stock {
-  width: 100%;
-  padding: 12px 18px;
-  background: linear-gradient(135deg, #f59e0b, #d97706);
-  border: none;
-  border-radius: 12px;
-  color: #ffffff;
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 0.92rem;
+  padding: 14px 20px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
-  transition: all var(--duration-fast);
+  transition: transform 0.15s ease;
 }
 
-.btn-notify-stock:active {
+.apple-btn-secondary:active {
   transform: scale(0.98);
 }
 
-.btn-notify-stock:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  box-shadow: none;
+.apple-full-btn {
+  width: 100%;
 }
 
-/* --------------------------------------------------------------------------
-   Shopping Cart Drawer Styling
-   -------------------------------------------------------------------------- */
-.cart-header-title {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.cart-items-count {
-  font-size: 0.8rem;
-  color: var(--text-sub);
-}
-
-.btn-clear-cart {
-  margin-left: auto;
-  margin-right: 8px;
-  background: none;
-  border: none;
-  color: var(--rose);
-  font-size: 0.78rem;
-  cursor: pointer;
-}
+/* ==========================================================================
+   Shopping Bag Items & Summary
+   ========================================================================== */
 
 .cart-items-list {
   display: flex;
@@ -1558,429 +1054,348 @@ html, body {
   margin-bottom: 18px;
 }
 
-.cart-item-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.cart-item-row {
+  background: var(--apple-elevated);
+  border-radius: 14px;
   padding: 12px 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
-  border-radius: 14px;
-}
-
-.cart-item-left {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  flex: 1;
-}
-
-.cart-item-title {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 0.92rem;
-  color: #ffffff;
-}
-
-.cart-item-price {
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  color: var(--text-sub);
-}
-
-.cart-item-right {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-.cart-item-subtotal {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--cyan);
-  min-width: 55px;
-  text-align: right;
-}
-
-.btn-remove-item {
-  background: none;
-  border: none;
-  color: var(--text-sub);
-  font-size: 1.1rem;
-  cursor: pointer;
-  padding: 4px;
-  transition: color var(--duration-fast);
-}
-
-.btn-remove-item:hover {
-  color: var(--rose);
-}
-
-.empty-cart-state {
-  text-align: center;
-  padding: 40px 10px;
-}
-
-/* Order Summary Box */
-.cart-summary-card {
-  background: rgba(18, 26, 47, 0.5);
-  border: 1px solid var(--border-glass);
-  border-radius: 16px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* Coupon / Promo Code Input Box */
-.coupon-box {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.coupon-box input {
-  flex: 1;
-  background: rgba(10, 15, 28, 0.85);
-  border: 1px solid var(--border-glass-bright);
-  border-radius: 10px;
-  padding: 9px 12px;
-  color: var(--text-main);
-  font-family: var(--font-body);
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  outline: none;
-  transition: border-color var(--duration-fast);
-}
-
-.coupon-box input:focus {
-  border-color: var(--cyan);
-}
-
-.btn-apply-coupon {
-  padding: 9px 16px;
-  background: linear-gradient(135deg, var(--cyan), var(--violet));
-  border: none;
-  border-radius: 10px;
-  color: #070a11;
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 0.84rem;
-  cursor: pointer;
-  box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
-  transition: transform var(--duration-fast), opacity var(--duration-fast);
-}
-
-.btn-apply-coupon:active {
-  transform: scale(0.96);
-}
-
-.coupon-status-msg {
-  font-size: 0.8rem;
-  padding: 6px 10px;
-  border-radius: 8px;
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-
-.coupon-status-msg.success {
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--emerald);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.coupon-status-msg.error {
-  background: rgba(244, 63, 94, 0.15);
-  color: var(--rose);
-  border: 1px solid rgba(244, 63, 94, 0.3);
-}
-
-.summary-row {
-  display: flex;
   justify-content: space-between;
-  font-size: 0.88rem;
-  color: var(--text-muted);
-}
-
-.discount-row {
-  color: #34d399;
-}
-
-.discount-deduction {
-  font-family: var(--font-mono);
-  font-weight: 600;
-}
-
-.summary-divider {
-  height: 1px;
-  background: var(--border-glass);
-  margin: 4px 0;
-}
-
-.total-row {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.final-total {
-  font-family: var(--font-heading);
-  font-size: 1.3rem;
-  font-weight: 800;
-  color: var(--cyan);
-}
-
-/* Payment Method Selector */
-.payment-method-selector {
-  margin-top: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.method-option {
-  display: flex;
-  align-items: center;
   gap: 12px;
-  padding: 10px 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all var(--duration-fast);
+  border: 1px solid var(--apple-border);
 }
 
-.method-option input {
-  display: none;
-}
-
-.method-option.active {
-  background: rgba(0, 240, 255, 0.08);
-  border-color: var(--cyan);
-}
-
-.method-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.method-title {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.method-sub {
-  font-size: 0.72rem;
-  color: var(--text-sub);
-}
-
-.method-check {
-  font-size: 0.85rem;
-  color: var(--cyan);
-  opacity: 0;
-}
-
-.method-option.active .method-check {
-  opacity: 1;
-}
-
-/* --------------------------------------------------------------------------
-   Payment & Live Status Polling Modal
-   -------------------------------------------------------------------------- */
-.payment-body {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 16px;
-}
-
-.order-id-badge {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--text-sub);
-  background: var(--bg-card);
-  padding: 3px 8px;
-  border-radius: 6px;
-}
-
-.payment-amount-box {
-  width: 100%;
-  padding: 16px;
-  background: linear-gradient(135deg, rgba(0, 240, 255, 0.1), rgba(168, 85, 247, 0.1));
-  border: 1px solid rgba(0, 240, 255, 0.3);
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.pay-label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  color: var(--text-sub);
-}
-
-.pay-amount {
-  font-family: var(--font-heading);
-  font-size: 2rem;
-  font-weight: 800;
-  color: #ffffff;
-}
-
-.pay-currency {
-  font-size: 0.8rem;
-  color: var(--cyan);
-}
-
-.payment-actions {
-  width: 100%;
-}
-
-.btn-open-invoice {
-  text-decoration: none;
-  font-size: 1rem;
-  padding: 16px 20px;
-}
-
-.btn-open-invoice svg {
-  width: 18px;
-  height: 18px;
-}
-
-/* Live Blockchain Polling Tracker */
-.live-tracker-box {
-  width: 100%;
+.cart-item-thumb-box {
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
-  border-radius: 14px;
-  text-align: left;
-}
-
-.radar-spinner {
-  position: relative;
-  width: 36px;
-  height: 36px;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
   flex-shrink: 0;
+  padding: 4px;
 }
 
-.radar-core {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--cyan);
-  box-shadow: 0 0 10px var(--cyan);
+.cart-item-thumb {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
 }
 
-.radar-wave {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2px solid var(--cyan);
-  animation: radar-pulse 1.8s infinite ease-out;
+.item-left {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
-@keyframes radar-pulse {
-  0% { transform: scale(0.3); opacity: 1; }
-  100% { transform: scale(1.3); opacity: 0; }
+.item-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
 }
 
-.tracker-text strong {
-  display: block;
-  font-size: 0.88rem;
-  color: #ffffff;
+.item-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
-.tracker-text small {
-  font-size: 0.75rem;
-  color: var(--text-sub);
-}
-
-.payment-notice {
-  font-size: 0.78rem;
-  color: var(--text-sub);
-  line-height: 1.4;
-}
-
-/* --------------------------------------------------------------------------
-   Digital Credentials Vault & Success Celebration
-   -------------------------------------------------------------------------- */
-.vault-header {
+.item-right {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.vault-sparkle {
-  font-size: 1.4rem;
+.item-price {
+  font-size: 14px;
+  font-weight: 700;
 }
 
-.success-banner {
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  border-radius: 14px;
+.btn-remove-item {
+  background: transparent;
+  border: none;
+  color: var(--apple-red);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.apple-summary-card {
+  background: var(--apple-elevated);
+  border-radius: 16px;
   padding: 14px;
+  border: 1px solid var(--apple-border);
+}
+
+.apple-coupon-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.apple-coupon-group input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--apple-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-family: var(--font-apple);
+  font-size: 13px;
+}
+
+.apple-coupon-btn {
+  background: var(--apple-blue);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.coupon-status-msg {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+
+.coupon-status-msg.success { color: var(--apple-green); }
+.coupon-status-msg.error { color: var(--apple-red); }
+
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 4px 0;
+  color: var(--text-secondary);
+}
+
+.summary-line.discount-line {
+  color: var(--apple-green);
+}
+
+.summary-divider {
+  height: 1px;
+  background: var(--apple-separator);
+  margin: 8px 0;
+}
+
+.grand-total-line {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.apple-total-price {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* Payment Method Selector */
+.apple-method-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.apple-radio-option {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--apple-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.apple-radio-option.active {
+  background: rgba(0, 113, 227, 0.12);
+  border-color: var(--apple-blue);
+}
+
+.apple-radio-option input {
+  display: none;
+}
+
+.option-copy {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.option-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.option-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.option-check {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--apple-blue-tint);
+  opacity: 0;
+}
+
+.apple-radio-option.active .option-check {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   Payment Flow & Credentials Vault
+   ========================================================================== */
+
+.apple-pay-amount-box {
+  background: var(--apple-elevated);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
   margin-bottom: 16px;
+  border: 1px solid var(--apple-border);
+}
+
+.pay-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.pay-big-amount {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text-primary);
+  display: block;
+}
+
+.pay-note {
+  font-size: 12px;
+  color: var(--apple-blue-tint);
+  font-weight: 600;
+}
+
+.payment-actions {
+  margin-bottom: 16px;
+}
+
+.apple-pay-btn {
+  text-decoration: none;
+  padding: 16px;
+  font-size: 16px;
+}
+
+.apple-radar-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--apple-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.radar-dot-pulse {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--apple-orange);
+  box-shadow: 0 0 0 rgba(255, 159, 10, 0.4);
+  animation: appleRadar 1.5s infinite;
+  flex-shrink: 0;
+}
+
+@keyframes appleRadar {
+  0% { box-shadow: 0 0 0 0 rgba(255, 159, 10, 0.7); }
+  70% { box-shadow: 0 0 0 10px rgba(255, 159, 10, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 159, 10, 0); }
+}
+
+.tracker-text strong {
+  display: block;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.tracker-text small {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.apple-info-footnote {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
   text-align: center;
 }
 
-.success-banner strong {
-  color: #6ee7b7;
-  font-size: 0.95rem;
+.apple-text-danger-btn {
+  background: transparent;
+  border: none;
+  color: var(--apple-red);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 12px;
 }
 
-.success-banner p {
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  margin-top: 4px;
+/* Vault Fulfilled Screen */
+.apple-fulfilled-banner {
+  background: rgba(48, 209, 88, 0.12);
+  border: 1px solid rgba(48, 209, 88, 0.3);
+  border-radius: 14px;
+  padding: 14px;
+  text-align: center;
+  margin-bottom: 16px;
 }
 
-.credentials-vault-card {
-  background: rgba(8, 12, 22, 0.9);
-  border: 1px solid var(--border-cyan);
+.apple-fulfilled-banner strong {
+  color: var(--apple-green);
+  font-size: 16px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.apple-fulfilled-banner p {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.apple-vault-card {
+  background: var(--apple-elevated);
   border-radius: 16px;
   padding: 14px;
-  margin-bottom: 16px;
-  box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
+  border: 1px solid var(--apple-border);
+  margin-bottom: 14px;
 }
 
-.vault-card-header {
+.vault-top-bar {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  font-weight: 700;
-  font-size: 0.88rem;
-  color: #ffffff;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
 }
 
-.btn-copy-all {
-  padding: 6px 12px;
-  background: var(--cyan);
-  border: none;
-  border-radius: 8px;
-  color: #040810;
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 0.75rem;
+.apple-copy-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--apple-border);
+  border-radius: var(--radius-pill);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
   cursor: pointer;
-  transition: transform var(--duration-fast);
-}
-
-.btn-copy-all:active {
-  transform: scale(0.95);
 }
 
 .credentials-content {
@@ -1989,364 +1404,272 @@ html, body {
   gap: 8px;
 }
 
-.credential-field {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-glass);
+.cred-box {
+  background: #000000;
+  border: 1px solid var(--apple-border);
   border-radius: 10px;
-}
-
-.credential-value {
+  padding: 10px;
   font-family: var(--font-mono);
-  font-size: 0.82rem;
-  color: var(--cyan);
+  font-size: 12px;
+  color: #a5f3fc;
   word-break: break-all;
-}
-
-.btn-field-copy {
-  background: none;
-  border: none;
-  color: var(--text-sub);
-  font-size: 0.95rem;
-  cursor: pointer;
-  padding: 4px;
-  margin-left: 8px;
-  flex-shrink: 0;
-}
-
-.btn-field-copy:hover {
-  color: #ffffff;
-}
-
-.warranty-card {
   display: flex;
-  gap: 12px;
-  padding: 12px 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
-  border-radius: 14px;
-}
-
-.shield-icon {
-  font-size: 1.5rem;
-}
-
-.warranty-text strong {
-  font-size: 0.85rem;
-  color: #ffffff;
-}
-
-.warranty-text p {
-  font-size: 0.75rem;
-  color: var(--text-sub);
-  margin-top: 2px;
-}
-
-/* --------------------------------------------------------------------------
-   Order History & Profile Drawers
-   -------------------------------------------------------------------------- */
-.orders-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.order-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
-  border-radius: 14px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
   gap: 8px;
 }
 
-.order-top {
+.apple-warranty-callout {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  gap: 12px;
+  background: rgba(41, 151, 255, 0.1);
+  border: 1px solid rgba(41, 151, 255, 0.25);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 12px;
 }
 
-.order-id {
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #ffffff;
+.apple-warranty-callout strong {
+  color: var(--apple-blue-tint);
+  display: block;
+  margin-bottom: 2px;
 }
 
-.order-status-badge {
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 6px;
-  text-transform: capitalize;
-}
+/* ==========================================================================
+   Account & Orders Screens
+   ========================================================================== */
 
-.status-fulfilled {
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--emerald);
-}
-
-.status-pending_payment {
-  background: rgba(245, 158, 11, 0.15);
-  color: var(--amber);
-}
-
-.status-cancelled, .status-expired {
-  background: rgba(244, 63, 94, 0.15);
-  color: var(--rose);
-}
-
-.order-details-text {
-  font-size: 0.82rem;
-  color: var(--text-muted);
-}
-
-.order-credentials-preview {
-  margin-top: 6px;
-  padding: 10px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 8px;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--cyan);
-  word-break: break-all;
-}
-
-/* Profile Card */
-.profile-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
+.apple-user-card {
+  background: var(--apple-elevated);
   border-radius: 16px;
   padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  border: 1px solid var(--apple-border);
   margin-bottom: 16px;
 }
 
-.profile-main {
+.user-id-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .profile-avatar {
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--cyan), var(--violet));
-  color: #000;
-  font-family: var(--font-heading);
-  font-size: 1.3rem;
-  font-weight: 800;
+  background: linear-gradient(135deg, #2997ff, #0071e3);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.profile-names h3 {
-  font-family: var(--font-heading);
-  font-size: 1.1rem;
+  font-size: 18px;
   font-weight: 700;
-  color: #ffffff;
 }
 
-#profUsername {
-  font-size: 0.82rem;
-  color: var(--text-sub);
+.user-id-meta h3 {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.user-id-meta span {
+  font-size: 12px;
+  color: var(--text-secondary);
   display: block;
 }
 
-.id-tag {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--cyan);
-}
-
-.balance-pill-large {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  background: rgba(0, 240, 255, 0.08);
-  border: 1px solid rgba(0, 240, 255, 0.25);
+.apple-balance-pill {
+  background: rgba(255, 255, 255, 0.06);
   border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .bal-label {
-  font-size: 0.8rem;
-  color: var(--text-muted);
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .bal-amount {
-  font-family: var(--font-heading);
-  font-size: 1.35rem;
+  font-size: 17px;
   font-weight: 800;
-  color: var(--cyan);
+  color: var(--text-primary);
 }
 
-.profile-actions {
+.apple-action-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.action-card {
+.apple-action-row {
+  background: var(--apple-elevated);
+  border-radius: 14px;
+  padding: 14px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-glass);
-  border-radius: 14px;
+  gap: 12px;
+  border: 1px solid var(--apple-border);
   cursor: pointer;
-  transition: all var(--duration-fast);
+  transition: background 0.15s ease;
 }
 
-.action-card:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-glass-bright);
+.apple-action-row:active {
+  background: var(--apple-card-hover);
 }
 
-.act-icon {
-  font-size: 1.3rem;
+.action-icon {
+  font-size: 20px;
 }
 
-.act-info {
+.action-text {
   flex: 1;
 }
 
-.act-info strong {
+.action-text strong {
   display: block;
-  font-size: 0.88rem;
-  color: #ffffff;
+  font-size: 14px;
+  margin-bottom: 1px;
 }
 
-.act-info small {
-  font-size: 0.75rem;
-  color: var(--text-sub);
+.action-text small {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
-.act-arrow {
-  color: var(--text-sub);
-  font-size: 1.1rem;
+.action-chevron {
+  font-size: 18px;
+  color: var(--text-secondary);
 }
 
-.btn-mini-copy {
-  padding: 6px 12px;
-  background: rgba(0, 240, 255, 0.15);
-  border: 1px solid var(--border-cyan);
-  border-radius: 8px;
-  color: var(--cyan);
+/* Orders List */
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.order-card {
+  background: var(--apple-elevated);
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid var(--apple-border);
+}
+
+.order-header-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.order-title {
+  font-size: 15px;
   font-weight: 600;
-  font-size: 0.75rem;
-  cursor: pointer;
+  margin-bottom: 4px;
 }
 
-/* --------------------------------------------------------------------------
-   Toast Notifications
-   -------------------------------------------------------------------------- */
-.toast-container {
+.order-status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.order-status-badge.fulfilled {
+  background: rgba(48, 209, 88, 0.12);
+  color: var(--apple-green);
+}
+
+.order-status-badge.pending_payment {
+  background: rgba(255, 159, 10, 0.12);
+  color: var(--apple-orange);
+}
+
+/* ==========================================================================
+   Toasts & Utilities
+   ========================================================================== */
+
+.apple-toast-container {
   position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 999;
+  top: max(16px, env(safe-area-inset-top, 16px));
+  left: 18px;
+  right: 18px;
+  max-width: 504px;
+  margin: 0 auto;
+  z-index: 200;
+  pointer-events: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  pointer-events: none;
-  max-width: 90%;
 }
 
 .toast {
-  padding: 10px 18px;
-  background: rgba(14, 21, 38, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-glass-bright);
-  border-radius: 30px;
+  background: rgba(44, 44, 46, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--apple-border-strong);
+  border-radius: 14px;
+  padding: 12px 16px;
   color: #ffffff;
-  font-size: 0.82rem;
+  font-size: 13px;
   font-weight: 500;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-  animation: toast-pop 0.3s var(--ease-spring);
+  box-shadow: var(--apple-shadow-sm);
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.toast.success {
-  border-color: var(--emerald);
-  color: #a7f3d0;
-}
+.toast.success { border-color: rgba(48, 209, 88, 0.4); }
+.toast.error { border-color: rgba(255, 69, 58, 0.4); }
 
-.toast.error {
-  border-color: var(--rose);
-  color: #fecdd3;
-}
-
-@keyframes toast-pop {
-  from { opacity: 0; transform: translateY(-10px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* Dev Preview Bar */
 .dev-preview-bar {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  background: #1e1b4b;
-  border-bottom: 1px solid #4338ca;
-  color: #c7d2fe;
-  font-size: 0.75rem;
-  padding: 4px 12px;
-  z-index: 1000;
+  background: #1c1c1e;
+  border-bottom: 1px solid var(--apple-border);
+  padding: 6px 12px;
+  z-index: 150;
+  font-size: 11px;
 }
 
 .dev-content {
-  max-width: 580px;
-  margin: 0 auto;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
 .dev-tag {
-  background: #3730a3;
+  background: var(--apple-blue);
   color: #fff;
-  font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 0.65rem;
+  font-weight: 700;
 }
 
 .dev-content input {
   width: 90px;
-  background: #0f172a;
-  border: 1px solid #4338ca;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--apple-border);
   color: #fff;
-  padding: 2px 6px;
   border-radius: 4px;
-  font-size: 0.72rem;
+  padding: 2px 6px;
 }
 
 .dev-content button {
-  background: #4f46e5;
-  border: none;
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
-  padding: 2px 8px;
+  border: none;
   border-radius: 4px;
-  font-size: 0.72rem;
+  padding: 2px 8px;
   cursor: pointer;
 }
 
-/* Utilities */
 .hidden {
   display: none !important;
 }
