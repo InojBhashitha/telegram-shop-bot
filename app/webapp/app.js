@@ -482,26 +482,78 @@
     return '/webapp/logos/vps.svg';
   }
 
+  // --- Smart Search Matcher (Alias & Fuzzy Aware) ---
+  function matchesSearch(product, rawQuery) {
+    if (!rawQuery) return true;
+    const q = rawQuery.trim().toLowerCase();
+    if (!q) return true;
+
+    const name = (product.name || '').toLowerCase();
+    const desc = (product.description || '').toLowerCase();
+    const cat = (product.category_name || '').toLowerCase();
+    const combined = `${name} ${desc} ${cat}`;
+
+    // 1. Direct substring match
+    if (combined.includes(q)) return true;
+
+    // 2. Compact comparison without whitespace / hyphens (e.g. 'digital ocean' <-> 'digitalocean')
+    const qCompact = q.replace(/[\s\-_]+/g, '');
+    const combinedCompact = combined.replace(/[\s\-_]+/g, '');
+    if (combinedCompact.includes(qCompact)) return true;
+
+    // 3. Cloud Provider Aliases
+    const aliasGroups = [
+      ['digitalocean', 'digital ocean', 'do', 'droplet'],
+      ['aws', 'amazon', 'amazon web services', 'ec2'],
+      ['gcp', 'google', 'google cloud', 'google cloud platform'],
+      ['oracle', 'oci', 'oracle cloud'],
+      ['upcloud', 'up cloud'],
+      ['azure', 'microsoft azure', 'msft'],
+    ];
+
+    for (const group of aliasGroups) {
+      const queryMatchesGroup = group.some((alias) => q.includes(alias) || alias.includes(q));
+      if (queryMatchesGroup) {
+        const itemMatchesGroup = group.some((alias) => combined.includes(alias) || combinedCompact.includes(alias.replace(/\s+/g, '')));
+        if (itemMatchesGroup) return true;
+      }
+    }
+
+    // 4. Multi-word match (all typed words match product data)
+    const terms = q.split(/\s+/).filter(Boolean);
+    if (terms.length > 1 && terms.every((t) => combined.includes(t) || combinedCompact.includes(t))) {
+      return true;
+    }
+
+    return false;
+  }
+
   function renderProducts() {
     let list = state.products;
+    const query = state.searchQuery.trim();
 
-    // Filter by Category
-    if (state.activeCategory !== 'all') {
-      list = list.filter((p) => String(p.category_id) === state.activeCategory);
+    // When searching, search across the entire catalog
+    if (query) {
+      list = list.filter((p) => matchesSearch(p, query));
+      if (el.catalogTitle) {
+        el.catalogTitle.textContent = `Search results for "${query}"`;
+      }
+      if (el.productCountBadge) {
+        el.productCountBadge.textContent = `${list.length} found`;
+      }
+    } else {
+      // Filter by Category when not searching
+      if (state.activeCategory !== 'all') {
+        list = list.filter((p) => String(p.category_id) === state.activeCategory);
+      }
+      if (el.catalogTitle) {
+        el.catalogTitle.textContent = 'Your recent activity';
+      }
+      if (el.productCountBadge) {
+        el.productCountBadge.textContent = `${list.length} available`;
+      }
     }
 
-    // Filter by Search
-    if (state.searchQuery.trim()) {
-      const q = state.searchQuery.toLowerCase();
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.description && p.description.toLowerCase().includes(q)) ||
-          p.category_name.toLowerCase().includes(q)
-      );
-    }
-
-    el.productCountBadge.textContent = `${list.length} available`;
     el.productsGrid.innerHTML = '';
 
     if (list.length === 0) {
@@ -1260,36 +1312,76 @@
   if (el.dockSearchBtn) {
     el.dockSearchBtn.addEventListener('click', () => {
       haptic('light');
+      closeModal();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Highlight the search box with glow animation & focus input
+      const box = document.querySelector('.apple-search-box');
+      if (box) {
+        box.classList.remove('apple-search-pulse');
+        void box.offsetWidth;
+        box.classList.add('apple-search-pulse');
+      }
+
       if (el.searchInput) {
-        el.searchInput.focus();
-        el.searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => {
+          el.searchInput.focus();
+          if (el.searchInput.value) {
+            el.searchInput.select();
+          }
+        }, 120);
       }
     });
   }
 
   // --- Search & Filters ---
-  el.searchInput.addEventListener('input', (e) => {
-    state.searchQuery = e.target.value;
-    el.clearSearchBtn.classList.toggle('hidden', !state.searchQuery);
+  function onSearchChange() {
+    state.searchQuery = el.searchInput ? el.searchInput.value : '';
+    if (el.clearSearchBtn) {
+      el.clearSearchBtn.classList.toggle('hidden', !state.searchQuery);
+    }
+    if (state.searchQuery.trim()) {
+      // Searching across entire store: update category pill visuals to 'all'
+      state.activeCategory = 'all';
+      el.categoriesBar.querySelectorAll('.cat-pill').forEach((b) => {
+        b.classList.toggle('active', b.dataset.categoryId === 'all');
+      });
+    }
     renderProducts();
-  });
+  }
 
-  el.clearSearchBtn.addEventListener('click', () => {
-    el.searchInput.value = '';
-    state.searchQuery = '';
-    el.clearSearchBtn.classList.add('hidden');
-    renderProducts();
-    el.searchInput.focus();
-  });
+  if (el.searchInput) {
+    ['input', 'keyup', 'change', 'search'].forEach((evt) => {
+      el.searchInput.addEventListener(evt, onSearchChange);
+    });
+    // On mobile Enter key, blur to dismiss virtual keyboard
+    el.searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        el.searchInput.blur();
+      }
+    });
+  }
 
-  el.resetFiltersBtn.addEventListener('click', () => {
-    state.searchQuery = '';
-    state.activeCategory = 'all';
-    el.searchInput.value = '';
-    el.clearSearchBtn.classList.add('hidden');
-    renderCategories();
-    renderProducts();
-  });
+  if (el.clearSearchBtn) {
+    el.clearSearchBtn.addEventListener('click', () => {
+      if (el.searchInput) el.searchInput.value = '';
+      state.searchQuery = '';
+      el.clearSearchBtn.classList.add('hidden');
+      renderProducts();
+      if (el.searchInput) el.searchInput.focus();
+    });
+  }
+
+  if (el.resetFiltersBtn) {
+    el.resetFiltersBtn.addEventListener('click', () => {
+      state.searchQuery = '';
+      state.activeCategory = 'all';
+      if (el.searchInput) el.searchInput.value = '';
+      if (el.clearSearchBtn) el.clearSearchBtn.classList.add('hidden');
+      renderCategories();
+      renderProducts();
+    });
+  }
 
   // --- Dev User Switcher (For Previewing in Desktop Browsers) ---
   if (el.devSwitchUserBtn) {

@@ -284,6 +284,24 @@ html, body {
 
 .apple-search-box:focus-within {
   background: rgba(118, 118, 128, 0.32);
+  box-shadow: 0 0 0 2px var(--apple-blue-tint);
+}
+
+.apple-search-box.apple-search-pulse {
+  animation: appleSearchGlow 1.2s ease-out;
+}
+
+@keyframes appleSearchGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(41, 151, 255, 0.8);
+    background: rgba(41, 151, 255, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(41, 151, 255, 0.15);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(41, 151, 255, 0);
+  }
 }
 
 .search-svg {
@@ -666,63 +684,79 @@ html, body {
 
 .apple-sticky-bar {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 16px) + 70px);
-  left: 18px;
-  right: 18px;
-  max-width: 504px;
+  bottom: calc(env(safe-area-inset-bottom, 16px) + 78px);
+  left: 16px;
+  right: 16px;
+  max-width: 480px;
   margin: 0 auto;
-  background: rgba(44, 44, 46, 0.94);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  background: rgba(30, 30, 32, 0.94);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
   border: 1px solid var(--apple-border-strong);
-  border-radius: 18px;
-  padding: 10px 14px;
+  border-radius: 20px;
+  padding: 9px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: var(--apple-shadow-dock);
+  gap: 16px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6);
   z-index: 85;
 }
 
 .sticky-meta {
   display: flex;
   flex-direction: column;
+  flex: 0 0 auto;
 }
 
 .sticky-sub {
   font-size: 11px;
   font-weight: 500;
   color: var(--text-secondary);
+  line-height: 1.1;
+  margin-bottom: 2px;
 }
 
 .sticky-price {
   font-size: 17px;
   font-weight: 700;
   color: var(--text-primary);
+  line-height: 1.1;
+  letter-spacing: -0.3px;
 }
 
 .apple-sticky-btn {
+  flex: 0 0 auto !important;
+  width: auto !important;
   background: var(--apple-blue);
   color: #ffffff;
   border: none;
   border-radius: var(--radius-pill);
-  padding: 10px 18px;
+  padding: 9px 18px;
   font-size: 13px;
   font-weight: 600;
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   cursor: pointer;
-  transition: transform 0.15s ease;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 113, 227, 0.4);
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.apple-sticky-btn:hover {
+  background: #0077ed;
 }
 
 .apple-sticky-btn:active {
   transform: scale(0.96);
+  background: #0060c4;
 }
 
 .apple-sticky-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 
 /* ==========================================================================
