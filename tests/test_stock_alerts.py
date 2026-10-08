@@ -84,6 +84,7 @@ async def test_post_restock_to_channel_success(session: AsyncSession, sample_dat
     kwargs = called_method.call_args.kwargs
     assert kwargs["chat_id"] == "@TestRestockChannel"
     caption_or_text = kwargs.get("caption") or kwargs.get("text")
+    assert caption_or_text is not None
     assert product.name in caption_or_text
     assert "+5 accounts" in caption_or_text
     assert "RESTOCK ALERT" in caption_or_text

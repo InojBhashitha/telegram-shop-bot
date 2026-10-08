@@ -122,7 +122,8 @@ async def show_product_detail(
         await query.answer()
         if product_id is None and query.data:
             product_id = int(query.data.split(":")[1])
-    elif product_id is None:
+
+    if product_id is None:
         return
 
     async with get_session() as session:
