@@ -61,6 +61,7 @@ def admin_product_detail_keyboard(product_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton("📥 Stock", callback_data=f"adm:stock:{product_id}"),
         ],
         [
+            InlineKeyboardButton("📢 Post to Channel", callback_data=f"adm:broadcast_restock:{product_id}"),
             InlineKeyboardButton(
                 "🔴 Deactivate", callback_data=f"adm:deact_prod:{product_id}"
             ),

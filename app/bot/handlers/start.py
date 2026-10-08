@@ -181,10 +181,17 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 )
                 return
 
-        # Parse referral code from deep link (supports ref_xxxx or numeric id)
+        # Parse referral code or product deep link (supports ref_xxxx, numeric id, or prod_xxxx)
         referral_code = None
-        if context.args and (context.args[0].startswith("ref_") or context.args[0].isdigit()):
-            referral_code = context.args[0]
+        deep_product_id = None
+        if context.args:
+            arg = context.args[0]
+            if arg.startswith("ref_") or arg.isdigit():
+                referral_code = arg
+            elif arg.startswith("prod_"):
+                raw_pid = arg.removeprefix("prod_")
+                if raw_pid.isdigit():
+                    deep_product_id = int(raw_pid)
 
         result = await user_service.get_or_create_user(
             session,
@@ -215,6 +222,12 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         "☁️",
         reply_markup=main_reply_keyboard(),
     )
+
+    # If deep-linked to a specific product (e.g. from channel restock feed), show product directly
+    if deep_product_id is not None:
+        from app.bot.handlers.products import show_product_detail
+        await show_product_detail(update, context, product_id=deep_product_id)
+        return
 
     # If channel configured and discount not yet claimed or used, show welcome offer
     if settings.force_channel_id and not db_user.channel_discount_claimed and not db_user.channel_discount_used:

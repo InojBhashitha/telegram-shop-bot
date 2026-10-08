@@ -351,6 +351,32 @@ async def deactivate_product(update: Update, context: ContextTypes.DEFAULT_TYPE)
     )
 
 
+async def admin_broadcast_restock_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Manually broadcast a restock/stock announcement for a product to the public channel."""
+    query = update.callback_query
+    if query is None or query.from_user is None or not _is_admin(query.from_user.id):
+        if query:
+            await query.answer("❌ Access denied.", show_alert=True)
+        return
+
+    product_id = int(query.data.split(":")[2])
+    await query.answer("Broadcasting restock to channel...", show_alert=False)
+
+    async with get_session() as session:
+        from app.services import stock_alert_service
+        success, status_msg = await stock_alert_service.post_restock_to_channel(
+            bot=context.bot,
+            session=session,
+            product_id=product_id,
+            added_count=0,
+        )
+
+    if success:
+        await query.answer("✅ Restock announcement broadcasted to channel!", show_alert=True)
+    else:
+        await query.answer(f"⚠️ Broadcast failed: {status_msg}", show_alert=True)
+
+
 # ---------------------------------------------------------------------------
 # Edit Product
 # ---------------------------------------------------------------------------
@@ -630,9 +656,15 @@ async def recv_stock_items(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
         count = await inventory_service.add_stock(session, product_id, items)
         from app.services import stock_alert_service
-        notified = await stock_alert_service.notify_subscribers_of_restock(
-            context.bot, session, product_id
+        restock_result = await stock_alert_service.handle_restock_event(
+            bot=context.bot,
+            session=session,
+            product_id=product_id,
+            added_count=count,
         )
+        notified = restock_result.get("subscribers_notified", 0)
+        channel_posted = restock_result.get("channel_posted", False)
+        channel_status = restock_result.get("channel_status", "")
         summary = await inventory_service.get_stock_summary(session, product_id)
 
     context.user_data.pop("stock_product_id", None)
@@ -640,6 +672,11 @@ async def recv_stock_items(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     source_info = f"📄 *File:* `{filename}`\n" if filename else "📝 *Format:* Text Paste\n"
     dup_info = f"⚠️ *Duplicates Skipped:* {duplicates_count}\n" if duplicates_count > 0 else ""
     alert_info = f"🔔 *Restock Alerts:* {notified} customer(s) notified\n" if notified > 0 else ""
+    channel_info = ""
+    if channel_posted:
+        channel_info = "📢 *Channel Feed:* Broadcasted to restock channel\n"
+    elif channel_status and "No restock channel" not in channel_status:
+        channel_info = f"⚠️ *Channel Feed:* {channel_status}\n"
 
     await update.message.reply_text(
         f"✅ *Stock Restocked Successfully!*\n\n"
@@ -648,7 +685,8 @@ async def recv_stock_items(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         f"📥 *Accounts Added:* +{count}\n"
         f"{dup_info}"
         f"📦 *Total In Stock:* {summary.get('available', 0)} available\n"
-        f"{alert_info}",
+        f"{alert_info}"
+        f"{channel_info}",
         reply_markup=admin_main_keyboard(),
         parse_mode="Markdown",
     )
@@ -1434,6 +1472,7 @@ def get_handlers() -> list:
         CallbackQueryHandler(deactivate_category_handler, pattern=r"^adm:deact_cat:\d+$"),
         CallbackQueryHandler(admin_products, pattern="^adm:products$"),
         CallbackQueryHandler(admin_product_detail, pattern=r"^adm:prod:\d+$"),
+        CallbackQueryHandler(admin_broadcast_restock_callback, pattern=r"^adm:broadcast_restock:\d+$"),
         CallbackQueryHandler(deactivate_product, pattern=r"^adm:deact_prod:\d+$"),
         CallbackQueryHandler(admin_inventory, pattern="^adm:inventory$"),
         CallbackQueryHandler(show_stock, pattern=r"^adm:stock:\d+$"),

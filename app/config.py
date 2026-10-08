@@ -78,6 +78,7 @@ class Settings(BaseSettings):
     warranty_hours: int = 24
     force_channel_id: str = ""  # e.g. "@YourChannel" or "" to disable
     vouch_channel_id: str = ""  # e.g. "@CloudDealsVouches" or "" to disable
+    restock_channel_id: str = ""  # e.g. "@CloudDealsRestock" or "" to disable
     stars_usd_rate: float = 0.0  # 0.0 = disabled (no Telegram Stars); set > 0 to enable
     inventory_encryption_key: str = ""  # Fernet key or auto-derived from bot_token if empty
 

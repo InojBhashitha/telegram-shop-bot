@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
+from pathlib import Path
 
 from telegram import Update
 from telegram.ext import CallbackQueryHandler, ContextTypes
@@ -113,19 +114,24 @@ async def show_product_detail(
 ) -> None:
     """Show product details with stock count and quantity buy buttons."""
     query = update.callback_query
-    if query is None or query.from_user is None:
+    user = update.effective_user
+    if user is None:
         return
-    await query.answer()
 
-    if product_id is None:
-        if query.data is None:
-            return
-        product_id = int(query.data.split(":")[1])
+    if query is not None:
+        await query.answer()
+        if product_id is None and query.data:
+            product_id = int(query.data.split(":")[1])
+    elif product_id is None:
+        return
 
     async with get_session() as session:
         details = await product_service.get_product_details(session, product_id)
         if details is None:
-            await query.edit_message_text("❌ Product not found.")
+            if query:
+                await query.edit_message_text("❌ Product not found.")
+            elif update.message:
+                await update.message.reply_text("❌ Product not found.")
             return
 
         product = details["product"]
@@ -133,7 +139,7 @@ async def show_product_detail(
         image_url = product.image_url or (product.category.image_url if product.category else None)
 
         from app.database.repositories import cart_repo, user_repo
-        db_user = await user_repo.get_by_telegram_id(session, query.from_user.id)
+        db_user = await user_repo.get_by_telegram_id(session, user.id)
         cart_count = 0
         if db_user:
             cart_count = await cart_repo.get_cart_item_count(session, db_user.id)
@@ -162,22 +168,58 @@ async def show_product_detail(
         product.id, in_stock, product.category_id, stock, cart_count
     )
 
-    if image_url:
-        try:
-            from telegram import InputMediaPhoto
-            await query.edit_message_media(
-                media=InputMediaPhoto(media=image_url, caption=caption, parse_mode="Markdown"),
-                reply_markup=keyboard,
-            )
-            return
-        except Exception as e:
-            logger.warning("Media edit failed, fallback to text: %s", e)
+    if query is not None:
+        if image_url and image_url.startswith(("http://", "https://")):
+            try:
+                from telegram import InputMediaPhoto
+                await query.edit_message_media(
+                    media=InputMediaPhoto(media=image_url, caption=caption, parse_mode="Markdown"),
+                    reply_markup=keyboard,
+                )
+                return
+            except Exception as e:
+                logger.warning("Media edit failed, fallback to text: %s", e)
 
-    await query.edit_message_text(
-        caption,
-        reply_markup=keyboard,
-        parse_mode="Markdown",
-    )
+        await query.edit_message_text(
+            caption,
+            reply_markup=keyboard,
+            parse_mode="Markdown",
+        )
+        return
+
+    if update.message is not None:
+        photo_stream = None
+        if image_url:
+            if image_url.startswith(("http://", "https://")):
+                photo_stream = image_url
+            elif image_url.startswith("/webapp/"):
+                cand = Path("app") / image_url.lstrip("/")
+                if cand.exists():
+                    try:
+                        photo_stream = open(cand, "rb")
+                    except Exception as e:
+                        logger.warning("Could not open local logo file %s: %s", cand, e)
+
+        if photo_stream is not None:
+            try:
+                await update.message.reply_photo(
+                    photo=photo_stream,
+                    caption=caption,
+                    reply_markup=keyboard,
+                    parse_mode="Markdown",
+                )
+                return
+            except Exception as e:
+                logger.warning("Direct photo reply failed, fallback to text: %s", e)
+            finally:
+                if hasattr(photo_stream, "close"):
+                    photo_stream.close()
+
+        await update.message.reply_text(
+            caption,
+            reply_markup=keyboard,
+            parse_mode="Markdown",
+        )
 
 
 async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
