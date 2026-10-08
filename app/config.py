@@ -199,6 +199,11 @@ class Settings(BaseSettings):
         if fly_app:
             return f"https://{fly_app}.fly.dev/webapp"
 
+        # Auto-detect Koyeb deployment environment variable
+        koyeb_domain = os.environ.get("KOYEB_PUBLIC_DOMAIN", "").strip().rstrip("/")
+        if koyeb_domain:
+            return f"https://{koyeb_domain}/webapp"
+
         # Check webhook_base_url if configured with https
         if self.webhook_base_url and self.webhook_base_url.startswith("https://"):
             return f"{self.webhook_base_url.rstrip('/')}/webapp"
