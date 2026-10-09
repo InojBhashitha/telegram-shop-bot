@@ -774,16 +774,14 @@ async def admin_deliver(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 content = result["content"]
 
                 # Try to deliver via Telegram
+                bot_instance = context.bot
                 user = await user_repo.get_by_id(session, order.user_id)
-                if user and content:
-                    from app.bot.bot import get_bot_instance
-                    bot = get_bot_instance()
-                    if bot:
-                        from app.services import delivery_service
-                        product_name = order.product.name if order.product else "Product"
-                        await delivery_service.deliver_to_user(
-                            bot, user.telegram_id, order, content, product_name
-                        )
+                if user and content and bot_instance:
+                    from app.services import delivery_service
+                    product_name = order.product.name if order.product else "Product"
+                    await delivery_service.deliver_to_user(
+                        bot_instance, user.telegram_id, order, content, product_name
+                    )
 
                 await query.edit_message_text(
                     f"✅ Order {order.public_order_id} delivered.",
@@ -794,7 +792,7 @@ async def admin_deliver(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 try:
                     from app.services import vouch_service
                     await vouch_service.post_order_vouch_to_channel(
-                        bot=bot,
+                        bot=bot_instance,
                         session=session,
                         order=order,
                     )
