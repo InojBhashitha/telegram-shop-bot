@@ -137,12 +137,20 @@ def admin_orders_keyboard(orders: list, page: int = 0, has_more: bool = False) -
     return InlineKeyboardMarkup(buttons)
 
 
-def admin_order_detail_keyboard(order_id: int, can_fulfill: bool = False) -> InlineKeyboardMarkup:
+def admin_order_detail_keyboard(
+    order_id: int,
+    can_fulfill: bool = False,
+    is_delivered: bool = False,
+) -> InlineKeyboardMarkup:
     """Admin order detail actions."""
     buttons = []
     if can_fulfill:
         buttons.append([
             InlineKeyboardButton("📦 Deliver", callback_data=f"adm:deliver:{order_id}"),
+        ])
+    if is_delivered:
+        buttons.append([
+            InlineKeyboardButton("📢 Post Vouch to Channel", callback_data=f"adm:vouch:{order_id}"),
         ])
     buttons.append([
         InlineKeyboardButton("❌ Cancel", callback_data=f"adm:cancel_ord:{order_id}"),

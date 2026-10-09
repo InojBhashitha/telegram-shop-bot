@@ -742,6 +742,7 @@ async def admin_order_detail(update: Update, context: ContextTypes.DEFAULT_TYPE)
     pay_status = payment.status.value if payment else "N/A"
 
     can_fulfill = order.status.value == "paid"
+    is_delivered = order.status.value in ("delivered", "completed")
 
     await query.edit_message_text(
         f"⚙️ *Order: {order.public_order_id}*\n\n"
@@ -751,7 +752,7 @@ async def admin_order_detail(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"📋 Status: {order.status.value}\n"
         f"💳 Payment: {pay_status}\n"
         f"📅 Created: {order.created_at.strftime('%d %b %Y %H:%M')}",
-        reply_markup=admin_order_detail_keyboard(order.id, can_fulfill),
+        reply_markup=admin_order_detail_keyboard(order.id, can_fulfill, is_delivered),
         parse_mode="Markdown",
     )
 
@@ -788,10 +789,53 @@ async def admin_deliver(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                     f"✅ Order {order.public_order_id} delivered.",
                     reply_markup=admin_main_keyboard(),
                 )
+
+                # Broadcast verified order proof to public vouch channel
+                try:
+                    from app.services import vouch_service
+                    await vouch_service.post_order_vouch_to_channel(
+                        bot=bot,
+                        session=session,
+                        order=order,
+                    )
+                except Exception as e:
+                    logger.warning("Failed to auto-broadcast vouch on admin deliver: %s", e)
+
             else:
                 await query.edit_message_text("❌ Could not fulfill order.")
         except order_service.OrderError as e:
             await query.edit_message_text(f"❌ {e}")
+
+
+async def admin_post_vouch_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Manually broadcast an order's verified purchase proof to the public vouch channel."""
+    query = update.callback_query
+    if query is None or query.from_user is None or not _is_admin(query.from_user.id):
+        if query:
+            await query.answer("❌ Access denied.", show_alert=True)
+        return
+
+    order_id = int(query.data.split(":")[2])
+    await query.answer("Broadcasting order proof to vouch channel...", show_alert=False)
+
+    async with get_session() as session:
+        from app.database.repositories import order_repo
+        order = await order_repo.get_by_id(session, order_id)
+        if order is None:
+            await query.answer("❌ Order not found.", show_alert=True)
+            return
+
+        from app.services import vouch_service
+        success, message = await vouch_service.post_order_vouch_to_channel(
+            bot=context.bot,
+            session=session,
+            order=order,
+        )
+
+    if success:
+        await query.answer("✅ Verified order proof posted to vouch channel!", show_alert=True)
+    else:
+        await query.answer(f"⚠️ Broadcast failed: {message}", show_alert=True)
 
 
 async def admin_cancel_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1480,6 +1524,7 @@ def get_handlers() -> list:
         CallbackQueryHandler(admin_orders, pattern=r"^adm:orders_p:\d+$"),
         CallbackQueryHandler(admin_order_detail, pattern=r"^adm:order:\d+$"),
         CallbackQueryHandler(admin_deliver, pattern=r"^adm:deliver:\d+$"),
+        CallbackQueryHandler(admin_post_vouch_callback, pattern=r"^adm:vouch:\d+$"),
         CallbackQueryHandler(admin_cancel_order, pattern=r"^adm:cancel_ord:\d+$"),
         CallbackQueryHandler(admin_payments, pattern="^adm:payments$"),
         CallbackQueryHandler(admin_users, pattern="^adm:users$"),

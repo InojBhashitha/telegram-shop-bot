@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def _review_keyboard(order_id: int) -> InlineKeyboardMarkup:
-    """Build interactive 1-5 star review rating keyboard."""
+    """Build interactive 1-5 star review rating keyboard (legacy fallback)."""
     return InlineKeyboardMarkup([
         [
             InlineKeyboardButton("1 ⭐", callback_data=f"review:{order_id}:1"),
@@ -26,6 +26,25 @@ def _review_keyboard(order_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton("5 ⭐", callback_data=f"review:{order_id}:5"),
         ]
     ])
+
+
+def _delivery_actions_keyboard(order_id: int) -> InlineKeyboardMarkup:
+    """Build delivery action keyboard linking to public vouch feed and store."""
+    from app.config import get_settings
+    settings = get_settings()
+    buttons = []
+
+    if settings.vouch_channel_id:
+        channel_clean = settings.vouch_channel_id.lstrip("@")
+        buttons.append([
+            InlineKeyboardButton("📢 Public Vouches & Proof Channel", url=f"https://t.me/{channel_clean}"),
+        ])
+
+    buttons.append([
+        InlineKeyboardButton("🏪 Store Catalog", callback_data="products"),
+        InlineKeyboardButton("🛡️ Warranty Support", callback_data="support"),
+    ])
+    return InlineKeyboardMarkup(buttons)
 
 
 def _format_credentials_for_copy(content: str) -> str:
@@ -108,21 +127,28 @@ async def deliver_to_user(
     """
     formatted = _format_credentials_for_copy(content)
 
+    from app.config import get_settings
+    settings = get_settings()
+    vouch_note = ""
+    if settings.vouch_channel_id:
+        vouch_note = f"\n📢 *Public Proof:* Order published to {settings.vouch_channel_id}\n"
+
     message = (
-        f"✅ *Payment Confirmed\\!*\n\n"
+        f"✅ *Payment Confirmed!*\n\n"
         f"📦 *Order:* `{order.public_order_id}`\n"
         f"🏷 *Product:* {product_name}\n\n"
-        f"🎁 *Your product:*\n"
+        f"🎁 *Your Credentials:*\n"
         f"{formatted}\n\n"
-        f"Thank you for using Cloud Deals\\! ☁️\n\n"
-        f"⭐ *Rate your purchase below:*"
+        f"🛡️ *Warranty Coverage:* {settings.warranty_hours}h active\n"
+        f"{vouch_note}\n"
+        f"Thank you for choosing {settings.store_name}! ☁️"
     )
 
     try:
         await bot.send_message(
             chat_id=telegram_id,
             text=message,
-            reply_markup=_review_keyboard(order.id),
+            reply_markup=_delivery_actions_keyboard(order.id),
             parse_mode="Markdown",
         )
         logger.info(
@@ -160,21 +186,28 @@ async def deliver_bulk_to_user(
 
     all_accounts = "\n\n".join(blocks)
 
+    from app.config import get_settings
+    settings = get_settings()
+    vouch_note = ""
+    if settings.vouch_channel_id:
+        vouch_note = f"\n📢 *Public Proof:* Order published to {settings.vouch_channel_id}\n"
+
     message = (
-        f"✅ *Payment Confirmed\\!*\n\n"
+        f"✅ *Payment Confirmed!*\n\n"
         f"📦 *Order:* `{order.public_order_id}`\n"
         f"🏷 *Product:* {product_name}\n"
         f"🔢 *Quantity:* {len(contents)}\n\n"
         f"{all_accounts}\n\n"
-        f"Thank you for using Cloud Deals\\! ☁️\n\n"
-        f"⭐ *Rate your purchase below:*"
+        f"🛡️ *Warranty Coverage:* {settings.warranty_hours}h active\n"
+        f"{vouch_note}\n"
+        f"Thank you for choosing {settings.store_name}! ☁️"
     )
 
     try:
         await bot.send_message(
             chat_id=telegram_id,
             text=message,
-            reply_markup=_review_keyboard(order.id),
+            reply_markup=_delivery_actions_keyboard(order.id),
             parse_mode="Markdown",
         )
         logger.info(
@@ -221,20 +254,27 @@ async def deliver_cart_order_to_user(
 
     all_delivery = "\n\n───────────────────\n\n".join(sections)
 
+    from app.config import get_settings
+    settings = get_settings()
+    vouch_note = ""
+    if settings.vouch_channel_id:
+        vouch_note = f"\n📢 *Public Proof:* Order published to {settings.vouch_channel_id}\n"
+
     message = (
-        f"✅ *Payment Confirmed\\!*\n\n"
+        f"✅ *Payment Confirmed!*\n\n"
         f"📦 *Order:* `{order.public_order_id}`\n"
         f"🔢 *Total Items:* {total_qty}\n\n"
         f"{all_delivery}\n\n"
-        f"Thank you for using Cloud Deals\\! ☁️\n\n"
-        f"⭐ *Rate your purchase below:*"
+        f"🛡️ *Warranty Coverage:* {settings.warranty_hours}h active\n"
+        f"{vouch_note}\n"
+        f"Thank you for choosing {settings.store_name}! ☁️"
     )
 
     try:
         await bot.send_message(
             chat_id=telegram_id,
             text=message,
-            reply_markup=_review_keyboard(order.id),
+            reply_markup=_delivery_actions_keyboard(order.id),
             parse_mode="Markdown",
         )
         logger.info(
@@ -361,6 +401,17 @@ async def deliver_order_if_fulfilled(
                             pass
         except Exception as e:
             logger.warning("Failed to send admin sale notification: %s", e)
+
+        # Auto-broadcast verified purchase proof to public vouch channel
+        try:
+            from app.services import vouch_service
+            await vouch_service.post_order_vouch_to_channel(
+                bot=bot,
+                session=session,
+                order=order,
+            )
+        except Exception as e:
+            logger.warning("Failed to auto-broadcast vouch to channel for order %s: %s", order.public_order_id, e)
 
     return success
 
