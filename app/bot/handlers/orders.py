@@ -504,6 +504,45 @@ async def handle_successful_payment(update: Update, context: ContextTypes.DEFAUL
                 )
 
 
+async def download_credentials_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send customer their purchased order credentials as .txt or .csv document."""
+    query = update.callback_query
+    if query is None or query.from_user is None or not query.data:
+        return
+
+    parts = query.data.split(":")
+    fmt = "txt" if parts[0] == "dl_txt" else "csv"
+    order_id = int(parts[1])
+
+    await query.answer(f"⏳ Generating {fmt.upper()} file...", show_alert=False)
+
+    async with get_session() as session:
+        from app.database.repositories import order_repo, user_repo
+        order = await order_repo.get_by_id(session, order_id)
+        if order is None:
+            await query.answer("❌ Order not found.", show_alert=True)
+            return
+
+        db_user = await user_repo.get_by_telegram_id(session, query.from_user.id)
+        settings = get_settings()
+        # Security check: verify this order belongs to this customer or user is admin
+        if not db_user or (order.user_id != db_user.id and not settings.is_admin(query.from_user.id)):
+            await query.answer("❌ Access denied to this order.", show_alert=True)
+            return
+
+        from app.services import credential_export_service
+        success, msg = await credential_export_service.export_and_send_order_credentials(
+            bot=context.bot,
+            session=session,
+            chat_id=query.from_user.id,
+            order=order,
+            file_format=fmt,
+        )
+
+    if not success:
+        await query.answer(f"❌ Could not export file: {msg}", show_alert=True)
+
+
 def get_handlers() -> list:
     """Return handlers for this module."""
     warranty_conv = ConversationHandler(
@@ -530,6 +569,7 @@ def get_handlers() -> list:
         CallbackQueryHandler(review_order_callback, pattern=r"^review:\d+:\d+$"),
         CallbackQueryHandler(check_payment, pattern=r"^check_pay:\d+$"),
         CallbackQueryHandler(cancel_order_handler, pattern=r"^cancel_order:\d+$"),
+        CallbackQueryHandler(download_credentials_callback, pattern=r"^dl_(txt|csv):\d+$"),
         CallbackQueryHandler(show_orders, pattern=r"^orders$"),
         CallbackQueryHandler(show_orders, pattern=r"^orders_page:\d+$"),
         CallbackQueryHandler(show_order_detail, pattern=r"^order:CD-"),

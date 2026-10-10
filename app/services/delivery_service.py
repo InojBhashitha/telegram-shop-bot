@@ -29,10 +29,15 @@ def _review_keyboard(order_id: int) -> InlineKeyboardMarkup:
 
 
 def _delivery_actions_keyboard(order_id: int) -> InlineKeyboardMarkup:
-    """Build delivery action keyboard linking to public vouch feed and store."""
+    """Build delivery action keyboard linking to credentials download, public vouch feed, and store."""
     from app.config import get_settings
     settings = get_settings()
-    buttons = []
+    buttons = [
+        [
+            InlineKeyboardButton("📄 Download .txt", callback_data=f"dl_txt:{order_id}"),
+            InlineKeyboardButton("📊 Download .csv", callback_data=f"dl_csv:{order_id}"),
+        ]
+    ]
 
     if settings.vouch_channel_id:
         channel_clean = settings.vouch_channel_id.lstrip("@")
@@ -214,6 +219,22 @@ async def deliver_bulk_to_user(
             "Bulk delivery sent: order=%s qty=%s user=%s",
             order.public_order_id, len(contents), telegram_id,
         )
+
+        # Auto-send downloadable .txt credentials file for convenience
+        try:
+            from app.services import credential_export_service
+            from app.database.database import get_session
+            async with get_session() as file_session:
+                await credential_export_service.export_and_send_order_credentials(
+                    bot=bot,
+                    session=file_session,
+                    chat_id=telegram_id,
+                    order=order,
+                    file_format="txt",
+                )
+        except Exception as e:
+            logger.warning("Could not auto-deliver credentials .txt file: %s", e)
+
         return True
 
     except TelegramError as e:
@@ -281,6 +302,22 @@ async def deliver_cart_order_to_user(
             "Cart delivery sent: order=%s items=%s user=%s",
             order.public_order_id, total_qty, telegram_id,
         )
+
+        # Auto-send downloadable .txt credentials file for convenience
+        try:
+            from app.services import credential_export_service
+            from app.database.database import get_session
+            async with get_session() as file_session:
+                await credential_export_service.export_and_send_order_credentials(
+                    bot=bot,
+                    session=file_session,
+                    chat_id=telegram_id,
+                    order=order,
+                    file_format="txt",
+                )
+        except Exception as e:
+            logger.warning("Could not auto-deliver credentials .txt file for cart order: %s", e)
+
         return True
     except TelegramError as e:
         logger.error(

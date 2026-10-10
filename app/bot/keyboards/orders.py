@@ -118,6 +118,13 @@ def order_detail_keyboard(
             InlineKeyboardButton("❌ Cancel Order", callback_data=f"cancel_order:{order.id}"),
         ])
 
+    # Download credentials buttons for fulfilled orders
+    if order.status == OrderStatus.FULFILLED:
+        buttons.append([
+            InlineKeyboardButton("📄 Download .txt File", callback_data=f"dl_txt:{order.id}"),
+            InlineKeyboardButton("📊 Download .csv File", callback_data=f"dl_csv:{order.id}"),
+        ])
+
     # Warranty button for fulfilled orders within warranty period
     if has_warranty and order.status == OrderStatus.FULFILLED:
         now = datetime.now(timezone.utc)

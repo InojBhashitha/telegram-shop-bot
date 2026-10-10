@@ -150,6 +150,10 @@ def admin_order_detail_keyboard(
         ])
     if is_delivered:
         buttons.append([
+            InlineKeyboardButton("📄 Export .txt", callback_data=f"adm:dl_txt:{order_id}"),
+            InlineKeyboardButton("📊 Export .csv", callback_data=f"adm:dl_csv:{order_id}"),
+        ])
+        buttons.append([
             InlineKeyboardButton("📢 Post Vouch to Channel", callback_data=f"adm:vouch:{order_id}"),
         ])
     buttons.append([

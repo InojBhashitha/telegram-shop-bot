@@ -836,6 +836,40 @@ async def admin_post_vouch_callback(update: Update, context: ContextTypes.DEFAUL
         await query.answer(f"⚠️ Broadcast failed: {message}", show_alert=True)
 
 
+async def admin_export_order_credentials_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin export order credentials as .txt or .csv document."""
+    query = update.callback_query
+    if query is None or query.from_user is None or not _is_admin(query.from_user.id):
+        if query:
+            await query.answer("❌ Access denied.", show_alert=True)
+        return
+
+    parts = query.data.split(":")
+    fmt = "txt" if parts[1] == "dl_txt" else "csv"
+    order_id = int(parts[2])
+
+    await query.answer(f"⏳ Generating {fmt.upper()} export...", show_alert=False)
+
+    async with get_session() as session:
+        from app.database.repositories import order_repo
+        order = await order_repo.get_by_id(session, order_id)
+        if order is None:
+            await query.answer("❌ Order not found.", show_alert=True)
+            return
+
+        from app.services import credential_export_service
+        success, msg = await credential_export_service.export_and_send_order_credentials(
+            bot=context.bot,
+            session=session,
+            chat_id=query.from_user.id,
+            order=order,
+            file_format=fmt,
+        )
+
+    if not success:
+        await query.answer(f"❌ Export failed: {msg}", show_alert=True)
+
+
 async def admin_cancel_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Admin cancel an order."""
     query = update.callback_query
@@ -1522,6 +1556,7 @@ def get_handlers() -> list:
         CallbackQueryHandler(admin_orders, pattern=r"^adm:orders_p:\d+$"),
         CallbackQueryHandler(admin_order_detail, pattern=r"^adm:order:\d+$"),
         CallbackQueryHandler(admin_deliver, pattern=r"^adm:deliver:\d+$"),
+        CallbackQueryHandler(admin_export_order_credentials_callback, pattern=r"^adm:dl_(txt|csv):\d+$"),
         CallbackQueryHandler(admin_post_vouch_callback, pattern=r"^adm:vouch:\d+$"),
         CallbackQueryHandler(admin_cancel_order, pattern=r"^adm:cancel_ord:\d+$"),
         CallbackQueryHandler(admin_payments, pattern="^adm:payments$"),
