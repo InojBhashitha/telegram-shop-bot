@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import logging
+from decimal import Decimal
 
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     CallbackQueryHandler,
     CommandHandler,
@@ -24,7 +25,12 @@ from app.config import get_settings
 from app.database.database import get_session
 from app.database.models import OrderStatus
 from app.database.repositories import inventory_repo, order_repo, payment_repo, user_repo
-from app.services import delivery_service, order_service, payment_service
+from app.services import (
+    delivery_service,
+    order_service,
+    payment_service,
+    user_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +117,7 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             f"{steps}\n\n"
             f"Status: {status_display}\n\n"
             f"Complete your payment using the button below or cancel anytime.",
-            reply_markup=payment_keyboard(payment_url, order.id, status_text),
+            reply_markup=payment_keyboard(payment_url, order.id, status_text, user_balance=user.balance),
             parse_mode="Markdown",
         )
     else:
@@ -122,7 +128,7 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             f"💰 Amount: ${order.amount}\n\n"
             f"{steps}\n\n"
             f"Status: {status_display}",
-            reply_markup=order_detail_keyboard(order, has_warranty=True, payment_url=payment_url),
+            reply_markup=order_detail_keyboard(order, has_warranty=True, payment_url=payment_url, user_balance=user.balance),
             parse_mode="Markdown",
         )
 
@@ -161,6 +167,100 @@ async def cancel_order_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         f"❌ *Order Cancelled*\n\n"
         f"📦 Order: `{order.public_order_id}`\n\n"
         f"Your order has been cancelled and the reserved item(s) have been released.",
+        parse_mode="Markdown",
+    )
+
+
+async def pay_balance_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Instantly pay for an order using store balance with 0-second delivery."""
+    query = update.callback_query
+    if query is None or query.data is None or query.from_user is None:
+        return
+    await query.answer()
+
+    order_id = int(query.data.split(":")[1])
+
+    async with get_session() as session:
+        order = await order_service.get_order_by_id(session, order_id)
+        if order is None:
+            await query.edit_message_text("❌ Order not found.")
+            return
+
+        user = await user_repo.get_by_telegram_id(session, query.from_user.id)
+        if user is None or order.user_id != user.id:
+            await query.answer("❌ This is not your order.", show_alert=True)
+            return
+
+        if order.status in (OrderStatus.PAID, OrderStatus.FULFILLED):
+            await query.answer("✅ This order has already been paid and fulfilled!", show_alert=True)
+            return
+
+        if order.status != OrderStatus.PENDING_PAYMENT and order.status != OrderStatus.PAYMENT_PROCESSING:
+            await query.edit_message_text(f"❌ Order is no longer pending (status: {order.status.value}).")
+            return
+
+        # Check balance
+        if user.balance < order.amount:
+            shortfall = (order.amount - user.balance).quantize(Decimal("0.01"))
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("➕ Top-Up Balance (+Bonus)", callback_data="topup")],
+                [
+                    InlineKeyboardButton("🔄 Check Payment", callback_data=f"check_pay:{order.id}"),
+                    InlineKeyboardButton("❌ Cancel Order", callback_data=f"cancel_order:{order.id}"),
+                ],
+                [InlineKeyboardButton("⬅️ Back to Order", callback_data=f"order:{order.public_order_id}")],
+            ])
+            await query.edit_message_text(
+                f"☁️ *Cloud Deals*\n\n"
+                f"❌ *Insufficient Store Balance*\n\n"
+                f"📦 Order: `{order.public_order_id}`\n"
+                f"💰 Order Total: `${order.amount:.2f}`\n"
+                f"💼 Your Balance: `${user.balance:.2f}`\n"
+                f"⚠️ Shortfall: `${shortfall:.2f}`\n\n"
+                f"🎁 *Deposit Bonus Tip:* Top up your balance to get up to *+15% Extra Credit* and unlock 0-second instant fulfillment!",
+                reply_markup=keyboard,
+                parse_mode="Markdown",
+            )
+            return
+
+        # Deduct balance
+        await user_service.debit_balance(session, user.id, order.amount)
+
+        # Mark paid
+        await order_service.mark_paid(session, order.id)
+
+        # Auto fulfill
+        await order_service.fulfill_order(session, order.id)
+
+        # Refresh order
+        order = await order_service.get_order_by_id(session, order.id)
+
+        # Deliver order to user (including file download buttons & vouch broadcasting)
+        await delivery_service.deliver_order_if_fulfilled(session, order)
+
+        # Refresh user balance
+        await session.refresh(user)
+
+        # Delivered items preview
+        delivered_items = []
+        if order and order.status == OrderStatus.FULFILLED:
+            items = await inventory_repo.get_items_by_order_id(session, order.id)
+            delivered_items = [item.content for item in items if item.content]
+
+    credentials_block = ""
+    if delivered_items:
+        formatted_items = "\n".join(f"• `{item}`" for item in delivered_items)
+        credentials_block = f"\n\n🔑 *Delivered Credentials:*\n{formatted_items}"
+
+    await query.edit_message_text(
+        f"☁️ *Cloud Deals*\n\n"
+        f"⚡ *0-Second Balance Checkout Complete!*\n\n"
+        f"📦 Order: `{order.public_order_id}`\n"
+        f"💰 Deducted: `${order.amount:.2f}`\n"
+        f"💼 Remaining Balance: `${user.balance:.2f}`\n"
+        f"Status: ✅ Fulfilled{credentials_block}\n\n"
+        f"🎉 Your purchase was processed instantly with 0 blockchain confirmation delay!",
+        reply_markup=order_detail_keyboard(order, has_warranty=True),
         parse_mode="Markdown",
     )
 
@@ -247,7 +347,7 @@ async def show_order_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         f"💰 Amount: ${order.amount}\n"
         f"Status: {status_icon} {order.status.value.replace('_', ' ').title()}\n"
         f"📅 Date: {created}",
-        reply_markup=order_detail_keyboard(order, has_warranty=True, payment_url=payment_url),
+        reply_markup=order_detail_keyboard(order, has_warranty=True, payment_url=payment_url, user_balance=user.balance),
         parse_mode="Markdown",
     )
 
@@ -566,6 +666,7 @@ def get_handlers() -> list:
         MessageHandler(filters.SUCCESSFUL_PAYMENT, handle_successful_payment),
         warranty_conv,
         CommandHandler("orders", orders_command),
+        CallbackQueryHandler(pay_balance_callback, pattern=r"^pay_balance:\d+$"),
         CallbackQueryHandler(review_order_callback, pattern=r"^review:\d+:\d+$"),
         CallbackQueryHandler(check_payment, pattern=r"^check_pay:\d+$"),
         CallbackQueryHandler(cancel_order_handler, pattern=r"^cancel_order:\d+$"),

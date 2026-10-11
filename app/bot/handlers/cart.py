@@ -526,7 +526,7 @@ async def checkout_cart_handler(update: Update, context: ContextTypes.DEFAULT_TY
         f"💰 Total Amount: ${order.amount}\n\n"
         f"🟡 Deposit → ⚪ Confirm → ⚪ Deliver\n\n"
         f"⏰ Payment expires in {settings.order_expiry_minutes} minutes.",
-        reply_markup=payment_keyboard(payment_url, order.id),
+        reply_markup=payment_keyboard(payment_url, order.id, user_balance=db_user.balance),
         parse_mode="Markdown",
     )
 

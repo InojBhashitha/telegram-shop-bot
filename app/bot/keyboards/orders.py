@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Optional
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -29,15 +30,23 @@ def payment_keyboard(
     order_status: str = "pending_payment",
     amount: Optional[str] = None,
     stars_invoice_url: Optional[str] = None,
+    user_balance: Optional[Decimal] = None,
 ) -> InlineKeyboardMarkup:
-    """Payment keyboard with crypto checkout URL and live status tracker."""
+    """Payment keyboard with crypto checkout URL, 0-second balance pay option, and live status tracker."""
     # Status step indicators
     steps = _get_payment_steps(order_status)
     label = _get_provider_button_label()
 
-    buttons = [
-        [InlineKeyboardButton(label, url=payment_url)],
-    ]
+    buttons = []
+    if user_balance is not None:
+        buttons.append([
+            InlineKeyboardButton(
+                f"⚡ Pay with Store Balance (${user_balance:.2f})",
+                callback_data=f"pay_balance:{order_id}",
+            )
+        ])
+
+    buttons.append([InlineKeyboardButton(label, url=payment_url)])
     if stars_invoice_url:
         buttons.append([InlineKeyboardButton("⭐ Pay with Telegram Stars", url=stars_invoice_url)])
 
@@ -105,12 +114,24 @@ def order_detail_keyboard(
     order: Order,
     has_warranty: bool = False,
     payment_url: Optional[str] = None,
+    user_balance: Optional[Decimal] = None,
 ) -> InlineKeyboardMarkup:
     """Order detail keyboard with payment options, cancel order button, and optional warranty claim button."""
     buttons = []
 
-    # If pending or payment processing, show Pay, Check Payment, and Cancel Order buttons
+    # If pending or payment processing, show Balance Pay, Crypto Pay, Check Payment, and Cancel Order buttons
     if order.status in (OrderStatus.PENDING_PAYMENT, OrderStatus.PAYMENT_PROCESSING):
+        if user_balance is not None:
+            buttons.append([
+                InlineKeyboardButton(
+                    f"⚡ Pay with Store Balance (${user_balance:.2f})",
+                    callback_data=f"pay_balance:{order.id}",
+                )
+            ])
+        else:
+            buttons.append([
+                InlineKeyboardButton("⚡ Pay with Store Balance", callback_data=f"pay_balance:{order.id}")
+            ])
         if payment_url:
             buttons.append([InlineKeyboardButton(_get_provider_button_label(), url=payment_url)])
         buttons.append([

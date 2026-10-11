@@ -67,7 +67,7 @@ async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def show_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show top-up options."""
+    """Show top-up options with tiered deposit bonuses."""
     query = update.callback_query
     if query is None or query.from_user is None:
         return
@@ -75,25 +75,32 @@ async def show_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     async with get_session() as session:
         user = await user_repo.get_by_telegram_id(session, query.from_user.id)
-        balance = user.balance if user else Decimal("0")
+        balance = user.balance if user else Decimal("0.00")
 
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("+ $5", callback_data="topup_amt:5"),
-            InlineKeyboardButton("+ $10", callback_data="topup_amt:10"),
+            InlineKeyboardButton("+ $10 (+5% 🔥)", callback_data="topup_amt:10"),
         ],
         [
-            InlineKeyboardButton("+ $20", callback_data="topup_amt:20"),
-            InlineKeyboardButton("+ $50", callback_data="topup_amt:50"),
+            InlineKeyboardButton("+ $20 (+7.5%)", callback_data="topup_amt:20"),
+            InlineKeyboardButton("+ $50 (+10% 🔥)", callback_data="topup_amt:50"),
         ],
-        [InlineKeyboardButton("+ $100", callback_data="topup_amt:100")],
+        [InlineKeyboardButton("+ $100 (+15% VIP 🚀)", callback_data="topup_amt:100")],
         [InlineKeyboardButton("⬅️ Back", callback_data="profile")],
     ])
 
     await query.edit_message_text(
         f"☁️ *Cloud Deals*\n\n"
-        f"💳 *Top-Up Balance*\n\n"
-        f"Current balance: ${balance}\n\n"
+        f"💳 *Store Balance & Deposit Bonuses*\n\n"
+        f"💰 Current balance: *${balance:.2f}*\n\n"
+        f"🔥 *Tiered Deposit Bonuses (Instant Extra Credit):*\n"
+        f"• $10+  → *+5% Bonus*\n"
+        f"• $20+  → *+7.5% Bonus*\n"
+        f"• $50+  → *+10% Bonus*\n"
+        f"• $100+ → *+15% VIP Bonus* 🚀\n\n"
+        f"⚡ *Why use Store Balance?*\n"
+        f"Enjoy *0-second instant checkout* without waiting for blockchain confirmations!\n\n"
         f"Select an amount to add:",
         reply_markup=keyboard,
         parse_mode="Markdown",
@@ -101,7 +108,7 @@ async def show_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 async def process_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Create a top-up payment."""
+    """Create a top-up payment with bonus calculation."""
     query = update.callback_query
     if query is None or query.data is None or query.from_user is None:
         return
@@ -153,6 +160,12 @@ async def process_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
         payment_url = result["payment_url"]
 
+    bonus_amt, bonus_pct, tier_label = topup_service.calculate_deposit_bonus(amount)
+    total_credit = (amount + bonus_amt).quantize(Decimal("0.01"))
+    bonus_preview = ""
+    if bonus_amt > Decimal("0.00"):
+        bonus_preview = f"🎁 Deposit Bonus (+{bonus_pct:g}%): *+${bonus_amt:.2f}*\n💳 Total Credited: *${total_credit:.2f}*\n\n"
+
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("💳 Pay with Crypto", url=payment_url)],
         [InlineKeyboardButton("⬅️ Back", callback_data="topup")],
@@ -160,10 +173,11 @@ async def process_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     await query.edit_message_text(
         f"☁️ *Cloud Deals*\n\n"
-        f"💳 *Top-Up Payment*\n\n"
-        f"💰 Amount: ${amount}\n\n"
+        f"💳 *Top-Up Payment Invoice*\n\n"
+        f"💰 Deposit: *${amount:.2f}*\n"
+        f"{bonus_preview}"
         f"Complete your payment using the button below.\n"
-        f"Your balance will be credited automatically after confirmation.",
+        f"Your balance and deposit bonus will be credited automatically upon confirmation for 0-second checkout!",
         reply_markup=keyboard,
         parse_mode="Markdown",
     )

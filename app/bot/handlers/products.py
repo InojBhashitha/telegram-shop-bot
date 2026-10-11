@@ -323,7 +323,7 @@ async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         f"💰 Total: ${order.amount}\n\n"
         f"🟡 Deposit → ⚪ Confirm → ⚪ Deliver\n\n"
         f"⏰ Payment expires in {settings.order_expiry_minutes} minutes.",
-        reply_markup=payment_keyboard(payment_url, order.id),
+        reply_markup=payment_keyboard(payment_url, order.id, user_balance=db_user.balance),
         parse_mode="Markdown",
     )
 
