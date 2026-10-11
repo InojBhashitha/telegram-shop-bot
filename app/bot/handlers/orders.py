@@ -233,7 +233,10 @@ async def pay_balance_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         await order_service.fulfill_order(session, order.id)
 
         # Refresh order
-        order = await order_service.get_order_by_id(session, order.id)
+        refreshed_order = await order_service.get_order_by_id(session, order.id)
+        if refreshed_order is None:
+            return
+        order = refreshed_order
 
         # Deliver order to user (including file download buttons & vouch broadcasting)
         await delivery_service.deliver_order_if_fulfilled(session, order)

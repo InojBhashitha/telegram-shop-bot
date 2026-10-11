@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from decimal import Decimal
 
 from fastapi import APIRouter, Request, Response
 
