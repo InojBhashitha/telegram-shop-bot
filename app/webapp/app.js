@@ -168,6 +168,17 @@
     supportActionCard: document.getElementById('supportActionCard'),
     closeProfileModal: document.getElementById('closeProfileModal'),
 
+    // Top-Up Modal
+    topupModal: document.getElementById('topupModal'),
+    closeTopupModal: document.getElementById('closeTopupModal'),
+    topupCurrentBalText: document.getElementById('topupCurrentBalText'),
+    customTopupInput: document.getElementById('customTopupInput'),
+    topupPayAmtDisplay: document.getElementById('topupPayAmtDisplay'),
+    topupBonusAmtDisplay: document.getElementById('topupBonusAmtDisplay'),
+    topupTotalCreditDisplay: document.getElementById('topupTotalCreditDisplay'),
+    confirmTopupBtn: document.getElementById('confirmTopupBtn'),
+    btnTopupAmount: document.getElementById('btnTopupAmount'),
+
     // Navigation Dock & Search
     dockCatalogBtn: document.getElementById('dockCatalogBtn'),
     dockProductsBtn: document.getElementById('dockProductsBtn'),
@@ -343,7 +354,7 @@
     el.profUsername.textContent = u.username ? `@${u.username}` : 'No username';
     el.profId.textContent = `Telegram ID: ${u.telegram_id}`;
     el.profBalance.textContent = `$${parseFloat(u.balance || 0).toFixed(2)}`;
-    el.methodBalanceSub.textContent = `Available: $${parseFloat(u.balance || 0).toFixed(2)}`;
+    el.methodBalanceSub.textContent = `Available: $${parseFloat(u.balance || 0).toFixed(2)} • Zero Confirmation Wait`;
 
     // Referral stats in profile
     if (el.referralSubText) {
@@ -1250,10 +1261,137 @@
     }
   });
 
-  el.topupActionCard.addEventListener('click', () => {
-    haptic('light');
-    showToast('Send /start in the bot chat and tap Top-up to add balance! 💳', 'normal');
+  // --- Wallet Top-Up & Deposit Bonus Modal Handlers ---
+  function calculateDepositBonus(amount) {
+    const amt = parseFloat(amount) || 0;
+    let pct = 0;
+    let label = '';
+    if (amt >= 100) {
+      pct = 15.0;
+      label = '+15% VIP Bonus';
+    } else if (amt >= 50) {
+      pct = 10.0;
+      label = '+10% Mega Bonus';
+    } else if (amt >= 20) {
+      pct = 7.5;
+      label = '+7.5% Pro Bonus';
+    } else if (amt >= 10) {
+      pct = 5.0;
+      label = '+5% Starter Bonus';
+    }
+    const bonus = Math.round((amt * pct / 100) * 100) / 100;
+    return {
+      amount: amt,
+      bonus: bonus,
+      percent: pct,
+      label: label,
+      total: Math.round((amt + bonus) * 100) / 100,
+    };
+  }
+
+  function updateTopupCalculation(amount) {
+    const calc = calculateDepositBonus(amount);
+    if (el.topupPayAmtDisplay) el.topupPayAmtDisplay.textContent = `$${calc.amount.toFixed(2)}`;
+    if (el.topupBonusAmtDisplay) {
+      if (calc.bonus > 0) {
+        el.topupBonusAmtDisplay.textContent = `+$${calc.bonus.toFixed(2)} (${calc.label})`;
+        el.topupBonusAmtDisplay.style.color = '#ff9f0a';
+      } else {
+        el.topupBonusAmtDisplay.textContent = `$0.00 (Standard)`;
+        el.topupBonusAmtDisplay.style.color = 'var(--text-secondary)';
+      }
+    }
+    if (el.topupTotalCreditDisplay) el.topupTotalCreditDisplay.textContent = `$${calc.total.toFixed(2)}`;
+    if (el.btnTopupAmount) el.btnTopupAmount.textContent = `$${calc.amount.toFixed(2)}`;
+  }
+
+  function openTopupModal() {
+    if (el.topupCurrentBalText && state.user) {
+      el.topupCurrentBalText.textContent = `$${parseFloat(state.user.balance || 0).toFixed(2)}`;
+    }
+    updateTopupCalculation(10);
+    document.querySelectorAll('.preset-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.amt === '10');
+    });
+    if (el.customTopupInput) el.customTopupInput.value = 10;
+    openModal(el.topupModal);
+  }
+
+  if (el.topupActionCard) {
+    el.topupActionCard.addEventListener('click', () => {
+      haptic('light');
+      openTopupModal();
+    });
+  }
+
+  if (el.closeTopupModal) {
+    el.closeTopupModal.addEventListener('click', closeModal);
+  }
+
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      haptic('light');
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const amt = parseFloat(btn.dataset.amt) || 10;
+      if (el.customTopupInput) el.customTopupInput.value = amt;
+      updateTopupCalculation(amt);
+    });
   });
+
+  if (el.customTopupInput) {
+    el.customTopupInput.addEventListener('input', () => {
+      const amt = parseFloat(el.customTopupInput.value) || 0;
+      document.querySelectorAll('.preset-btn').forEach(b => {
+        b.classList.toggle('active', parseFloat(b.dataset.amt) === amt);
+      });
+      updateTopupCalculation(amt);
+    });
+  }
+
+  if (el.confirmTopupBtn) {
+    el.confirmTopupBtn.addEventListener('click', async () => {
+      haptic('heavy');
+      const amt = parseFloat(el.customTopupInput?.value) || 10;
+      if (amt < 1.0) {
+        showToast('Minimum deposit is $1.00', 'error');
+        return;
+      }
+      el.confirmTopupBtn.disabled = true;
+      el.confirmTopupBtn.textContent = 'Generating Crypto Invoice...';
+
+      try {
+        const res = await api('/topup', {
+          method: 'POST',
+          body: JSON.stringify({
+            amount: amt,
+            currency: 'USD',
+            init_data: state.initData || undefined,
+            telegram_id: state.telegramId || undefined,
+          }),
+        });
+
+        closeModal();
+        if (res.payment_url) {
+          if (tg?.openTelegramLink && res.payment_url.startsWith('https://t.me/')) {
+            tg.openTelegramLink(res.payment_url);
+          } else if (tg?.openLink) {
+            tg.openLink(res.payment_url);
+          } else {
+            window.open(res.payment_url, '_blank');
+          }
+          const bonusMsg = parseFloat(res.bonus_amount) > 0 ? ` (+${res.bonus_percent}% bonus of +$${res.bonus_amount} included!)` : '';
+          showToast(`Top-up invoice created! Pay via crypto to receive your balance${bonusMsg} 🚀`, 'success');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+        haptic('error');
+      } finally {
+        el.confirmTopupBtn.disabled = false;
+        el.confirmTopupBtn.innerHTML = `💳 Pay with Crypto • <span id="btnTopupAmount">$${amt.toFixed(2)}</span>`;
+      }
+    });
+  }
 
   // --- Navigation Dock Handlers ---
   function setActiveDockBtn(activeBtn) {

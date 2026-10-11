@@ -341,3 +341,58 @@ async def test_webapp_reviews_api(test_app_client: AsyncClient):
     assert data["average_rating"] == 5.0
     assert len(data["reviews"]) >= 1
     assert data["reviews"][0]["comment"] == "Super clean accounts!"
+
+
+@pytest.mark.asyncio
+async def test_webapp_topup_tiers_and_invoice(test_app_client: AsyncClient):
+    """Test fetching deposit bonus tiers and creating a top-up invoice via WebApp API."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    # 1. Check tiers endpoint
+    tiers_res = await test_app_client.get("/api/webapp/topup/tiers")
+    assert tiers_res.status_code == 200
+    tiers_data = tiers_res.json()
+    assert tiers_data["enabled"] is True
+    assert len(tiers_data["tiers"]) == 4
+    assert tiers_data["tiers"][3]["badge"] == "+15%"
+
+    # 2. Check auth response includes deposit_bonuses in store
+    auth_res = await test_app_client.post(
+        "/api/webapp/auth",
+        json={"dev_telegram_id": 998877, "dev_username": "bonususer"},
+    )
+    assert auth_res.status_code == 200
+    store_bonuses = auth_res.json()["store"]["deposit_bonuses"]
+    assert store_bonuses["enabled"] is True
+    assert len(store_bonuses["tiers"]) == 4
+
+    # 3. Minimum amount validation
+    low_res = await test_app_client.post(
+        "/api/webapp/topup",
+        json={"amount": 0.5, "telegram_id": 998877},
+    )
+    assert low_res.status_code == 400
+    assert "Minimum" in low_res.json()["detail"]
+
+    # 4. Successful top-up invoice generation with bonus
+    mock_provider = MagicMock()
+    mock_provider.provider_name = "oxapay"
+    mock_inv = MagicMock()
+    mock_inv.invoice_id = "webapp_inv_50"
+    mock_inv.payment_url = "https://oxapay.com/pay/webapp_inv_50"
+    mock_provider.create_invoice = AsyncMock(return_value=mock_inv)
+
+    with patch("app.api.webapp.get_payment_provider", return_value=mock_provider):
+        topup_res = await test_app_client.post(
+            "/api/webapp/topup",
+            json={"amount": 50.0, "telegram_id": 998877},
+        )
+        assert topup_res.status_code == 200
+        res_data = topup_res.json()
+        assert res_data["success"] is True
+        assert res_data["payment_url"] == "https://oxapay.com/pay/webapp_inv_50"
+        assert res_data["deposit_amount"] == "50.00"
+        assert res_data["bonus_amount"] == "5.00"
+        assert res_data["bonus_percent"] == 10.0
+        assert res_data["total_credit"] == "55.00"
+        assert "Mega" in res_data["tier_label"]

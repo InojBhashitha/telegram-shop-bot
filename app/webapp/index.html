@@ -313,8 +313,8 @@
           <label class="apple-radio-option" id="balanceMethodOption">
             <input type="radio" name="payment_method" value="balance">
             <div class="option-copy">
-              <span class="option-title">💳 Store Balance</span>
-              <span class="option-sub" id="methodBalanceSub">Available: $0.00</span>
+              <span class="option-title">💳 Store Balance <span class="speed-pill">⚡ 0s Instant</span></span>
+              <span class="option-sub" id="methodBalanceSub">Available: $0.00 • Zero Confirmation Wait</span>
             </div>
             <span class="option-check">✓</span>
           </label>
@@ -468,8 +468,8 @@
         <div class="apple-action-row" id="topupActionCard">
           <div class="action-icon">💳</div>
           <div class="action-text">
-            <strong>Top-Up Balance</strong>
-            <small>Deposit funds via Crypto in Telegram</small>
+            <strong>Top-Up Balance <span class="badge-bonus">Up to +15% Bonus 🔥</span></strong>
+            <small>Deposit crypto & get instant extra credit</small>
           </div>
           <span class="action-chevron">&rsaquo;</span>
         </div>
@@ -492,6 +492,92 @@
           <span class="action-chevron">&rsaquo;</span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Top-Up Sheet Modal -->
+  <div id="topupModal" class="apple-bottom-sheet hidden">
+    <div class="sheet-drag-handle"></div>
+    <div class="sheet-header">
+      <div class="cart-title-wrap">
+        <h2>Top-Up Store Balance</h2>
+        <span class="apple-badge-sub">0-Second Instant Checkout</span>
+      </div>
+      <button class="apple-close-btn" id="closeTopupModal">&times;</button>
+    </div>
+
+    <div class="sheet-body">
+      <!-- Promo Banner -->
+      <div class="bonus-promo-banner">
+        <span class="promo-fire">🔥</span>
+        <div class="promo-text">
+          <strong>Deposit Bonuses Active!</strong>
+          <small>Get up to +15% extra wallet credit automatically credited.</small>
+        </div>
+      </div>
+
+      <!-- Current Balance Info -->
+      <div class="topup-current-bal-box">
+        <span>Current Balance:</span>
+        <strong id="topupCurrentBalText">$0.00</strong>
+      </div>
+
+      <!-- Quick Preset Selection -->
+      <label class="section-label">Select Deposit Amount:</label>
+      <div class="topup-presets-grid">
+        <button type="button" class="preset-btn" data-amt="5">
+          <span class="preset-amt">$5</span>
+          <span class="preset-tag">Standard</span>
+        </button>
+        <button type="button" class="preset-btn active" data-amt="10">
+          <span class="preset-amt">$10</span>
+          <span class="preset-tag tag-bonus">+5% Free</span>
+        </button>
+        <button type="button" class="preset-btn" data-amt="20">
+          <span class="preset-amt">$20</span>
+          <span class="preset-tag tag-bonus">+7.5% Free</span>
+        </button>
+        <button type="button" class="preset-btn" data-amt="50">
+          <span class="preset-amt">$50</span>
+          <span class="preset-tag tag-bonus">+10% Free 🔥</span>
+        </button>
+        <button type="button" class="preset-btn" data-amt="100">
+          <span class="preset-amt">$100</span>
+          <span class="preset-tag tag-vip">+15% VIP 🚀</span>
+        </button>
+      </div>
+
+      <!-- Custom Amount Input -->
+      <div class="custom-amt-wrap">
+        <label for="customTopupInput">Or Custom Amount ($ USD):</label>
+        <div class="custom-input-box">
+          <span class="currency-symbol">$</span>
+          <input type="number" id="customTopupInput" min="1" step="1" value="10" placeholder="10">
+        </div>
+      </div>
+
+      <!-- Summary Calculator -->
+      <div class="topup-summary-card">
+        <div class="summary-line">
+          <span>Deposit Amount:</span>
+          <strong id="topupPayAmtDisplay">$10.00</strong>
+        </div>
+        <div class="summary-line bonus-line">
+          <span>🎁 Free Bonus Credits:</span>
+          <strong id="topupBonusAmtDisplay">+$0.50 (+5%)</strong>
+        </div>
+        <div class="summary-divider"></div>
+        <div class="summary-line total-line">
+          <span>Total Balance You Receive:</span>
+          <strong id="topupTotalCreditDisplay">$10.50</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet-footer">
+      <button class="apple-btn-primary apple-full-btn" id="confirmTopupBtn">
+        💳 Pay with Crypto • <span id="btnTopupAmount">$10.00</span>
+      </button>
     </div>
   </div>
 

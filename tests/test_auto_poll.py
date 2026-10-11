@@ -157,9 +157,9 @@ class TestAutoPollWorker:
         assert stats["topups_checked"] >= 1
         assert stats["topups_credited"] >= 1
 
-        # Check balance was credited
+        # Check balance was credited (includes +5% deposit bonus for $15)
         updated_user = await user_repo.get_by_id(session, user.id)
-        assert updated_user.balance == Decimal("15.00")
+        assert updated_user.balance == Decimal("15.75")
 
         # Topup status is PAID
         updated_topup = await topup_repo.get_by_id(session, topup.id)

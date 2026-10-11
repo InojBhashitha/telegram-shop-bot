@@ -49,6 +49,7 @@ from app.services import (
     delivery_service,
     order_service,
     payment_service,
+    topup_service,
     user_service,
 )
 
@@ -243,6 +244,14 @@ class CreateReviewRequest(BaseModel):
     token: Optional[str] = None
 
 
+class TopUpRequest(BaseModel):
+    amount: float
+    currency: str = "USD"
+    init_data: Optional[str] = None
+    telegram_id: Optional[int] = None
+    token: Optional[str] = None
+
+
 # ---------------------------------------------------------------------------
 # Authentication & User Profile Endpoints
 # ---------------------------------------------------------------------------
@@ -299,6 +308,10 @@ async def auth_user(
                 "force_channel": settings.force_channel_id,
                 "warranty_hours": settings.warranty_hours,
                 "support_username": settings.support_username,
+                "deposit_bonuses": {
+                    "enabled": settings.deposit_bonus_enabled,
+                    "tiers": topup_service.get_deposit_bonus_tiers(),
+                },
             },
             "cart_count": cart_count,
         }
@@ -1108,3 +1121,62 @@ async def create_review(
             }
         except review_service.ReviewError as e:
             raise HTTPException(status_code=400, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Wallet Top-Up & Deposit Bonus Endpoints
+# ---------------------------------------------------------------------------
+
+@router.get("/topup/tiers")
+async def get_topup_tiers():
+    """Get active deposit bonus tiers and bonus settings."""
+    settings = get_settings()
+    return {
+        "enabled": settings.deposit_bonus_enabled,
+        "tiers": topup_service.get_deposit_bonus_tiers(),
+    }
+
+
+@router.post("/topup")
+async def create_topup_invoice(
+    req: TopUpRequest,
+    x_telegram_init_data: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None),
+):
+    """Create a crypto invoice for balance top-up with deposit bonus calculation."""
+    if req.amount < 1.0:
+        raise HTTPException(status_code=400, detail="Minimum top-up amount is $1.00.")
+
+    raw_init = req.init_data or x_telegram_init_data
+    async with get_session() as session:
+        user = await resolve_user(
+            session,
+            init_data=raw_init,
+            telegram_id=req.telegram_id,
+            authorization=authorization,
+            token=req.token,
+        )
+
+        try:
+            provider = get_payment_provider()
+            amt_decimal = Decimal(f"{req.amount:.2f}")
+            result = await topup_service.create_topup(
+                session, provider, user.id, amt_decimal, currency=req.currency
+            )
+        except Exception as e:
+            logger.error("Mini App top-up creation error: %s", e)
+            raise HTTPException(status_code=500, detail=f"Failed to create top-up payment: {str(e)}")
+
+        bonus_amt, bonus_pct, tier_label = topup_service.calculate_deposit_bonus(amt_decimal)
+        total_credit = (amt_decimal + bonus_amt).quantize(Decimal("0.01"))
+
+        return {
+            "success": True,
+            "payment_url": result["payment_url"],
+            "topup_id": result["topup"].id,
+            "deposit_amount": str(amt_decimal),
+            "bonus_amount": str(bonus_amt),
+            "bonus_percent": bonus_pct,
+            "tier_label": tier_label,
+            "total_credit": str(total_credit),
+        }
