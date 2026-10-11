@@ -63,6 +63,86 @@ async def create_topup(
     return {"topup": topup, "payment_url": result.payment_url}
 
 
+def calculate_deposit_bonus(amount: Decimal | float | int) -> tuple[Decimal, float, str]:
+    """Calculate deposit bonus amount, bonus percentage, and tier label based on deposit amount.
+
+    Tiers:
+    - $100+ : +15.0% (VIP Bonus)
+    - $50+  : +10.0% (Mega Bonus)
+    - $20+  : +7.5%  (Pro Bonus)
+    - $10+  : +5.0%  (Starter Bonus)
+    - <$10  : 0%
+
+    Returns:
+        (bonus_amount, bonus_percent, tier_label)
+    """
+    settings = get_settings()
+    if not settings.deposit_bonus_enabled:
+        return Decimal("0.00"), 0.0, ""
+
+    amt = Decimal(str(amount))
+    t4_min = Decimal(str(settings.deposit_bonus_tier4_min))
+    t3_min = Decimal(str(settings.deposit_bonus_tier3_min))
+    t2_min = Decimal(str(settings.deposit_bonus_tier2_min))
+    t1_min = Decimal(str(settings.deposit_bonus_tier1_min))
+
+    if amt >= t4_min:
+        pct = settings.deposit_bonus_tier4_percent
+        label = "VIP Bonus (+15%)"
+    elif amt >= t3_min:
+        pct = settings.deposit_bonus_tier3_percent
+        label = "Mega Bonus (+10%)"
+    elif amt >= t2_min:
+        pct = settings.deposit_bonus_tier2_percent
+        label = "Pro Bonus (+7.5%)"
+    elif amt >= t1_min:
+        pct = settings.deposit_bonus_tier1_percent
+        label = "Starter Bonus (+5%)"
+    else:
+        pct = 0.0
+        label = ""
+
+    if pct > 0:
+        bonus = (amt * Decimal(str(pct)) / Decimal("100")).quantize(Decimal("0.01"))
+    else:
+        bonus = Decimal("0.00")
+
+    return bonus, pct, label
+
+
+def get_deposit_bonus_tiers() -> list[dict]:
+    """Return active deposit bonus tiers for UI display."""
+    settings = get_settings()
+    if not settings.deposit_bonus_enabled:
+        return []
+    return [
+        {
+            "min_amount": settings.deposit_bonus_tier1_min,
+            "percent": settings.deposit_bonus_tier1_percent,
+            "label": "Starter Bonus",
+            "badge": f"+{settings.deposit_bonus_tier1_percent:g}%",
+        },
+        {
+            "min_amount": settings.deposit_bonus_tier2_min,
+            "percent": settings.deposit_bonus_tier2_percent,
+            "label": "Pro Bonus",
+            "badge": f"+{settings.deposit_bonus_tier2_percent:g}%",
+        },
+        {
+            "min_amount": settings.deposit_bonus_tier3_min,
+            "percent": settings.deposit_bonus_tier3_percent,
+            "label": "Mega Bonus",
+            "badge": f"+{settings.deposit_bonus_tier3_percent:g}%",
+        },
+        {
+            "min_amount": settings.deposit_bonus_tier4_min,
+            "percent": settings.deposit_bonus_tier4_percent,
+            "label": "VIP Bonus",
+            "badge": f"+{settings.deposit_bonus_tier4_percent:g}%",
+        },
+    ]
+
+
 async def process_topup_webhook(
     session: AsyncSession,
     provider_invoice_id: str,
@@ -72,7 +152,7 @@ async def process_topup_webhook(
     """Process a top-up payment webhook.
 
     Returns:
-        Dict with 'topup' and 'action', or None if not a top-up.
+        Dict with 'topup', 'action', and bonus details, or None if not a top-up.
     """
     topup = await topup_repo.get_by_provider_invoice_id(
         session, provider_name, provider_invoice_id
@@ -90,10 +170,28 @@ async def process_topup_webhook(
             session, topup.id, TopUpStatus.PAID,
             confirmed_at=datetime.now(timezone.utc),
         )
-        # Credit balance
-        await user_service.credit_balance(session, topup.user_id, topup.amount)
-        logger.info("Top-up completed: user_id=%s amount=%s", topup.user_id, topup.amount)
-        return {"topup": topup, "action": "credited"}
+        # Calculate deposit bonus
+        bonus_amount, bonus_percent, tier_label = calculate_deposit_bonus(topup.amount)
+        total_credit = (topup.amount + bonus_amount).quantize(Decimal("0.01"))
+
+        # Credit total to user balance
+        await user_service.credit_balance(session, topup.user_id, total_credit)
+        logger.info(
+            "Top-up completed: user_id=%s deposit=%s bonus=%s total_credited=%s",
+            topup.user_id,
+            topup.amount,
+            bonus_amount,
+            total_credit,
+        )
+        return {
+            "topup": topup,
+            "action": "credited",
+            "deposit_amount": topup.amount,
+            "bonus_amount": bonus_amount,
+            "bonus_percent": bonus_percent,
+            "tier_label": tier_label,
+            "total_credit": total_credit,
+        }
 
     elif status_lower in ("expired", "failed", "cancel", "fail", "system_fail", "pay_closed", "canceled", "cancelled"):
         await topup_repo.update_status(session, topup.id, TopUpStatus.EXPIRED)

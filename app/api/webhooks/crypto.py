@@ -381,6 +381,10 @@ async def _handle_topup_webhook(webhook_data: dict, provider) -> None:
         if result and result["action"] == "credited":
             # Notify user via Telegram
             topup = result["topup"]
+            bonus_amount = result.get("bonus_amount", Decimal("0.00"))
+            bonus_percent = result.get("bonus_percent", 0.0)
+            total_credit = result.get("total_credit", topup.amount)
+
             try:
                 from app.bot.bot import get_bot_instance
                 bot = get_bot_instance()
@@ -388,13 +392,19 @@ async def _handle_topup_webhook(webhook_data: dict, provider) -> None:
                     from app.database.repositories import user_repo
                     user = await user_repo.get_by_id(session, topup.user_id)
                     if user:
+                        bonus_line = ""
+                        if bonus_amount > Decimal("0.00"):
+                            bonus_line = f"🎁 Deposit Bonus (+{bonus_percent:g}%): *+${bonus_amount:.2f}*\n"
+
                         await bot.send_message(
                             chat_id=user.telegram_id,
                             text=(
                                 f"✅ *Top-Up Confirmed!*\n\n"
-                                f"💰 Amount: ${topup.amount}\n"
-                                f"💳 New balance has been credited.\n\n"
-                                f"Thank you! ☁️"
+                                f"💰 Deposit: *${topup.amount:.2f}*\n"
+                                f"{bonus_line}"
+                                f"💳 Total Credited: *${total_credit:.2f}*\n"
+                                f"💼 Current Balance: *${user.balance:.2f}*\n\n"
+                                f"⚡ You can now use *Store Balance* for 0-second instant checkout!"
                             ),
                             parse_mode="Markdown",
                         )

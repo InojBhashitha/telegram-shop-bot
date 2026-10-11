@@ -86,6 +86,17 @@ class Settings(BaseSettings):
     referral_commission_percent: float = 5.0  # Percentage of order amount credited to referrer (e.g. 5.0 = 5%)
     referral_bonus_amount: float = 0.00  # Optional fixed signup bonus for new referred users
 
+    # --- Deposit Bonus & Wallet ---
+    deposit_bonus_enabled: bool = True  # Enable tiered deposit bonuses when adding store balance
+    deposit_bonus_tier1_min: float = 10.0   # $10+
+    deposit_bonus_tier1_percent: float = 5.0  # +5%
+    deposit_bonus_tier2_min: float = 20.0   # $20+
+    deposit_bonus_tier2_percent: float = 7.5  # +7.5%
+    deposit_bonus_tier3_min: float = 50.0   # $50+
+    deposit_bonus_tier3_percent: float = 10.0  # +10%
+    deposit_bonus_tier4_min: float = 100.0  # $100+
+    deposit_bonus_tier4_percent: float = 15.0  # +15% VIP
+
     # --- Analytics & Daily Digest ---
     daily_digest_enabled: bool = True  # Automatically send 24h sales summary to admins
     daily_digest_utc_hour: int = 0  # Hour of day (0-23 UTC) to send the daily digest (0 = midnight UTC)
