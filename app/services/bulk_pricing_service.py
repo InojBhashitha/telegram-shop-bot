@@ -64,8 +64,9 @@ def calculate_bulk_discount(unit_price: Decimal | float | int, quantity: int) ->
     """
     settings = get_settings()
     price = Decimal(str(unit_price))
-    qty = max(1, int(quantity))
+    qty = max(1, quantity)
     raw_subtotal = (price * qty).quantize(Decimal("0.01"))
+
 
     if not settings.bulk_pricing_enabled:
         return {

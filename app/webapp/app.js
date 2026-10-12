@@ -12,10 +12,15 @@
   if (tg) {
     tg.ready();
     tg.expand();
+    try {
+      if (tg.setHeaderColor) tg.setHeaderColor('#000000');
+      if (tg.setBackgroundColor) tg.setBackgroundColor('#000000');
+    } catch (e) {}
     if (tg.enableClosingConfirmation) {
       tg.enableClosingConfirmation();
     }
   }
+
 
   // --- Haptic Feedback Helper ---
   function haptic(type) {
@@ -246,26 +251,38 @@
 
   // --- Toast Notification ---
   function showToast(message, type = 'normal') {
+    if (!el.toastContainer) return;
+    haptic(type === 'error' ? 'error' : 'light');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
-    toast.innerHTML = `<span>${message}</span>`;
+    const icon = type === 'success' ? '✓' : (type === 'error' ? '✕' : 'ℹ');
+    toast.innerHTML = `<span class="toast-icon">${icon}</span><span>${message}</span>`;
     el.toastContainer.appendChild(toast);
 
     setTimeout(() => {
       toast.style.opacity = '0';
-      toast.style.transform = 'translateY(-10px)';
-      toast.style.transition = 'all 0.25s ease';
-      setTimeout(() => toast.remove(), 260);
+      toast.style.transform = 'translate3d(0, -12px, 0) scale(0.95)';
+      toast.style.transition = 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
+      setTimeout(() => toast.remove(), 230);
     }, 2800);
   }
 
-  // --- Modal & Drawer Management ---
+
+  // --- Modal & Drawer Management with Fluid Transitions & Touch Gestures ---
   function openModal(modalEl) {
     if (state.activeModal) {
+      if (state.activeModal === modalEl) return;
       state.activeModal.classList.add('hidden');
+      state.activeModal.classList.remove('sheet-closing');
     }
+    modalEl.style.transform = '';
+    modalEl.classList.remove('sheet-closing');
     modalEl.classList.remove('hidden');
+
+    el.modalOverlay.classList.remove('overlay-closing');
     el.modalOverlay.classList.remove('hidden');
+    el.modalOverlay.style.opacity = '';
+
     state.activeModal = modalEl;
     document.body.style.overflow = 'hidden';
 
@@ -277,13 +294,15 @@
     haptic('medium');
   }
 
-  function closeModal() {
-    if (state.activeModal) {
-      state.activeModal.classList.add('hidden');
-      state.activeModal = null;
+  function closeModal(callback) {
+    const modal = state.activeModal;
+    if (!modal) {
+      if (typeof callback === 'function') callback();
+      return;
     }
-    el.modalOverlay.classList.add('hidden');
-    document.body.style.overflow = '';
+
+    modal.classList.add('sheet-closing');
+    el.modalOverlay.classList.add('overlay-closing');
 
     if (state.pollTimer) {
       clearInterval(state.pollTimer);
@@ -295,20 +314,98 @@
       tg.BackButton.offClick(handleTgBackClick);
     }
     haptic('light');
+
+    setTimeout(() => {
+      modal.classList.add('hidden');
+      modal.classList.remove('sheet-closing');
+      modal.style.transform = '';
+      el.modalOverlay.classList.add('hidden');
+      el.modalOverlay.classList.remove('overlay-closing');
+      el.modalOverlay.style.opacity = '';
+      document.body.style.overflow = '';
+      if (state.activeModal === modal) {
+        state.activeModal = null;
+      }
+      if (typeof callback === 'function') callback();
+    }, 200);
   }
 
   function handleTgBackClick() {
     closeModal();
   }
 
+  // Touch Drag-to-Dismiss Gesture for Apple Bottom Sheets
+  function attachDragToDismiss(sheetEl) {
+    if (!sheetEl) return;
+    const dragTarget = sheetEl.querySelector('.sheet-drag-handle') || sheetEl.querySelector('.sheet-header');
+    if (!dragTarget) return;
+
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+    let startTime = 0;
+
+    dragTarget.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      startY = e.touches[0].clientY;
+      currentY = startY;
+      startTime = Date.now();
+      isDragging = true;
+      sheetEl.style.transition = 'none';
+      el.modalOverlay.style.transition = 'none';
+    }, { passive: true });
+
+    dragTarget.addEventListener('touchmove', (e) => {
+      if (!isDragging || e.touches.length !== 1) return;
+      const touchY = e.touches[0].clientY;
+      const deltaY = touchY - startY;
+
+      if (deltaY > 0) {
+        currentY = touchY;
+        sheetEl.style.transform = `translate3d(0, ${deltaY}px, 0)`;
+        const opacity = Math.max(0.15, 1 - deltaY / 320);
+        el.modalOverlay.style.opacity = String(opacity);
+      } else {
+        // Elastic pull-up resistance
+        sheetEl.style.transform = `translate3d(0, ${deltaY * 0.12}px, 0)`;
+      }
+    }, { passive: true });
+
+    dragTarget.addEventListener('touchend', () => {
+      if (!isDragging) return;
+      isDragging = false;
+      const deltaY = currentY - startY;
+      const duration = Date.now() - startTime;
+      const velocity = deltaY / Math.max(1, duration);
+
+      sheetEl.style.transition = 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1)';
+      el.modalOverlay.style.transition = 'opacity 0.24s ease';
+
+      if (deltaY > 85 || (velocity > 0.45 && deltaY > 25)) {
+        closeModal();
+      } else {
+        sheetEl.style.transform = 'translate3d(0, 0, 0)';
+        el.modalOverlay.style.opacity = '1';
+        setTimeout(() => {
+          sheetEl.style.transition = '';
+          el.modalOverlay.style.transition = '';
+        }, 240);
+      }
+    });
+  }
+
+  // Attach touch drag gestures to all bottom sheets
+  document.querySelectorAll('.apple-bottom-sheet').forEach(attachDragToDismiss);
+
   // Overlay click closes current open modal
-  el.modalOverlay.addEventListener('click', closeModal);
-  el.closeProductModal.addEventListener('click', closeModal);
-  el.closeCartModal.addEventListener('click', closeModal);
-  el.closePaymentModal.addEventListener('click', closeModal);
-  el.closeVaultModal.addEventListener('click', closeModal);
-  el.closeOrdersModal.addEventListener('click', closeModal);
-  el.closeProfileModal.addEventListener('click', closeModal);
+  el.modalOverlay.addEventListener('click', () => closeModal());
+  el.closeProductModal.addEventListener('click', () => closeModal());
+  el.closeCartModal.addEventListener('click', () => closeModal());
+  el.closePaymentModal.addEventListener('click', () => closeModal());
+  el.closeVaultModal.addEventListener('click', () => closeModal());
+  el.closeOrdersModal.addEventListener('click', () => closeModal());
+  el.closeProfileModal.addEventListener('click', () => closeModal());
+
 
   // --- Bootstrap & Authentication ---
   async function initAuth() {
@@ -453,16 +550,18 @@
       el.categoriesBar.appendChild(pill);
     });
 
-    // Category click handler
+    // Category click handler with smooth center scrolling
     el.categoriesBar.querySelectorAll('.cat-pill').forEach((btn) => {
       btn.addEventListener('click', () => {
-        haptic('light');
+        haptic('selection');
         el.categoriesBar.querySelectorAll('.cat-pill').forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
+        btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         state.activeCategory = btn.dataset.categoryId;
         renderProducts();
       });
     });
+
   }
 
   // --- Cloud Provider Logo Resolver ---

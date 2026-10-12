@@ -64,11 +64,15 @@ html, body {
   line-height: 1.45;
   overflow-x: hidden;
   user-select: none;
+  -webkit-user-select: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+  scroll-behavior: smooth;
 }
 
-/* App Shell */
+/* App Shell with subtle ambient mesh glow */
 .app-shell {
   width: 100%;
   max-width: 540px;
@@ -77,7 +81,12 @@ html, body {
   display: flex;
   flex-direction: column;
   padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 90px);
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(41, 151, 255, 0.08) 0%, transparent 80%),
+    radial-gradient(circle 320px at 90% 20%, rgba(255, 159, 10, 0.03) 0%, transparent 70%),
+    var(--apple-bg);
 }
+
 
 /* ==========================================================================
    Apple Store Top Bar / Header
@@ -767,11 +776,18 @@ html, body {
 .apple-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
   z-index: 100;
-  transition: opacity 0.25s ease;
+  opacity: 1;
+  transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity;
+}
+
+.apple-modal-overlay.overlay-closing {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .apple-bottom-sheet {
@@ -791,22 +807,51 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.7);
-  animation: appleSheetSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 -12px 48px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  animation: appleSheetSlideUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  touch-action: pan-y;
+}
+
+.apple-bottom-sheet.sheet-closing {
+  animation: appleSheetSlideDown 0.22s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  pointer-events: none;
 }
 
 @keyframes appleSheetSlideUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translate3d(0, 100%, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes appleSheetSlideDown {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 100%, 0);
+  }
 }
 
 .sheet-drag-handle {
-  width: 36px;
+  width: 40px;
   height: 5px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.22);
-  margin: 8px auto 4px;
+  background: rgba(255, 255, 255, 0.28);
+  margin: 10px auto 4px;
+  cursor: grab;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
+
+.sheet-drag-handle:active {
+  background: rgba(255, 255, 255, 0.45);
+  transform: scaleX(1.1);
+}
+
 
 .sheet-header {
   padding: 12px 18px;
@@ -1642,23 +1687,44 @@ html, body {
 }
 
 .toast {
-  background: rgba(44, 44, 46, 0.94);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--apple-border-strong);
-  border-radius: 14px;
-  padding: 12px 16px;
+  background: rgba(28, 28, 30, 0.88);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  padding: 12px 18px;
   color: #ffffff;
   font-size: 13px;
   font-weight: 500;
-  box-shadow: var(--apple-shadow-sm);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  transform: translate3d(0, 0, 0);
+  animation: toastSpringIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform, opacity;
 }
 
-.toast.success { border-color: rgba(48, 209, 88, 0.4); }
-.toast.error { border-color: rgba(255, 69, 58, 0.4); }
+@keyframes toastSpringIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -18px, 0) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.toast.success {
+  border-color: rgba(48, 209, 88, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 16px rgba(48, 209, 88, 0.18);
+}
+.toast.error {
+  border-color: rgba(255, 69, 58, 0.45);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 69, 58, 0.18);
+}
+
 
 .dev-preview-bar {
   position: fixed;
