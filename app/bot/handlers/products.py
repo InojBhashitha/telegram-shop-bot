@@ -312,7 +312,17 @@ async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         payment_url = pay_result["payment_url"]
 
     qty_label = f" (×{quantity})" if quantity > 1 else ""
-    discount_line = f"🎁 10% Channel Discount: -${order.discount_amount}\n" if order.discount_amount > Decimal("0.00") else ""
+    discount_line = ""
+    bulk_discount = order_result.get("bulk_discount", Decimal("0.00"))
+    if bulk_discount > Decimal("0.00"):
+        bulk_tier = order_result.get("bulk_tier", "Wholesale")
+        discount_line += f"📉 Wholesale Discount ({bulk_tier}): -${bulk_discount}\n"
+    promo_discount = order.discount_amount - bulk_discount
+    if promo_discount > Decimal("0.00"):
+        discount_line += f"🎁 Coupon / Channel Discount: -${promo_discount}\n"
+    elif order.discount_amount > Decimal("0.00") and bulk_discount == Decimal("0.00"):
+        discount_line = f"🎁 Discount Applied: -${order.discount_amount}\n"
+
 
     await query.edit_message_text(
         f"☁️ *Cloud Deals*\n\n"

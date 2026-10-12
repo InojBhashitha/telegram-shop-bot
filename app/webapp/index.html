@@ -225,6 +225,23 @@
         <p id="modalDescription" class="modal-desc-text">Verified working cloud accounts delivered instantly upon payment.</p>
       </div>
 
+      <!-- Bulk / Wholesale Volume Pricing Tier Card -->
+      <div class="apple-bulk-card hidden" id="modalBulkCard">
+        <div class="bulk-card-header">
+          <div class="bulk-title-wrap">
+            <span class="bulk-badge-icon">📉</span>
+            <span class="bulk-title">Wholesale Volume Pricing</span>
+          </div>
+          <span class="bulk-sub">Auto-discount applied on bulk quantities</span>
+        </div>
+        <div class="bulk-tiers-grid" id="modalBulkTiersGrid">
+          <!-- Populated dynamically via JS -->
+        </div>
+        <div class="bulk-savings-hint hidden" id="modalBulkSavingsHint">
+          🎉 <strong id="modalBulkActiveTier">Wholesale Tier:</strong> Saving <span id="modalBulkSavedAmt">$0.00</span>!
+        </div>
+      </div>
+
       <!-- iOS Stepper Quantity Picker -->
       <div class="quantity-picker-row" id="modalQtyRow">
         <span class="qty-label">Quantity</span>
@@ -233,8 +250,12 @@
           <span class="step-count" id="modalQtyValue">1</span>
           <button class="step-btn" id="modalQtyPlus">&plus;</button>
         </div>
-        <span class="qty-total" id="modalQtySubtotal">Total: $0.00</span>
+        <div class="qty-total-col">
+          <span class="qty-total" id="modalQtySubtotal">Total: $0.00</span>
+          <span class="qty-unit-effective hidden" id="modalEffectiveUnitPrice">$0.00/ea</span>
+        </div>
       </div>
+
 
       <!-- Out of Stock Alert Box -->
       <div id="modalOutOfStockBox" class="apple-alert-box hidden">
@@ -289,10 +310,15 @@
           <span>Subtotal</span>
           <span id="cartSubtotalAmount">$0.00</span>
         </div>
+        <div class="summary-line bulk-discount-line hidden" id="cartBulkDiscountRow">
+          <span id="cartBulkDiscountLabel">📉 Wholesale Volume Savings</span>
+          <span class="discount-amount" id="cartBulkDiscountAmount">-$0.00</span>
+        </div>
         <div class="summary-line discount-line hidden" id="cartDiscountRow">
           <span id="cartDiscountLabel">🎁 10% First Order Discount</span>
           <span class="discount-amount" id="cartDiscountAmount">-$0.00</span>
         </div>
+
         <div class="summary-divider"></div>
         <div class="summary-line grand-total-line">
           <span>Total</span>

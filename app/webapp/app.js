@@ -107,10 +107,17 @@
     modalStockAlertBtn: document.getElementById('modalStockAlertBtn'),
     modalLogoPreview: document.getElementById('modalLogoPreview'),
     modalLogoImg: document.getElementById('modalLogoImg'),
+    modalBulkCard: document.getElementById('modalBulkCard'),
+    modalBulkTiersGrid: document.getElementById('modalBulkTiersGrid'),
+    modalBulkSavingsHint: document.getElementById('modalBulkSavingsHint'),
+    modalBulkActiveTier: document.getElementById('modalBulkActiveTier'),
+    modalBulkSavedAmt: document.getElementById('modalBulkSavedAmt'),
+    modalEffectiveUnitPrice: document.getElementById('modalEffectiveUnitPrice'),
     modalActionFooter: document.getElementById('modalActionFooter'),
     modalAddToCartBtn: document.getElementById('modalAddToCartBtn'),
     modalBuyNowBtn: document.getElementById('modalBuyNowBtn'),
     closeProductModal: document.getElementById('closeProductModal'),
+
 
     cartModal: document.getElementById('cartModal'),
     cartModalItemCount: document.getElementById('cartModalItemCount'),
@@ -121,10 +128,14 @@
     applyCouponBtn: document.getElementById('applyCouponBtn'),
     couponStatusMsg: document.getElementById('couponStatusMsg'),
     cartSubtotalAmount: document.getElementById('cartSubtotalAmount'),
+    cartBulkDiscountRow: document.getElementById('cartBulkDiscountRow'),
+    cartBulkDiscountLabel: document.getElementById('cartBulkDiscountLabel'),
+    cartBulkDiscountAmount: document.getElementById('cartBulkDiscountAmount'),
     cartDiscountRow: document.getElementById('cartDiscountRow'),
     cartDiscountLabel: document.getElementById('cartDiscountLabel'),
     cartDiscountAmount: document.getElementById('cartDiscountAmount'),
     cartFinalAmount: document.getElementById('cartFinalAmount'),
+
     btnCheckoutTotal: document.getElementById('btnCheckoutTotal'),
     clearCartBtn: document.getElementById('clearCartBtn'),
     continueShoppingBtn: document.getElementById('continueShoppingBtn'),
@@ -658,6 +669,7 @@
       stockText = 'Out of Stock';
       el.modalStockBadge.className = 'apple-badge-stock stock-out';
       el.modalOutOfStockBox?.classList.remove('hidden');
+      el.modalBulkCard?.classList.add('hidden');
       el.modalQtyRow?.classList.add('hidden');
       el.modalActionFooter?.classList.add('hidden');
       if (el.modalStockAlertBtn) {
@@ -672,6 +684,37 @@
       el.modalActionFooter?.classList.remove('hidden');
       el.modalAddToCartBtn.disabled = false;
       el.modalBuyNowBtn.disabled = false;
+
+      // Populate Wholesale Volume Pricing Tiers Grid
+      if (el.modalBulkCard && el.modalBulkTiersGrid) {
+        const tiers = (prod.bulk_tiers || []).filter((t) => t.discount_percent > 0);
+        if (tiers.length > 0 && prod.stock >= 3) {
+          el.modalBulkTiersGrid.innerHTML = '';
+          tiers.forEach((t) => {
+            const pill = document.createElement('div');
+            pill.className = `bulk-tier-pill ${t.discount_percent >= 20 ? 'vip' : ''}`;
+            pill.dataset.minQty = t.min_qty;
+            pill.innerHTML = `
+              <span class="tier-qty-label">${t.min_qty}+ pcs</span>
+              <span class="tier-price-val">${t.unit_price}</span>
+              <span class="tier-badge-pill ${t.discount_percent >= 20 ? 'vip' : ''}">${t.badge}</span>
+            `;
+            pill.addEventListener('click', () => {
+              if (prod.stock >= t.min_qty) {
+                state.modalQuantity = t.min_qty;
+                haptic('medium');
+                updateModalQuantityDisplay();
+              } else {
+                showToast(`Only ${prod.stock} items currently in stock`, 'normal');
+              }
+            });
+            el.modalBulkTiersGrid.appendChild(pill);
+          });
+          el.modalBulkCard.classList.remove('hidden');
+        } else {
+          el.modalBulkCard.classList.add('hidden');
+        }
+      }
     }
     el.modalStockBadge.textContent = stockText;
 
@@ -681,10 +724,64 @@
 
   function updateModalQuantityDisplay() {
     if (!state.selectedProduct) return;
-    el.modalQtyValue.textContent = state.modalQuantity;
-    const total = parseFloat(state.selectedProduct.price) * state.modalQuantity;
-    el.modalQtySubtotal.textContent = `Total: $${total.toFixed(2)}`;
+    const qty = state.modalQuantity;
+    el.modalQtyValue.textContent = qty;
+
+    const unitPrice = parseFloat(state.selectedProduct.price);
+    const rawTotal = unitPrice * qty;
+
+    // Determine applicable bulk tier
+    let discountPct = 0;
+    let activeTierLabel = '';
+    const tiers = state.selectedProduct.bulk_tiers || [];
+    const sortedTiers = [...tiers].filter((t) => t.discount_percent > 0).sort((a, b) => b.min_qty - a.min_qty);
+    for (const t of sortedTiers) {
+      if (qty >= t.min_qty) {
+        discountPct = t.discount_percent;
+        activeTierLabel = t.badge;
+        break;
+      }
+    }
+
+    // Highlight active tier pills
+    if (el.modalBulkTiersGrid) {
+      const pills = el.modalBulkTiersGrid.querySelectorAll('.bulk-tier-pill');
+      pills.forEach((p) => {
+        const minQ = parseInt(p.dataset.minQty, 10);
+        if (qty >= minQ) {
+          p.classList.add('active');
+        } else {
+          p.classList.remove('active');
+        }
+      });
+    }
+
+    if (discountPct > 0) {
+      const discountAmt = Math.round((rawTotal * discountPct) / 100 * 100) / 100;
+      const finalTotal = Math.max(0.01, rawTotal - discountAmt);
+      const effectiveUnit = finalTotal / qty;
+
+      el.modalQtySubtotal.textContent = `Total: $${finalTotal.toFixed(2)}`;
+      if (el.modalEffectiveUnitPrice) {
+        el.modalEffectiveUnitPrice.textContent = `($${effectiveUnit.toFixed(2)}/ea • -${discountPct}% OFF)`;
+        el.modalEffectiveUnitPrice.classList.remove('hidden');
+      }
+      if (el.modalBulkSavingsHint && el.modalBulkActiveTier && el.modalBulkSavedAmt) {
+        el.modalBulkActiveTier.textContent = `Wholesale (${activeTierLabel}):`;
+        el.modalBulkSavedAmt.textContent = `$${discountAmt.toFixed(2)}`;
+        el.modalBulkSavingsHint.classList.remove('hidden');
+      }
+    } else {
+      el.modalQtySubtotal.textContent = `Total: $${rawTotal.toFixed(2)}`;
+      if (el.modalEffectiveUnitPrice) {
+        el.modalEffectiveUnitPrice.classList.add('hidden');
+      }
+      if (el.modalBulkSavingsHint) {
+        el.modalBulkSavingsHint.classList.add('hidden');
+      }
+    }
   }
+
 
   el.modalQtyMinus.addEventListener('click', () => {
     if (state.modalQuantity > 1) {
@@ -819,6 +916,13 @@
       const prod = state.products.find((p) => p.id === item.product_id);
       const logoSrc = resolveCloudLogo(prod);
 
+      let bulkBadgeHtml = '';
+      if (item.bulk_discount && parseFloat(item.bulk_discount) > 0) {
+        bulkBadgeHtml = `<span class="cart-item-bulk-badge">📉 ${escapeHtml(item.bulk_tier || 'Wholesale Tier')} (-$${parseFloat(item.bulk_discount).toFixed(2)})</span>`;
+      } else if (item.next_tier_hint) {
+        bulkBadgeHtml = `<span class="cart-item-upsell-hint">💡 ${escapeHtml(item.next_tier_hint)}</span>`;
+      }
+
       row.innerHTML = `
         <div class="cart-item-thumb-box">
           <img src="${logoSrc}" alt="" class="cart-item-thumb">
@@ -826,6 +930,7 @@
         <div class="item-left">
           <span class="item-title">${escapeHtml(item.product_name)}</span>
           <span class="item-sub">$${parseFloat(item.unit_price).toFixed(2)} each</span>
+          ${bulkBadgeHtml}
         </div>
         <div class="item-right">
           <div class="apple-stepper">
@@ -847,12 +952,24 @@
     });
 
     // Summary Card
-    el.cartSubtotalAmount.textContent = `$${parseFloat(c.subtotal).toFixed(2)}`;
+    const rawSubtotal = parseFloat(c.raw_subtotal || c.subtotal || 0);
+    const bulkSavings = parseFloat(c.bulk_discount_amount || 0);
+
+    el.cartSubtotalAmount.textContent = `$${rawSubtotal.toFixed(2)}`;
+
+    // Wholesale volume savings line
+    if (bulkSavings > 0 && el.cartBulkDiscountRow && el.cartBulkDiscountAmount) {
+      el.cartBulkDiscountRow.classList.remove('hidden');
+      el.cartBulkDiscountAmount.textContent = `-$${bulkSavings.toFixed(2)}`;
+    } else if (el.cartBulkDiscountRow) {
+      el.cartBulkDiscountRow.classList.add('hidden');
+    }
+
     let channelDiscount = parseFloat(c.discount_amount || 0);
     let couponDiscount = state.appliedCoupon ? parseFloat(state.appliedCoupon.discount_amount || 0) : 0;
-    let totalDiscount = channelDiscount + couponDiscount;
+    let totalPromoDiscount = channelDiscount + couponDiscount;
 
-    if (totalDiscount > 0) {
+    if (totalPromoDiscount > 0) {
       el.cartDiscountRow.classList.remove('hidden');
       if (state.appliedCoupon && channelDiscount > 0) {
         el.cartDiscountLabel.textContent = `🎟️ Promo (${state.appliedCoupon.code}) + 🎁 10% Off`;
@@ -861,14 +978,15 @@
       } else {
         el.cartDiscountLabel.textContent = `🎁 10% First Order Discount`;
       }
-      el.cartDiscountAmount.textContent = `-$${totalDiscount.toFixed(2)}`;
+      el.cartDiscountAmount.textContent = `-$${totalPromoDiscount.toFixed(2)}`;
     } else {
       el.cartDiscountRow.classList.add('hidden');
     }
 
-    const finalAmount = Math.max(0, parseFloat(c.subtotal || 0) - totalDiscount);
+    const finalAmount = Math.max(0, parseFloat(c.subtotal || 0) - totalPromoDiscount);
     el.cartFinalAmount.textContent = `$${finalAmount.toFixed(2)}`;
     el.btnCheckoutTotal.textContent = `$${finalAmount.toFixed(2)}`;
+
   }
 
   // --- Promo Code / Coupon Application ---

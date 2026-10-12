@@ -1915,12 +1915,174 @@ html, body {
   margin-bottom: 0;
 }
 
-.summary-line.total-line strong {
-  font-size: 17px;
-  color: #32d74b;
+/* =========================================================================
+   WHOLESALE & BULK VOLUME PRICING TIERS
+   ========================================================================= */
+.apple-bulk-card {
+  background: linear-gradient(135deg, rgba(255, 159, 10, 0.08) 0%, rgba(255, 59, 48, 0.04) 100%);
+  border: 1px solid rgba(255, 159, 10, 0.25);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 16px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.bulk-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 12px;
+}
+
+.bulk-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bulk-badge-icon {
+  font-size: 16px;
+}
+
+.bulk-title {
+  font-size: 14px;
   font-weight: 700;
+  color: #ff9f0a;
+  letter-spacing: -0.2px;
+}
+
+.bulk-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.bulk-tiers-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.bulk-tier-pill {
+  background: var(--apple-elevated);
+  border: 1px solid var(--apple-border);
+  border-radius: 12px;
+  padding: 8px 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.bulk-tier-pill:hover,
+.bulk-tier-pill:active {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.bulk-tier-pill.active {
+  background: linear-gradient(135deg, rgba(255, 159, 10, 0.25) 0%, rgba(255, 59, 48, 0.15) 100%);
+  border-color: #ff9f0a;
+  box-shadow: 0 0 12px rgba(255, 159, 10, 0.3);
+}
+
+.tier-qty-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.bulk-tier-pill.active .tier-qty-label {
+  color: #ff9f0a;
+}
+
+.tier-price-val {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.tier-badge-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(255, 159, 10, 0.15);
+  color: #ff9f0a;
+  display: inline-block;
+}
+
+.tier-badge-pill.vip {
+  background: rgba(191, 90, 242, 0.2);
+  color: #bf5af2;
+}
+
+.bulk-savings-hint {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(50, 215, 75, 0.1);
+  border: 1px solid rgba(50, 215, 75, 0.25);
+  font-size: 12px;
+  color: #32d74b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.bulk-savings-hint strong {
+  font-weight: 700;
+}
+
+.qty-total-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.qty-unit-effective {
+  font-size: 11px;
+  color: #ff9f0a;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.summary-line.bulk-discount-line {
+  color: #ff9f0a;
+}
+
+.summary-line.bulk-discount-line .discount-amount {
+  color: #ff9f0a;
+  font-weight: 700;
+}
+
+.cart-item-bulk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #ff9f0a;
+  background: rgba(255, 159, 10, 0.12);
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin-top: 3px;
+  border: 1px solid rgba(255, 159, 10, 0.2);
+}
+
+.cart-item-upsell-hint {
+  font-size: 10px;
+  color: #64d2ff;
+  margin-top: 2px;
+  display: block;
 }
 
 .hidden {
   display: none !important;
 }
+

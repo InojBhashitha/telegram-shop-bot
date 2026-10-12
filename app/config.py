@@ -97,6 +97,17 @@ class Settings(BaseSettings):
     deposit_bonus_tier4_min: float = 100.0  # $100+
     deposit_bonus_tier4_percent: float = 15.0  # +15% VIP
 
+    # --- Bulk & Wholesale Volume Pricing Tiers ---
+    bulk_pricing_enabled: bool = True  # Enable automatic quantity-based discounts
+    bulk_tier1_min_qty: int = 3        # 3+ items
+    bulk_tier1_discount_percent: float = 5.0   # 5% OFF
+    bulk_tier2_min_qty: int = 5        # 5+ items
+    bulk_tier2_discount_percent: float = 10.0  # 10% OFF
+    bulk_tier3_min_qty: int = 10       # 10+ items
+    bulk_tier3_discount_percent: float = 15.0  # 15% OFF
+    bulk_tier4_min_qty: int = 25       # 25+ items
+    bulk_tier4_discount_percent: float = 20.0  # 20% OFF VIP Wholesale
+
     # --- Analytics & Daily Digest ---
     daily_digest_enabled: bool = True  # Automatically send 24h sales summary to admins
     daily_digest_utc_hour: int = 0  # Hour of day (0-23 UTC) to send the daily digest (0 = midnight UTC)

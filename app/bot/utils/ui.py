@@ -42,6 +42,15 @@ def format_product_caption(
     """Format a high-end visual product detail card caption."""
     stock_bar = format_stock_bar(stock)
     desc_text = f"\n\n📝 *Description:*\n_{description}_" if description else ""
+    bulk_text = ""
+    try:
+        from app.services.bulk_pricing_service import format_bulk_pricing_caption
+        bulk_caption = format_bulk_pricing_caption(price)
+        if bulk_caption:
+            bulk_text = f"\n\n{bulk_caption}"
+    except Exception:
+        pass
+
 
     return (
         f"☁️ *Cloud Deals — Digital Store*\n\n"
@@ -49,6 +58,8 @@ def format_product_caption(
         f"💰 *Price:* ${price} {currency}\n"
         f"📊 *Availability:* {stock_bar}\n"
         f"🛡 *Warranty:* {warranty_hours} Hours Auto-Replacement\n"
-        f"{desc_text}\n\n"
+        f"{desc_text}"
+        f"{bulk_text}\n\n"
         f"👇 Select quantity or checkout below:"
     )
+

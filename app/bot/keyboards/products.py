@@ -78,16 +78,22 @@ def product_detail_keyboard(
             InlineKeyboardButton("🛒 Add to Cart (1x)", callback_data=f"cart_add:{product_id}:1")
         ])
 
-        # Row 2: Quick bulk buttons + Custom quantity
+        # Row 2: Quick bulk buttons with wholesale discount badges
         row2 = []
-        if stock >= 2:
+        if stock >= 3:
+            row2.append(InlineKeyboardButton("3x (-5%)", callback_data=f"cart_add:{product_id}:3"))
+        elif stock >= 2:
             row2.append(InlineKeyboardButton("2x", callback_data=f"cart_add:{product_id}:2"))
+
         if stock >= 5:
-            row2.append(InlineKeyboardButton("5x", callback_data=f"cart_add:{product_id}:5"))
+            row2.append(InlineKeyboardButton("5x (-10% 🔥)", callback_data=f"cart_add:{product_id}:5"))
         if stock >= 10:
-            row2.append(InlineKeyboardButton("10x", callback_data=f"cart_add:{product_id}:10"))
+            row2.append(InlineKeyboardButton("10x (-15% 🚀)", callback_data=f"cart_add:{product_id}:10"))
+        if stock >= 25:
+            row2.append(InlineKeyboardButton("25x (-20% 💎)", callback_data=f"cart_add:{product_id}:25"))
         if row2:
             buttons.append(row2)
+
 
         # Row 3: Custom Quantity Input
         buttons.append([

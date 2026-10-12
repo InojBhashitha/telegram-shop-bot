@@ -79,12 +79,23 @@ async def show_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             if not item["has_stock"]:
                 stock_warning = f" ⚠️ *(Only {item['stock']} in stock!)*" if item["active"] else " ⚠️ *(Unavailable)*"
 
+            discount_info = ""
+            if item.get("bulk_discount") and item["bulk_discount"] > Decimal("0.00"):
+                discount_info = f"\n   📉 _Wholesale ({item.get('bulk_tier', '')}): -${item['bulk_discount']}_"
+            elif item.get("next_tier_hint"):
+                discount_info = f"\n   💡 _{item['next_tier_hint']}_"
+
             lines.append(
                 f"*{idx}.* 📦 *{item['product_name']}*\n"
-                f"   {item['quantity']} × ${item['unit_price']} = *${item['subtotal']}*{stock_warning}"
+                f"   {item['quantity']} × ${item['unit_price']} = *${item['subtotal']}*{discount_info}{stock_warning}"
             )
 
+        bulk_savings = summary.get("bulk_discount_amount", Decimal("0.00"))
+        if bulk_savings > Decimal("0.00"):
+            lines.append(f"\n📉 *Wholesale Savings:* -${bulk_savings}")
+
         lines.append(f"\n───────────────────\n💰 *Total:* ${total_amount} ({total_count} accounts)")
+
 
         applied_coupon = context.user_data.get("applied_coupon")
         if applied_coupon:
@@ -515,7 +526,16 @@ async def checkout_cart_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
         payment_url = pay_result["payment_url"]
 
-    discount_line = f"🎁 Discount Applied: -${order.discount_amount}\n" if order.discount_amount > Decimal("0.00") else ""
+    bulk_discount = checkout_res.get("bulk_discount", Decimal("0.00"))
+    discount_line = ""
+    if bulk_discount > Decimal("0.00"):
+        discount_line += f"📉 Wholesale Savings: -${bulk_discount}\n"
+    promo_discount = order.discount_amount - bulk_discount
+    if promo_discount > Decimal("0.00"):
+        discount_line += f"🎁 Coupon / Channel Discount: -${promo_discount}\n"
+    elif order.discount_amount > Decimal("0.00") and bulk_discount == Decimal("0.00"):
+        discount_line = f"🎁 Discount Applied: -${order.discount_amount}\n"
+
 
     await query.edit_message_text(
         f"☁️ *Cloud Deals*\n\n"

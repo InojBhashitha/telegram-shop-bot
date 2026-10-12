@@ -45,6 +45,7 @@ from app.database.repositories import (
 )
 from app.payments import get_payment_provider
 from app.services import (
+    bulk_pricing_service,
     cart_service,
     delivery_service,
     order_service,
@@ -52,6 +53,7 @@ from app.services import (
     topup_service,
     user_service,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -312,7 +314,12 @@ async def auth_user(
                     "enabled": settings.deposit_bonus_enabled,
                     "tiers": topup_service.get_deposit_bonus_tiers(),
                 },
+                "bulk_pricing": {
+                    "enabled": settings.bulk_pricing_enabled,
+                    "tiers": bulk_pricing_service.get_bulk_pricing_tiers(),
+                },
             },
+
             "cart_count": cart_count,
         }
 
@@ -414,6 +421,7 @@ async def get_referral_info(
 @router.get("/catalog")
 async def get_catalog(category_id: Optional[int] = Query(None)):
     """Get all active categories and products with live stock counts."""
+    settings = get_settings()
     async with get_session() as session:
         categories = await category_repo.list_active(session)
         products = await product_repo.list_active(session)
@@ -448,6 +456,8 @@ async def get_catalog(category_id: Optional[int] = Query(None)):
             avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else 0.0
             rev_count = len(ratings)
 
+            bulk_tiers = bulk_pricing_service.get_product_bulk_pricing(prod.price) if settings.bulk_pricing_enabled else []
+
             prod_list.append({
                 "id": prod.id,
                 "category_id": prod.category_id,
@@ -463,6 +473,7 @@ async def get_catalog(category_id: Optional[int] = Query(None)):
                 "image_url": prod.image_url,
                 "average_rating": avg_rating,
                 "review_count": rev_count,
+                "bulk_tiers": bulk_tiers,
             })
 
         return {
@@ -473,7 +484,8 @@ async def get_catalog(category_id: Optional[int] = Query(None)):
 
 @router.get("/products/{product_id}")
 async def get_product_detail(product_id: int):
-    """Get single product details with live stock and rating stats."""
+    """Get single product details with live stock, bulk pricing, and rating stats."""
+    settings = get_settings()
     async with get_session() as session:
         prod_data = await product_repo.get_product_with_stock(session, product_id)
         if not prod_data:
@@ -484,6 +496,8 @@ async def get_product_detail(product_id: int):
 
         from app.database.repositories import review_repo
         rating_summary = await review_repo.get_product_rating_summary(session, prod.id)
+
+        bulk_tiers = bulk_pricing_service.get_product_bulk_pricing(prod.price) if settings.bulk_pricing_enabled else []
 
         return {
             "id": prod.id,
@@ -501,6 +515,7 @@ async def get_product_detail(product_id: int):
             "image_url": prod.image_url,
             "average_rating": rating_summary["average_rating"],
             "review_count": rating_summary["review_count"],
+            "bulk_tiers": bulk_tiers,
         }
 
 
@@ -531,6 +546,7 @@ async def get_cart(
         from app.services.order_service import compute_first_order_discount
         discount = compute_first_order_discount(user, summary["total_amount"])
         final_amount = max(summary["total_amount"] - discount, Decimal("0.00"))
+        bulk_savings = summary.get("bulk_discount_amount", Decimal("0.00"))
 
         return {
             "items": [
@@ -540,7 +556,12 @@ async def get_cart(
                     "product_name": item["product_name"],
                     "unit_price": str(item["unit_price"]),
                     "quantity": item["quantity"],
+                    "raw_subtotal": str(item.get("raw_subtotal", item["subtotal"])),
                     "subtotal": str(item["subtotal"]),
+                    "bulk_discount": str(item.get("bulk_discount", Decimal("0.00"))),
+                    "bulk_percent": item.get("bulk_percent", 0.0),
+                    "bulk_tier": item.get("bulk_tier", ""),
+                    "next_tier_hint": item.get("next_tier_hint", ""),
                     "stock": item["stock"],
                     "has_stock": item["has_stock"],
                     "active": item["active"],
@@ -548,14 +569,18 @@ async def get_cart(
                 for item in summary["items"]
             ],
             "total_items": summary["total_count"],
+            "raw_subtotal": str(summary.get("raw_amount", summary["total_amount"])),
             "subtotal": str(summary["total_amount"]),
+            "bulk_discount_amount": str(bulk_savings),
             "discount_eligible": user.channel_discount_claimed and not user.channel_discount_used,
             "discount_amount": str(discount),
+            "total_discount_amount": str(bulk_savings + discount),
             "final_amount": str(final_amount),
             "currency": summary["currency"],
             "is_valid": summary["is_valid"],
             "user_balance": str(user.balance),
         }
+
 
 
 @router.post("/cart/add")
@@ -722,6 +747,7 @@ async def checkout(
                 "public_order_id": order.public_order_id,
                 "amount": str(order.amount),
                 "discount": str(discount),
+                "bulk_discount": str(checkout_res.get("bulk_discount", Decimal("0.00"))),
                 "subtotal": str(subtotal),
                 "credentials": credentials,
                 "message": "Order paid with store balance and fulfilled instantly!",
@@ -760,11 +786,13 @@ async def checkout(
             "amount": str(order.amount),
             "subtotal": str(subtotal),
             "discount": str(discount),
+            "bulk_discount": str(checkout_res.get("bulk_discount", Decimal("0.00"))),
             "payment_url": payment.payment_url,
             "payment_address": payment.payment_address,
             "payment_provider": payment.provider,
             "created_at": order.created_at.isoformat(),
         }
+
 
 
 # ---------------------------------------------------------------------------

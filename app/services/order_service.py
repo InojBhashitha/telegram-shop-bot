@@ -87,22 +87,28 @@ async def create_order(
                 await inventory_repo.release_item(session, ri.id)
             raise OrderError(f"Not enough stock available (only {len(reserved_items)})")
 
-    # Calculate subtotal, discount, and warranty expiry
-    subtotal = product.price * quantity
+    from app.services import bulk_pricing_service
+
+    # Calculate raw subtotal and wholesale volume discount
+    raw_subtotal = product.price * quantity
+    bulk_calc = bulk_pricing_service.calculate_bulk_discount(product.price, quantity)
+    bulk_discount = bulk_calc["discount_amount"]
+    subtotal_after_bulk = bulk_calc["final_subtotal"]
+
     user = await user_repo.get_by_id(session, user_id)
 
     applied_coupon_id: Optional[int] = None
-    discount = Decimal("0.00")
+    promo_discount = Decimal("0.00")
 
     if coupon_code and coupon_code.strip():
         try:
             coupon_res = await coupon_service.validate_and_calculate_discount(
                 session=session,
                 code=coupon_code.strip(),
-                subtotal=subtotal,
+                subtotal=subtotal_after_bulk,
                 user_id=user_id,
             )
-            discount = coupon_res["discount_amount"]
+            promo_discount = coupon_res["discount_amount"]
             applied_coupon_id = coupon_res["coupon_id"]
             if applied_coupon_id is not None:
                 await coupon_repo.increment_uses(session, applied_coupon_id)
@@ -118,10 +124,10 @@ async def create_order(
                 coupon_res = await coupon_service.validate_and_calculate_discount(
                     session=session,
                     code=coupon_obj.code,
-                    subtotal=subtotal,
+                    subtotal=subtotal_after_bulk,
                     user_id=user_id,
                 )
-                discount = coupon_res["discount_amount"]
+                promo_discount = coupon_res["discount_amount"]
                 applied_coupon_id = coupon_obj.id
                 await coupon_repo.increment_uses(session, applied_coupon_id)
             except coupon_service.CouponError as e:
@@ -129,11 +135,12 @@ async def create_order(
                     await inventory_repo.release_item(session, ri.id)
                 raise OrderError(str(e))
     else:
-        discount = compute_first_order_discount(user, subtotal)
-        if discount > Decimal("0.00") and user:
+        promo_discount = compute_first_order_discount(user, subtotal_after_bulk)
+        if promo_discount > Decimal("0.00") and user:
             user.channel_discount_used = True
 
-    final_amount = max(subtotal - discount, Decimal("0.01"))
+    total_discount = bulk_discount + promo_discount
+    final_amount = max(raw_subtotal - total_discount, Decimal("0.01"))
 
     settings = get_settings()
     warranty_expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.warranty_hours)
@@ -149,7 +156,7 @@ async def create_order(
         product_id=product_id,
         inventory_id=reserved_items[0].id,
         amount=final_amount,
-        discount_amount=discount,
+        discount_amount=total_discount,
         currency=product.currency,
         quantity=quantity,
         warranty_expires_at=warranty_expires_at,
@@ -162,15 +169,18 @@ async def create_order(
     await session.flush()
 
     logger.info(
-        "Order created: %s product=%s user_id=%s qty=%s subtotal=%s discount=%s amount=%s coupon_id=%s",
-        public_order_id, product.name, user_id, quantity, subtotal, discount, final_amount, coupon_id,
+        "Order created: %s product=%s user_id=%s qty=%s raw_subtotal=%s discount=%s amount=%s bulk_discount=%s",
+        public_order_id, product.name, user_id, quantity, raw_subtotal, total_discount, final_amount, bulk_discount,
     )
 
     return {
         "order": order,
         "inventory_items": reserved_items,
-        "subtotal": subtotal,
-        "discount": discount,
+        "subtotal": raw_subtotal,
+        "discount": total_discount,
+        "bulk_discount": bulk_discount,
+        "bulk_percent": bulk_calc["discount_percent"],
+        "bulk_tier": bulk_calc["tier_label"],
     }
 
 

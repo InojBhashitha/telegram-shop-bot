@@ -117,7 +117,11 @@ async def get_cart_summary(
     """
     raw_items = await cart_repo.get_user_cart(session, user_id)
 
+    from app.services import bulk_pricing_service
+
     items_data = []
+    total_raw_amount = Decimal("0.00")
+    total_bulk_discount = Decimal("0.00")
     total_amount = Decimal("0.00")
     total_count = 0
     is_valid = len(raw_items) > 0
@@ -128,8 +132,14 @@ async def get_cart_summary(
         if not product:
             continue
         currency = product.currency
-        subtotal = product.price * item.quantity
-        total_amount += subtotal
+        raw_subtotal = product.price * item.quantity
+        bulk_calc = bulk_pricing_service.calculate_bulk_discount(product.price, item.quantity)
+        item_discount = bulk_calc["discount_amount"]
+        item_final_subtotal = bulk_calc["final_subtotal"]
+
+        total_raw_amount += raw_subtotal
+        total_bulk_discount += item_discount
+        total_amount += item_final_subtotal
         total_count += item.quantity
 
         stock = await inventory_repo.get_stock_count(session, product.id)
@@ -143,7 +153,12 @@ async def get_cart_summary(
             "product_name": product.name,
             "unit_price": product.price,
             "quantity": item.quantity,
-            "subtotal": subtotal,
+            "raw_subtotal": raw_subtotal,
+            "subtotal": item_final_subtotal,
+            "bulk_discount": item_discount,
+            "bulk_percent": bulk_calc["discount_percent"],
+            "bulk_tier": bulk_calc["tier_label"],
+            "next_tier_hint": bulk_calc["next_tier_hint"],
             "stock": stock,
             "has_stock": has_stock,
             "active": product.active,
@@ -151,7 +166,9 @@ async def get_cart_summary(
 
     return {
         "items": items_data,
+        "raw_amount": total_raw_amount,
         "total_amount": total_amount,
+        "bulk_discount_amount": total_bulk_discount,
         "total_count": total_count,
         "is_valid": is_valid,
         "currency": currency,
@@ -228,9 +245,11 @@ async def checkout_cart(
     from app.services.order_service import compute_first_order_discount
 
     user = await user_repo.get_by_id(session, user_id)
+    raw_amount = summary.get("raw_amount", summary["total_amount"])
+    bulk_discount = summary.get("bulk_discount_amount", Decimal("0.00"))
     subtotal = summary["total_amount"]
     coupon_id: Optional[int] = None
-    discount = Decimal("0.00")
+    promo_discount = Decimal("0.00")
 
     if coupon_code and coupon_code.strip():
         try:
@@ -240,7 +259,7 @@ async def checkout_cart(
                 subtotal=subtotal,
                 user_id=user_id,
             )
-            discount = coupon_res["discount_amount"]
+            promo_discount = coupon_res["discount_amount"]
             coupon_id = coupon_res["coupon_id"]
             if coupon_id is not None:
                 await coupon_repo.increment_uses(session, coupon_id)
@@ -249,11 +268,12 @@ async def checkout_cart(
                 await inventory_repo.release_item(session, r.id)
             raise CartError(str(e))
     else:
-        discount = compute_first_order_discount(user, subtotal)
-        if discount > Decimal("0.00") and user:
+        promo_discount = compute_first_order_discount(user, subtotal)
+        if promo_discount > Decimal("0.00") and user:
             user.channel_discount_used = True
 
-    final_amount = max(subtotal - discount, Decimal("0.01"))
+    total_discount = bulk_discount + promo_discount
+    final_amount = max(raw_amount - total_discount, Decimal("0.01"))
 
     # Create master order
     settings = get_settings()
@@ -269,7 +289,7 @@ async def checkout_cart(
         product_id=primary_product_id or items[0]["product_id"],
         inventory_id=all_reserved[0].id,
         amount=final_amount,
-        discount_amount=discount,
+        discount_amount=total_discount,
         currency=summary["currency"],
         quantity=summary["total_count"],
         warranty_expires_at=warranty_expires_at,
@@ -285,14 +305,15 @@ async def checkout_cart(
     await cart_repo.clear_cart(session, user_id)
 
     logger.info(
-        "Cart checkout successful: order=%s items=%s subtotal=%s discount=%s total=%s",
-        public_order_id, len(all_reserved), subtotal, discount, final_amount,
+        "Cart checkout successful: order=%s items=%s raw_amount=%s discount=%s bulk_discount=%s total=%s",
+        public_order_id, len(all_reserved), raw_amount, total_discount, bulk_discount, final_amount,
     )
 
     return {
         "order": order,
         "inventory_items": all_reserved,
         "summary": summary,
-        "subtotal": subtotal,
-        "discount": discount,
+        "subtotal": raw_amount,
+        "discount": total_discount,
+        "bulk_discount": bulk_discount,
     }
