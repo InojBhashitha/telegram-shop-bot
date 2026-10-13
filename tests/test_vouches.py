@@ -1,10 +1,15 @@
 """Tests for automated public vouch and purchase proof broadcasting."""
 
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import Order, OrderStatus, Payment, PaymentStatus, Product, User
+from app.database.models import (
+    OrderStatus,
+    Payment,
+    User,
+)
 from app.services import order_service, vouch_service
 from app.services.vouch_service import anonymize_buyer, format_payment_badge
 

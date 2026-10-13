@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,8 +30,8 @@ async def get_category(session: AsyncSession, category_id: int):
 async def create_category(
     session: AsyncSession,
     name: str,
-    description: Optional[str] = None,
-    icon: Optional[str] = None,
+    description: str | None = None,
+    icon: str | None = None,
 ) -> object:
     """Create a new category."""
     cat = await category_repo.create(session, name, description, icon)
@@ -72,7 +71,7 @@ async def get_product(session: AsyncSession, product_id: int):
 
 async def get_product_details(
     session: AsyncSession, product_id: int
-) -> Optional[dict]:
+) -> dict | None:
     """Get product with stock count."""
     return await product_repo.get_product_with_stock(session, product_id)
 
@@ -83,7 +82,7 @@ async def create_product(
     name: str,
     price: Decimal,
     currency: str = "USD",
-    description: Optional[str] = None,
+    description: str | None = None,
     delivery_type: str = "digital",
     active: bool = True,
 ) -> object:

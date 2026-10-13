@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,9 +11,9 @@ from app.database.models import Category
 async def create(
     session: AsyncSession,
     name: str,
-    description: Optional[str] = None,
-    icon: Optional[str] = None,
-    image_url: Optional[str] = None,
+    description: str | None = None,
+    icon: str | None = None,
+    image_url: str | None = None,
     sort_order: int = 0,
 ) -> Category:
     """Create a new product category."""
@@ -31,7 +29,7 @@ async def create(
     return cat
 
 
-async def get_by_id(session: AsyncSession, category_id: int) -> Optional[Category]:
+async def get_by_id(session: AsyncSession, category_id: int) -> Category | None:
     """Get a category by ID."""
     stmt = select(Category).where(Category.id == category_id)
     result = await session.execute(stmt)
@@ -60,7 +58,7 @@ async def update_category(
     session: AsyncSession,
     category_id: int,
     **kwargs,
-) -> Optional[Category]:
+) -> Category | None:
     """Update a category's fields."""
     stmt = select(Category).where(Category.id == category_id)
     result = await session.execute(stmt)

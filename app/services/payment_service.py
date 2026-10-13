@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -151,7 +150,7 @@ async def process_webhook(
     session: AsyncSession,
     provider: PaymentProvider,
     webhook_data: dict,
-) -> Optional[dict]:
+) -> dict | None:
     """Process a payment webhook/IPN notification.
 
     This is the CRITICAL idempotent handler that:
@@ -284,7 +283,7 @@ async def process_webhook(
     if pay_currency:
         extra["payment_currency"] = str(pay_currency)
     if internal_status in _PAID_STATUSES:
-        extra["confirmed_at"] = datetime.now(timezone.utc)
+        extra["confirmed_at"] = datetime.now(UTC)
 
     await payment_repo.update_status(
         session, payment.id, internal_status, **extra
@@ -334,15 +333,20 @@ async def process_webhook(
                 )
                 action = "paid_not_fulfilled"
 
-    elif internal_status == PaymentStatus.EXPIRED:
-        if order.status in (OrderStatus.PENDING_PAYMENT, OrderStatus.PAYMENT_PROCESSING):
-            await order_service.cancel_order(session, order.id)
-            action = "expired"
+    elif internal_status == PaymentStatus.EXPIRED and order.status in (
+        OrderStatus.PENDING_PAYMENT,
+        OrderStatus.PAYMENT_PROCESSING,
+    ):
+        await order_service.cancel_order(session, order.id)
+        action = "expired"
 
-    elif internal_status == PaymentStatus.FAILED:
-        if order.status in (OrderStatus.PENDING_PAYMENT, OrderStatus.PAYMENT_PROCESSING):
-            await order_service.cancel_order(session, order.id)
-            action = "failed"
+    elif internal_status == PaymentStatus.FAILED and order.status in (
+        OrderStatus.PENDING_PAYMENT,
+        OrderStatus.PAYMENT_PROCESSING,
+    ):
+        await order_service.cancel_order(session, order.id)
+        action = "failed"
+
 
     # Reload order to get final state
     order = await order_repo.get_by_id(session, order.id)
@@ -353,7 +357,7 @@ async def check_payment_status(
     session: AsyncSession,
     provider: PaymentProvider,
     order_id: int,
-) -> Optional[str]:
+) -> str | None:
     """Poll the provider for current payment status and process status update.
 
     This queries the payment provider and updates the database & fulfills order
@@ -399,7 +403,7 @@ async def poll_pending_orders_and_topups(
     """
     from app.database.repositories import topup_repo, user_repo
     from app.payments import get_payment_provider
-    from app.services import delivery_service, topup_service, user_service
+    from app.services import delivery_service, topup_service
 
     stats = {
         "orders_checked": 0,

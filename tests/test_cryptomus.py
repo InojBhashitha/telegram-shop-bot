@@ -5,12 +5,11 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-from decimal import Decimal
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import OrderStatus, PaymentStatus
+from app.database.models import OrderStatus
 from app.database.repositories import order_repo, payment_repo
 from app.payments.cryptomus import CryptomusProvider
 from app.services import order_service, payment_service

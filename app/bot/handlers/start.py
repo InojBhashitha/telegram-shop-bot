@@ -171,15 +171,15 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     async with get_session() as session:
         # Check maintenance mode
-        if await _is_maintenance(session):
-            if not settings.is_admin(user.id):
-                await update.message.reply_text(
-                    "☁️ *Cloud Deals*\n\n"
-                    "🔧 The store is currently under maintenance.\n\n"
-                    "Please try again later.",
-                    parse_mode="Markdown",
-                )
-                return
+        if await _is_maintenance(session) and not settings.is_admin(user.id):
+            await update.message.reply_text(
+                "☁️ *Cloud Deals*\n\n"
+                "🔧 The store is currently under maintenance.\n\n"
+                "Please try again later.",
+                parse_mode="Markdown",
+            )
+            return
+
 
         # Parse referral code or product deep link (supports ref_xxxx, numeric id, or prod_xxxx)
         referral_code = None
@@ -308,7 +308,6 @@ async def _handle_reply_browse(update: Update, context: ContextTypes.DEFAULT_TYP
     """Handle '🛍 Browse Store' reply keyboard button."""
     if update.effective_user is None or update.message is None:
         return
-    from app.bot.handlers.products import show_categories
     # Force-subscribe gate check
     is_member = await _check_channel_membership(context.bot, update.effective_user.id)
     if not is_member:
@@ -349,10 +348,11 @@ async def _handle_reply_profile(update: Update, context: ContextTypes.DEFAULT_TY
         return
     user_tg = update.effective_user
     async with get_session() as session:
-        from app.database.repositories import user_repo
         from decimal import Decimal
+
+        from app.database.repositories import user_repo
         user = await user_repo.get_by_telegram_id(session, user_tg.id)
-        balance = user.balance if user else Decimal("0")
+        balance = user.balance if user else Decimal(0)
         order_count = 0
         if user:
             from app.database.repositories import order_repo

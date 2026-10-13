@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +17,7 @@ async def create_review(
     product_id: int,
     user_id: int,
     rating: int,
-    comment: Optional[str] = None,
+    comment: str | None = None,
 ) -> ProductReview:
     """Create or update a product review for a completed order."""
     # Ensure rating is between 1 and 5
@@ -38,7 +38,7 @@ async def create_review(
 async def get_by_order_id(
     session: AsyncSession,
     order_id: int,
-) -> Optional[ProductReview]:
+) -> ProductReview | None:
     """Get review for a specific order."""
     stmt = select(ProductReview).where(ProductReview.order_id == order_id)
     result = await session.execute(stmt)

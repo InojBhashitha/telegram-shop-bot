@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,7 +30,7 @@ async def create(
     return claim
 
 
-async def get_by_id(session: AsyncSession, claim_id: int) -> Optional[WarrantyClaim]:
+async def get_by_id(session: AsyncSession, claim_id: int) -> WarrantyClaim | None:
     """Get a warranty claim by ID."""
     stmt = select(WarrantyClaim).where(WarrantyClaim.id == claim_id)
     result = await session.execute(stmt)
@@ -66,15 +65,15 @@ async def update_status(
     session: AsyncSession,
     claim_id: int,
     status: WarrantyClaimStatus,
-    replacement_inventory_id: Optional[int] = None,
-    admin_notes: Optional[str] = None,
-) -> Optional[WarrantyClaim]:
+    replacement_inventory_id: int | None = None,
+    admin_notes: str | None = None,
+) -> WarrantyClaim | None:
     """Update a claim's status."""
     claim = await get_by_id(session, claim_id)
     if claim is None:
         return None
     claim.status = status
-    claim.resolved_at = datetime.now(timezone.utc)
+    claim.resolved_at = datetime.now(UTC)
     if replacement_inventory_id is not None:
         claim.replacement_inventory_id = replacement_inventory_id
     if admin_notes is not None:

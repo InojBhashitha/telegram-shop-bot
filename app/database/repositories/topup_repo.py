@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,8 +17,8 @@ async def create(
     amount: Decimal,
     provider: str,
     currency: str = "USD",
-    provider_invoice_id: Optional[str] = None,
-    payment_url: Optional[str] = None,
+    provider_invoice_id: str | None = None,
+    payment_url: str | None = None,
 ) -> TopUp:
     """Create a new top-up record."""
     topup = TopUp(
@@ -36,7 +35,7 @@ async def create(
     return topup
 
 
-async def get_by_id(session: AsyncSession, topup_id: int) -> Optional[TopUp]:
+async def get_by_id(session: AsyncSession, topup_id: int) -> TopUp | None:
     """Get a top-up by ID."""
     stmt = select(TopUp).where(TopUp.id == topup_id)
     result = await session.execute(stmt)
@@ -45,7 +44,7 @@ async def get_by_id(session: AsyncSession, topup_id: int) -> Optional[TopUp]:
 
 async def get_by_provider_invoice_id(
     session: AsyncSession, provider: str, provider_invoice_id: str
-) -> Optional[TopUp]:
+) -> TopUp | None:
     """Get a top-up by provider invoice ID."""
     stmt = (
         select(TopUp)
@@ -61,7 +60,7 @@ async def update_status(
     topup_id: int,
     status: TopUpStatus,
     **extra_fields,
-) -> Optional[TopUp]:
+) -> TopUp | None:
     """Update a top-up status."""
     stmt = select(TopUp).where(TopUp.id == topup_id)
     result = await session.execute(stmt)
@@ -100,8 +99,9 @@ async def get_pending_topups(
 ) -> list[TopUp]:
     """Find topups in PENDING status within max_age_minutes."""
     from datetime import timedelta
+
     from sqlalchemy.orm import selectinload
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=max_age_minutes)
+    cutoff = datetime.now(UTC) - timedelta(minutes=max_age_minutes)
     stmt = (
         select(TopUp)
         .options(selectinload(TopUp.user))

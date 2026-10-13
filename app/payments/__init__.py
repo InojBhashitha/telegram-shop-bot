@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from app.config import get_settings
 from app.payments.base import InvoiceResult, PaymentProvider, PaymentStatusResult
 from app.payments.binancepay import BinancePayProvider
@@ -13,7 +11,7 @@ from app.payments.nowpayments import NOWPaymentsProvider
 from app.payments.oxapay import OxaPayProvider
 
 
-def get_payment_provider(provider_name: Optional[str] = None) -> PaymentProvider:
+def get_payment_provider(provider_name: str | None = None) -> PaymentProvider:
     """Resolve and return configured PaymentProvider instance."""
     settings = get_settings()
     name = (provider_name or settings.crypto_provider).lower()
@@ -45,13 +43,13 @@ def get_payment_provider(provider_name: Optional[str] = None) -> PaymentProvider
 
 
 __all__ = [
-    "PaymentProvider",
-    "InvoiceResult",
-    "PaymentStatusResult",
-    "CryptoPayProvider",
-    "OxaPayProvider",
     "BinancePayProvider",
+    "CryptoPayProvider",
     "CryptomusProvider",
+    "InvoiceResult",
     "NOWPaymentsProvider",
+    "OxaPayProvider",
+    "PaymentProvider",
+    "PaymentStatusResult",
     "get_payment_provider",
 ]

@@ -3,25 +3,29 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database.models import Order, OrderStatus, User
-from app.database.repositories import coupon_repo, inventory_repo, order_repo, product_repo, user_repo
+from app.database.repositories import (
+    coupon_repo,
+    inventory_repo,
+    order_repo,
+    product_repo,
+    user_repo,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class OrderError(Exception):
     """Raised when an order operation fails."""
-    pass
 
 
-def compute_first_order_discount(user: Optional[User], raw_amount: Decimal) -> Decimal:
+def compute_first_order_discount(user: User | None, raw_amount: Decimal) -> Decimal:
     """Compute 10% discount capped at $10.00 for channel member's first order."""
     if user and user.channel_discount_claimed and not user.channel_discount_used:
         discount = (raw_amount * Decimal("0.10")).quantize(Decimal("0.01"))
@@ -38,8 +42,8 @@ async def create_order(
     user_id: int,
     product_id: int,
     quantity: int = 1,
-    coupon_code: Optional[str] = None,
-    coupon_id: Optional[int] = None,
+    coupon_code: str | None = None,
+    coupon_id: int | None = None,
 ) -> dict:
     """Create a new order with inventory reservation (supports bulk quantity & discounts).
 
@@ -97,7 +101,7 @@ async def create_order(
 
     user = await user_repo.get_by_id(session, user_id)
 
-    applied_coupon_id: Optional[int] = None
+    applied_coupon_id: int | None = None
     promo_discount = Decimal("0.00")
 
     if coupon_code and coupon_code.strip():
@@ -143,7 +147,7 @@ async def create_order(
     final_amount = max(raw_subtotal - total_discount, Decimal("0.01"))
 
     settings = get_settings()
-    warranty_expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.warranty_hours)
+    warranty_expires_at = datetime.now(UTC) + timedelta(hours=settings.warranty_hours)
 
     # Generate unique order ID
     public_order_id = await order_repo.generate_public_order_id(session)
@@ -184,7 +188,7 @@ async def create_order(
     }
 
 
-async def cancel_order(session: AsyncSession, order_id: int) -> Optional[Order]:
+async def cancel_order(session: AsyncSession, order_id: int) -> Order | None:
     """Cancel an order, release its inventory, and restore first-order discount if applied.
 
     Only PENDING_PAYMENT orders can be cancelled by user.
@@ -214,24 +218,24 @@ async def cancel_order(session: AsyncSession, order_id: int) -> Optional[Order]:
 
     order = await order_repo.update_status(
         session, order_id, OrderStatus.CANCELLED,
-        cancelled_at=datetime.now(timezone.utc),
+        cancelled_at=datetime.now(UTC),
     )
     logger.info("Order cancelled: %s", order.public_order_id)
     return order
 
 
-async def mark_paid(session: AsyncSession, order_id: int) -> Optional[Order]:
+async def mark_paid(session: AsyncSession, order_id: int) -> Order | None:
     """Mark an order as paid."""
     order = await order_repo.update_status(
         session, order_id, OrderStatus.PAID,
-        paid_at=datetime.now(timezone.utc),
+        paid_at=datetime.now(UTC),
     )
     if order:
         logger.info("Order paid: %s", order.public_order_id)
     return order
 
 
-async def fulfill_order(session: AsyncSession, order_id: int) -> Optional[dict]:
+async def fulfill_order(session: AsyncSession, order_id: int) -> dict | None:
     """Fulfill a paid order — mark inventory SOLD and order FULFILLED.
 
     Returns:
@@ -269,7 +273,7 @@ async def fulfill_order(session: AsyncSession, order_id: int) -> Optional[dict]:
     # Mark order fulfilled
     order = await order_repo.update_status(
         session, order_id, OrderStatus.FULFILLED,
-        delivered_at=datetime.now(timezone.utc),
+        delivered_at=datetime.now(UTC),
     )
     if order is None:
         return None
@@ -300,7 +304,7 @@ async def get_expiring_orders_for_warning(
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
     threshold_minutes = max(1, expiry_minutes - warning_minutes_before)
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=threshold_minutes)
+    cutoff = datetime.now(UTC) - timedelta(minutes=threshold_minutes)
     stmt = (
         select(Order)
         .options(selectinload(Order.user), selectinload(Order.product), selectinload(Order.payment))
@@ -347,12 +351,12 @@ async def get_user_orders(
 
 async def get_order_by_public_id(
     session: AsyncSession, public_order_id: str
-) -> Optional[Order]:
+) -> Order | None:
     """Get an order by its public ID."""
     return await order_repo.get_by_public_id(session, public_order_id)
 
 
-async def get_order_by_id(session: AsyncSession, order_id: int) -> Optional[Order]:
+async def get_order_by_id(session: AsyncSession, order_id: int) -> Order | None:
     """Get an order by internal ID."""
     return await order_repo.get_by_id(session, order_id)
 

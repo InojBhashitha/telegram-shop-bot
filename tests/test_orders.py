@@ -134,7 +134,7 @@ async def test_expire_old_orders(session: AsyncSession, sample_data: dict):
     user = sample_data["user"]
     product = sample_data["product"]
 
-    result = await order_service.create_order(session, user.id, product.id)
+    await order_service.create_order(session, user.id, product.id)
 
     # Expire with very short timeout (0 minutes = expire everything)
     expired = await order_service.expire_old_orders(session, expiry_minutes=0)

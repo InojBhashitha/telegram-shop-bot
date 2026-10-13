@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
+from sqlalchemy.ext.asyncio import AsyncSession
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import TelegramError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database.models import StockAlert
@@ -40,14 +39,14 @@ async def notify_restocked_product(
     session: AsyncSession,
     product_id: int,
     new_stock_count: int = 1,
-    bot: Optional[Bot] = None,
+    bot: Bot | None = None,
 ) -> int:
     """Convenience wrapper to notify subscribers of a restocked product."""
     return await notify_subscribers_of_restock(bot=bot, session=session, product_id=product_id)
 
 
 async def notify_subscribers_of_restock(
-    bot: Optional[Bot],
+    bot: Bot | None,
     session: AsyncSession,
     product_id: int,
 ) -> int:
@@ -108,11 +107,11 @@ async def notify_subscribers_of_restock(
 
 
 async def post_restock_to_channel(
-    bot: Optional[Bot],
+    bot: Bot | None,
     session: AsyncSession,
     product_id: int,
     added_count: int = 1,
-    channel_id: Optional[str] = None,
+    channel_id: str | None = None,
 ) -> tuple[bool, str]:
     """Broadcast an automated restock announcement to the public channel.
 
@@ -170,14 +169,15 @@ async def post_restock_to_channel(
 
     try:
         if photo_file:
-            with open(photo_file, "rb") as f:
-                await bot.send_photo(
-                    chat_id=target_channel,
-                    photo=f,
-                    caption=caption,
-                    reply_markup=keyboard,
-                    parse_mode="Markdown",
-                )
+            photo_bytes = photo_file.read_bytes()
+            await bot.send_photo(
+                chat_id=target_channel,
+                photo=photo_bytes,
+                caption=caption,
+                reply_markup=keyboard,
+                parse_mode="Markdown",
+            )
+
         else:
             await bot.send_message(
                 chat_id=target_channel,
@@ -193,11 +193,11 @@ async def post_restock_to_channel(
 
 
 async def handle_restock_event(
-    bot: Optional[Bot],
+    bot: Bot | None,
     session: AsyncSession,
     product_id: int,
     added_count: int = 1,
-    channel_id: Optional[str] = None,
+    channel_id: str | None = None,
 ) -> dict:
     """Execute complete automated restock pipeline:
     1. Notify subscribed users (1-on-1 private DM).

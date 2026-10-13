@@ -5,21 +5,17 @@ from __future__ import annotations
 import csv
 import io
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Optional
 
-from telegram import Bot
-from telegram.error import TelegramError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from telegram import Bot
+from telegram.error import TelegramError
 
 from app.config import get_settings
 from app.database.models import (
-    Category,
-    Inventory,
-    InventoryStatus,
     Order,
     OrderStatus,
     Product,
@@ -34,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 async def get_analytics_summary(session: AsyncSession, hours: int = 24) -> dict:
     """Aggregate shop performance metrics for the specified trailing window in hours."""
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
 
     # 1. Orders in period
     stmt_orders = (
@@ -172,7 +168,7 @@ def format_digest_message(summary: dict, hours: int = 24) -> str:
 
 async def send_digest_to_admins(
     session: AsyncSession,
-    bot: Optional[Bot] = None,
+    bot: Bot | None = None,
     hours: int = 24,
 ) -> int:
     """Dispatch the daily digest message to all configured admin Telegram IDs."""

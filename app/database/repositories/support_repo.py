@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,7 +26,7 @@ async def create(
     return ticket
 
 
-async def get_by_id(session: AsyncSession, ticket_id: int) -> Optional[SupportTicket]:
+async def get_by_id(session: AsyncSession, ticket_id: int) -> SupportTicket | None:
     """Get a ticket by ID."""
     stmt = select(SupportTicket).where(SupportTicket.id == ticket_id)
     result = await session.execute(stmt)
@@ -55,7 +53,7 @@ async def get_user_tickets(
 
 async def list_all(
     session: AsyncSession,
-    status: Optional[TicketStatus] = None,
+    status: TicketStatus | None = None,
     offset: int = 0,
     limit: int = 20,
 ) -> list[SupportTicket]:
@@ -72,7 +70,7 @@ async def reply(
     session: AsyncSession,
     ticket_id: int,
     admin_reply: str,
-) -> Optional[SupportTicket]:
+) -> SupportTicket | None:
     """Admin replies to a ticket."""
     stmt = select(SupportTicket).where(SupportTicket.id == ticket_id)
     result = await session.execute(stmt)

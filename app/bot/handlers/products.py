@@ -197,9 +197,10 @@ async def show_product_detail(
                 cand = Path("app") / image_url.lstrip("/")
                 if cand.exists():
                     try:
-                        photo_stream = open(cand, "rb")
+                        photo_stream = cand.read_bytes()
                     except Exception as e:
-                        logger.warning("Could not open local logo file %s: %s", cand, e)
+                        logger.warning("Could not read local logo file %s: %s", cand, e)
+
 
         if photo_stream is not None:
             try:
@@ -354,7 +355,7 @@ async def stock_alert_callback(update: Update, context: ContextTypes.DEFAULT_TYP
             await query.answer("Please start the bot first using /start", show_alert=True)
             return
 
-        alert, created = await stock_alert_service.subscribe_user(session, db_user.id, product_id)
+        _alert, created = await stock_alert_service.subscribe_user(session, db_user.id, product_id)
 
     if created:
         await query.answer("🔔 Alert set! You'll receive a Telegram message the instant stock arrives.", show_alert=True)

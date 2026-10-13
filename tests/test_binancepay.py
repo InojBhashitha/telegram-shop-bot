@@ -10,8 +10,8 @@ from decimal import Decimal
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import OrderStatus, PaymentStatus
-from app.database.repositories import order_repo, payment_repo
+from app.database.models import PaymentStatus
+from app.database.repositories import payment_repo
 from app.payments.binancepay import BinancePayProvider
 from app.services import order_service, payment_service
 
@@ -159,7 +159,7 @@ class TestBinancePayWebhookProcessing:
         prepay_id = "binance_prepay_idempotent_1"
         merchant_trade_no = order.public_order_id.replace("-", "")
 
-        payment = await payment_repo.create(
+        await payment_repo.create(
             session,
             order_id=order.id,
             provider="binancepay",
@@ -195,6 +195,7 @@ class TestBinancePayEndpoint:
     @pytest.mark.asyncio
     async def test_endpoint_success_response(self):
         from httpx import ASGITransport, AsyncClient
+
         from app.api.main import create_api
         from app.database.database import close_db, get_engine, init_db
         from app.database.models import Base
@@ -233,6 +234,7 @@ class TestBinancePayEndpoint:
     @pytest.mark.asyncio
     async def test_endpoint_missing_headers_fail(self):
         from httpx import ASGITransport, AsyncClient
+
         from app.api.main import create_api
 
         app = create_api()

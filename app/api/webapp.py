@@ -17,23 +17,21 @@ import hmac
 import json
 import logging
 import urllib.parse
-from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Header, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import (
     create_access_token,
-    decode_access_token,
     extract_bearer_token,
     get_user_from_token,
 )
-from app.config import Settings, get_settings
+from app.config import get_settings
 from app.database.database import get_session
-from app.database.models import OrderStatus, PaymentStatus, User
+from app.database.models import OrderStatus, User
 from app.database.repositories import (
     cart_repo,
     category_repo,
@@ -41,7 +39,6 @@ from app.database.repositories import (
     order_repo,
     payment_repo,
     product_repo,
-    user_repo,
 )
 from app.payments import get_payment_provider
 from app.services import (
@@ -54,7 +51,6 @@ from app.services import (
     user_service,
 )
 
-
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
@@ -64,7 +60,7 @@ router = APIRouter()
 # Cryptographic Validation of Telegram initData
 # ---------------------------------------------------------------------------
 
-def validate_telegram_init_data(init_data: str, bot_token: str) -> Optional[dict[str, Any]]:
+def validate_telegram_init_data(init_data: str, bot_token: str) -> dict[str, Any] | None:
     """Validate Telegram WebApp initData string using HMAC-SHA256 signature verification.
 
     Specification:
@@ -113,12 +109,12 @@ def validate_telegram_init_data(init_data: str, bot_token: str) -> Optional[dict
 
 async def resolve_user(
     session: AsyncSession,
-    init_data: Optional[str] = None,
-    telegram_id: Optional[int] = None,
-    username: Optional[str] = None,
-    first_name: Optional[str] = None,
-    authorization: Optional[str] = None,
-    token: Optional[str] = None,
+    init_data: str | None = None,
+    telegram_id: int | None = None,
+    username: str | None = None,
+    first_name: str | None = None,
+    authorization: str | None = None,
+    token: str | None = None,
 ) -> User:
     """Resolve or create database user from JWT token, Telegram initData, or dev parameters."""
     settings = get_settings()
@@ -135,10 +131,10 @@ async def resolve_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    tg_id: Optional[int] = None
-    uname: Optional[str] = username
-    fname: Optional[str] = first_name
-    lname: Optional[str] = None
+    tg_id: int | None = None
+    uname: str | None = username
+    fname: str | None = first_name
+    lname: str | None = None
 
     # 2. Try validating initData
     if init_data:
@@ -176,82 +172,82 @@ async def resolve_user(
 # ---------------------------------------------------------------------------
 
 class AuthRequest(BaseModel):
-    init_data: Optional[str] = None
-    dev_telegram_id: Optional[int] = None
-    dev_username: Optional[str] = None
-    dev_first_name: Optional[str] = None
-    token: Optional[str] = None
+    init_data: str | None = None
+    dev_telegram_id: int | None = None
+    dev_username: str | None = None
+    dev_first_name: str | None = None
+    token: str | None = None
 
 
 class CartItemActionRequest(BaseModel):
     product_id: int
     quantity: int = 1
-    init_data: Optional[str] = None
-    telegram_id: Optional[int] = None
-    token: Optional[str] = None
+    init_data: str | None = None
+    telegram_id: int | None = None
+    token: str | None = None
 
 
 class CartUpdateQuantityRequest(BaseModel):
     product_id: int
     quantity: int
-    init_data: Optional[str] = None
-    telegram_id: Optional[int] = None
-    token: Optional[str] = None
+    init_data: str | None = None
+    telegram_id: int | None = None
+    token: str | None = None
 
 
 class CartRemoveRequest(BaseModel):
     product_id: int
-    init_data: Optional[str] = None
-    telegram_id: Optional[int] = None
-    token: Optional[str] = None
+    init_data: str | None = None
+    telegram_id: int | None = None
+    token: str | None = None
 
 
 class CheckoutRequest(BaseModel):
     payment_method: str = "crypto"  # "crypto" (Binance Pay) or "balance"
-    coupon_code: Optional[str] = None
-    init_data: Optional[str] = None
-    telegram_id: Optional[int] = None
-    token: Optional[str] = None
+    coupon_code: str | None = None
+    init_data: str | None = None
+    telegram_id: int | None = None
+    token: str | None = None
 
 
 class ClaimDiscountRequest(BaseModel):
-    init_data: Optional[str] = None
-    telegram_id: Optional[int] = None
-    token: Optional[str] = None
+    init_data: str | None = None
+    telegram_id: int | None = None
+    token: str | None = None
 
 
 class ValidateCouponRequest(BaseModel):
     code: str
-    subtotal: Optional[float] = None
-    cart_subtotal: Optional[float] = None
-    init_data: Optional[str] = None
-    telegram_id: Optional[int] = None
-    token: Optional[str] = None
+    subtotal: float | None = None
+    cart_subtotal: float | None = None
+    init_data: str | None = None
+    telegram_id: int | None = None
+    token: str | None = None
 
 
 class StockAlertRequest(BaseModel):
     product_id: int
-    init_data: Optional[str] = None
-    telegram_id: Optional[int] = None
-    token: Optional[str] = None
+    init_data: str | None = None
+    telegram_id: int | None = None
+    token: str | None = None
 
 
 class CreateReviewRequest(BaseModel):
-    order_id: Optional[int] = None
-    product_id: Optional[int] = None
+    order_id: int | None = None
+    product_id: int | None = None
     rating: int
-    comment: Optional[str] = None
-    init_data: Optional[str] = None
-    telegram_id: Optional[int] = None
-    token: Optional[str] = None
+    comment: str | None = None
+    init_data: str | None = None
+    telegram_id: int | None = None
+    token: str | None = None
 
 
 class TopUpRequest(BaseModel):
     amount: float
     currency: str = "USD"
-    init_data: Optional[str] = None
-    telegram_id: Optional[int] = None
-    token: Optional[str] = None
+    init_data: str | None = None
+    telegram_id: int | None = None
+    token: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +257,7 @@ class TopUpRequest(BaseModel):
 @router.post("/auth")
 async def auth_user(
     req: AuthRequest,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Authenticate Telegram WebApp user, returning JWT session token and user profile."""
     async with get_session() as session:
@@ -326,11 +322,11 @@ async def auth_user(
 
 @router.get("/user")
 async def get_user_profile(
-    init_data: Optional[str] = Query(None),
-    telegram_id: Optional[int] = Query(None),
-    token: Optional[str] = Query(None),
-    x_telegram_init_data: Optional[str] = Header(None),
-    authorization: Optional[str] = Header(None),
+    init_data: str | None = Query(None),
+    telegram_id: int | None = Query(None),
+    token: str | None = Query(None),
+    x_telegram_init_data: str | None = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Get current user details and balance."""
     raw_init = init_data or x_telegram_init_data
@@ -368,11 +364,11 @@ async def get_user_profile(
 
 @router.get("/referral")
 async def get_referral_info(
-    init_data: Optional[str] = Query(None),
-    telegram_id: Optional[int] = Query(None),
-    token: Optional[str] = Query(None),
-    x_telegram_init_data: Optional[str] = Header(None),
-    authorization: Optional[str] = Header(None),
+    init_data: str | None = Query(None),
+    telegram_id: int | None = Query(None),
+    token: str | None = Query(None),
+    x_telegram_init_data: str | None = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Get full referral statistics, link, and recent commissions for the user."""
     raw_init = init_data or x_telegram_init_data
@@ -419,7 +415,7 @@ async def get_referral_info(
 # ---------------------------------------------------------------------------
 
 @router.get("/catalog")
-async def get_catalog(category_id: Optional[int] = Query(None)):
+async def get_catalog(category_id: int | None = Query(None)):
     """Get all active categories and products with live stock counts."""
     settings = get_settings()
     async with get_session() as session:
@@ -525,11 +521,11 @@ async def get_product_detail(product_id: int):
 
 @router.get("/cart")
 async def get_cart(
-    init_data: Optional[str] = Query(None),
-    telegram_id: Optional[int] = Query(None),
-    token: Optional[str] = Query(None),
-    x_telegram_init_data: Optional[str] = Header(None),
-    authorization: Optional[str] = Header(None),
+    init_data: str | None = Query(None),
+    telegram_id: int | None = Query(None),
+    token: str | None = Query(None),
+    x_telegram_init_data: str | None = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Get current user's cart summary, items, and calculated discount."""
     raw_init = init_data or x_telegram_init_data
@@ -586,7 +582,7 @@ async def get_cart(
 @router.post("/cart/add")
 async def add_to_cart(
     req: CartItemActionRequest,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Add a product to cart with live stock check."""
     async with get_session() as session:
@@ -613,7 +609,7 @@ async def add_to_cart(
 @router.post("/cart/update")
 async def update_cart_item(
     req: CartUpdateQuantityRequest,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Update item quantity in cart."""
     async with get_session() as session:
@@ -636,7 +632,7 @@ async def update_cart_item(
 @router.post("/cart/remove")
 async def remove_from_cart(
     req: CartRemoveRequest,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Remove product from cart."""
     async with get_session() as session:
@@ -654,7 +650,7 @@ async def remove_from_cart(
 @router.post("/cart/clear")
 async def clear_cart(
     req: ClaimDiscountRequest,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Clear all items from cart."""
     async with get_session() as session:
@@ -676,12 +672,11 @@ async def clear_cart(
 @router.post("/checkout")
 async def checkout(
     req: CheckoutRequest,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Checkout cart items via Crypto payment invoice or Account Balance."""
-    settings = get_settings()
-
     async with get_session() as session:
+
         user = await resolve_user(
             session,
             init_data=req.init_data,
@@ -801,11 +796,11 @@ async def checkout(
 
 @router.get("/orders")
 async def list_orders(
-    init_data: Optional[str] = Query(None),
-    telegram_id: Optional[int] = Query(None),
-    token: Optional[str] = Query(None),
-    x_telegram_init_data: Optional[str] = Header(None),
-    authorization: Optional[str] = Header(None),
+    init_data: str | None = Query(None),
+    telegram_id: int | None = Query(None),
+    token: str | None = Query(None),
+    x_telegram_init_data: str | None = Header(None),
+    authorization: str | None = Header(None),
 ):
     """List customer orders with status and delivered credentials."""
     raw_init = init_data or x_telegram_init_data
@@ -855,11 +850,11 @@ async def list_orders(
 @router.get("/orders/{order_id}")
 async def get_order_status(
     order_id: int,
-    init_data: Optional[str] = Query(None),
-    telegram_id: Optional[int] = Query(None),
-    token: Optional[str] = Query(None),
-    x_telegram_init_data: Optional[str] = Header(None),
-    authorization: Optional[str] = Header(None),
+    init_data: str | None = Query(None),
+    telegram_id: int | None = Query(None),
+    token: str | None = Query(None),
+    x_telegram_init_data: str | None = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Get live status of order; checks payment provider if pending."""
     raw_init = init_data or x_telegram_init_data
@@ -910,7 +905,7 @@ async def get_order_status(
 async def cancel_order(
     order_id: int,
     req: ClaimDiscountRequest,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Cancel pending order and release reserved inventory."""
     async with get_session() as session:
@@ -940,7 +935,7 @@ async def cancel_order(
 @router.post("/discount/claim")
 async def claim_channel_discount(
     req: ClaimDiscountRequest,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Check membership in required channel and activate 10% first-order discount."""
     settings = get_settings()
@@ -1006,7 +1001,7 @@ async def claim_channel_discount(
 @router.post("/coupon/validate")
 async def validate_coupon(
     req: ValidateCouponRequest,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Validate a promo code and calculate discount deduction for checkout."""
     async with get_session() as session:
@@ -1052,7 +1047,7 @@ async def validate_coupon(
 @router.post("/stock-alert")
 async def subscribe_stock_alert(
     req: StockAlertRequest,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Subscribe current user to restock alerts for an out-of-stock product."""
     async with get_session() as session:
@@ -1065,7 +1060,7 @@ async def subscribe_stock_alert(
         )
         from app.services import stock_alert_service
 
-        alert, created = await stock_alert_service.subscribe_user(session, user.id, req.product_id)
+        _alert, created = await stock_alert_service.subscribe_user(session, user.id, req.product_id)
         return {
             "success": True,
             "created": created,
@@ -1116,7 +1111,7 @@ async def get_product_reviews(product_id: int):
 @router.post("/reviews")
 async def create_review(
     req: CreateReviewRequest,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Submit a rating and optional review for an order or product."""
     async with get_session() as session:
@@ -1168,8 +1163,8 @@ async def get_topup_tiers():
 @router.post("/topup")
 async def create_topup_invoice(
     req: TopUpRequest,
-    x_telegram_init_data: Optional[str] = Header(None),
-    authorization: Optional[str] = Header(None),
+    x_telegram_init_data: str | None = Header(None),
+    authorization: str | None = Header(None),
 ):
     """Create a crypto invoice for balance top-up with deposit bonus calculation."""
     if req.amount < 1.0:
@@ -1193,7 +1188,7 @@ async def create_topup_invoice(
             )
         except Exception as e:
             logger.error("Mini App top-up creation error: %s", e)
-            raise HTTPException(status_code=500, detail=f"Failed to create top-up payment: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Failed to create top-up payment: {e!s}")
 
         bonus_amt, bonus_pct, tier_label = topup_service.calculate_deposit_bonus(amt_decimal)
         total_credit = (amt_decimal + bonus_amt).quantize(Decimal("0.01"))

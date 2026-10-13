@@ -5,12 +5,11 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
-from decimal import Decimal
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import OrderStatus, PaymentStatus
+from app.database.models import OrderStatus
 from app.database.repositories import order_repo, payment_repo
 from app.payments.nowpayments import NOWPaymentsProvider
 from app.services import order_service, payment_service
@@ -95,7 +94,7 @@ class TestPaymentProcessing:
         order = result["order"]
 
         # Create payment record manually (normally done by payment_service)
-        payment = await payment_repo.create(
+        await payment_repo.create(
             session,
             order_id=order.id,
             provider="nowpayments",

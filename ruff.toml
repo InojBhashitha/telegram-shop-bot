@@ -1,0 +1,9 @@
+target-version = "py312"
+line-length = 120
+
+[lint]
+ignore = [
+    "E501",   # line too long
+    "BLE001", # blind Exception catch (used intentionally for resilient background tasks and webhook isolation)
+    "S110",   # try-except-pass
+]

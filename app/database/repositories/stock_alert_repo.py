@@ -2,21 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.database.models import StockAlert, User
+from app.database.models import StockAlert
 
 
 async def get_active_subscription(
     session: AsyncSession,
     user_id: int,
     product_id: int,
-) -> Optional[StockAlert]:
+) -> StockAlert | None:
     """Check if user has an un-notified restock alert for this product."""
     stmt = (
         select(StockAlert)
@@ -75,7 +74,7 @@ async def mark_notified(
     if not alert_ids:
         return
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stmt = (
         update(StockAlert)
         .where(StockAlert.id.in_(alert_ids))

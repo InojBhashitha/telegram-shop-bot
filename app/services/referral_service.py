@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Optional
 
-from telegram import Bot
-from telegram.error import TelegramError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from telegram import Bot
+from telegram.error import TelegramError
 
 from app.config import get_settings
 from app.database.models import Order, ReferralCommission, User
@@ -18,7 +17,7 @@ from app.database.repositories import referral_repo, user_repo
 logger = logging.getLogger(__name__)
 
 
-def _get_active_bot(bot: Optional[Bot] = None) -> Optional[Bot]:
+def _get_active_bot(bot: Bot | None = None) -> Bot | None:
     """Helper to retrieve Telegram bot instance."""
     if bot:
         return bot
@@ -33,8 +32,8 @@ async def bind_referral(
     session: AsyncSession,
     new_user: User,
     referral_code: str,
-    bot: Optional[Bot] = None,
-) -> Optional[User]:
+    bot: Bot | None = None,
+) -> User | None:
     """Bind a newly registered user to their referrer and notify the referrer.
 
     Args:
@@ -103,8 +102,8 @@ async def bind_referral(
 async def process_order_commission(
     session: AsyncSession,
     order: Order,
-    bot: Optional[Bot] = None,
-) -> Optional[Decimal]:
+    bot: Bot | None = None,
+) -> Decimal | None:
     """Calculate and credit referral commission upon order fulfillment.
 
     Args:
@@ -136,7 +135,7 @@ async def process_order_commission(
     if rate <= Decimal("0.00"):
         return None
 
-    commission = (order.amount * (rate / Decimal("100"))).quantize(Decimal("0.01"))
+    commission = (order.amount * (rate / Decimal(100))).quantize(Decimal("0.01"))
     if commission <= Decimal("0.00"):
         return None
 

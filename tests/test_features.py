@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -11,11 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.bot.keyboards.main import main_reply_keyboard
 from app.bot.keyboards.orders import _get_payment_steps
 from app.bot.keyboards.products import _stock_badge
-from app.database.models import InventoryStatus, OrderStatus, WarrantyClaimStatus
+from app.database.models import OrderStatus, WarrantyClaimStatus
 from app.database.repositories import inventory_repo
-from app.services import delivery_service, order_service, warranty_service
+from app.services import order_service, warranty_service
 from app.services.delivery_service import _format_credentials_for_copy
-
 
 # ===========================================================================
 # 1. Bulk Ordering Tests
@@ -202,7 +201,7 @@ async def test_warranty_claim_expired_fails(session: AsyncSession, sample_data: 
     await order_service.fulfill_order(session, order.id)
 
     # Artificially expire the warranty
-    order.warranty_expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+    order.warranty_expires_at = datetime.now(UTC) - timedelta(hours=1)
     await session.flush()
 
     with pytest.raises(warranty_service.WarrantyError, match="expired"):

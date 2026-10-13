@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import FAQ, StoreSettings
 
-
 # ---------------------------------------------------------------------------
 # Store Settings (key-value)
 # ---------------------------------------------------------------------------
 
-async def get_setting(session: AsyncSession, key: str) -> Optional[str]:
+async def get_setting(session: AsyncSession, key: str) -> str | None:
     """Get a setting value by key."""
     stmt = select(StoreSettings.value).where(StoreSettings.key == key)
     result = await session.execute(stmt)
@@ -73,7 +70,7 @@ async def update_faq(
     session: AsyncSession,
     faq_id: int,
     **kwargs,
-) -> Optional[FAQ]:
+) -> FAQ | None:
     """Update a FAQ entry."""
     stmt = select(FAQ).where(FAQ.id == faq_id)
     result = await session.execute(stmt)

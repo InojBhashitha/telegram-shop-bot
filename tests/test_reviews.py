@@ -1,6 +1,5 @@
 """Tests for product reviews, ratings, and vouch channel broadcast."""
 
-from unittest.mock import AsyncMock, MagicMock
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 

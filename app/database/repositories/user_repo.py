@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import secrets
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,9 +14,9 @@ from app.database.models import Order, OrderStatus, Referral, User
 async def get_or_create_user(
     session: AsyncSession,
     telegram_id: int,
-    username: Optional[str] = None,
-    first_name: Optional[str] = None,
-    last_name: Optional[str] = None,
+    username: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
 ) -> User:
     """Get existing user or create a new one.
 
@@ -58,21 +57,21 @@ async def get_or_create_user(
     return user
 
 
-async def get_by_telegram_id(session: AsyncSession, telegram_id: int) -> Optional[User]:
+async def get_by_telegram_id(session: AsyncSession, telegram_id: int) -> User | None:
     """Get a user by their Telegram ID."""
     stmt = select(User).where(User.telegram_id == telegram_id)
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
 
 
-async def get_by_id(session: AsyncSession, user_id: int) -> Optional[User]:
+async def get_by_id(session: AsyncSession, user_id: int) -> User | None:
     """Get a user by their internal ID."""
     stmt = select(User).where(User.id == user_id)
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
 
 
-async def get_by_referral_code(session: AsyncSession, code: str) -> Optional[User]:
+async def get_by_referral_code(session: AsyncSession, code: str) -> User | None:
     """Find a user by their referral code or telegram_id."""
     if not code:
         return None
@@ -112,7 +111,7 @@ async def update_balance(
     user = result.scalar_one()
 
     new_balance = user.balance + amount
-    if new_balance < Decimal("0"):
+    if new_balance < Decimal(0):
         raise ValueError("Insufficient balance")
 
     user.balance = new_balance

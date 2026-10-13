@@ -6,12 +6,10 @@ import csv
 import io
 import logging
 import re
-from datetime import datetime, timezone
-from typing import Optional
 
+from sqlalchemy.ext.asyncio import AsyncSession
 from telegram import Bot
 from telegram.error import TelegramError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database.models import Order

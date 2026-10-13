@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from telegram import Bot
 from telegram.ext import Application
@@ -13,10 +12,10 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 # Global bot instance for webhook-triggered notifications
-_bot_instance: Optional[Bot] = None
+_bot_instance: Bot | None = None
 
 
-def get_bot_instance() -> Optional[Bot]:
+def get_bot_instance() -> Bot | None:
     """Get the shared Bot instance (available after build_bot() is called)."""
     return _bot_instance
 

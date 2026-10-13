@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,14 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.models import Coupon, CouponType
 
 
-async def get_by_code(session: AsyncSession, code: str) -> Optional[Coupon]:
+async def get_by_code(session: AsyncSession, code: str) -> Coupon | None:
     """Look up a coupon by its case-insensitive code."""
     stmt = select(Coupon).where(Coupon.code == code.strip().upper())
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
 
 
-async def get_by_id(session: AsyncSession, coupon_id: int) -> Optional[Coupon]:
+async def get_by_id(session: AsyncSession, coupon_id: int) -> Coupon | None:
     """Look up a coupon by its primary key ID."""
     stmt = select(Coupon).where(Coupon.id == coupon_id)
     result = await session.execute(stmt)
@@ -32,10 +31,10 @@ async def create(
     discount_type: CouponType,
     discount_value: Decimal,
     min_order_amount: Decimal = Decimal("0.00"),
-    max_discount: Optional[Decimal] = None,
-    max_uses: Optional[int] = None,
-    expiry_at: Optional[datetime] = None,
-    affiliate_user_id: Optional[int] = None,
+    max_discount: Decimal | None = None,
+    max_uses: int | None = None,
+    expiry_at: datetime | None = None,
+    affiliate_user_id: int | None = None,
     affiliate_commission_pct: Decimal = Decimal("0.00"),
 ) -> Coupon:
     """Create a new coupon."""
@@ -76,7 +75,7 @@ async def list_all(session: AsyncSession, active_only: bool = False) -> list[Cou
     return list(result.scalars().all())
 
 
-async def set_active(session: AsyncSession, coupon_id: int, active: bool) -> Optional[Coupon]:
+async def set_active(session: AsyncSession, coupon_id: int, active: bool) -> Coupon | None:
     """Activate or deactivate a coupon."""
     coupon = await get_by_id(session, coupon_id)
     if coupon:

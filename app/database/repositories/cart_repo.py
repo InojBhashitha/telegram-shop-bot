@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.database.models import CartItem, Product
+from app.database.models import CartItem
 
 
 async def get_user_cart(session: AsyncSession, user_id: int) -> list[CartItem]:
@@ -26,7 +25,7 @@ async def get_user_cart(session: AsyncSession, user_id: int) -> list[CartItem]:
 
 async def get_cart_item(
     session: AsyncSession, user_id: int, product_id: int
-) -> Optional[CartItem]:
+) -> CartItem | None:
     """Get a specific cart item for a user and product."""
     stmt = (
         select(CartItem)
@@ -43,7 +42,7 @@ async def add_or_update_item(
 ) -> CartItem:
     """Add item to cart or increment quantity if already exists."""
     item = await get_cart_item(session, user_id, product_id)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if item:
         item.quantity += quantity
         item.updated_at = now
@@ -63,7 +62,7 @@ async def add_or_update_item(
 
 async def set_item_quantity(
     session: AsyncSession, user_id: int, product_id: int, quantity: int
-) -> Optional[CartItem]:
+) -> CartItem | None:
     """Set exact quantity for a cart item, or remove it if quantity <= 0."""
     item = await get_cart_item(session, user_id, product_id)
     if item is None:
@@ -77,7 +76,7 @@ async def set_item_quantity(
         return None
 
     item.quantity = quantity
-    item.updated_at = datetime.now(timezone.utc)
+    item.updated_at = datetime.now(UTC)
     await session.flush()
     return item
 

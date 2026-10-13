@@ -5,17 +5,8 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import (
-    Category,
-    InventoryStatus,
-    Order,
-    OrderStatus,
-    Product,
-    User,
-)
 from app.database.repositories import (
     category_repo,
     product_repo,

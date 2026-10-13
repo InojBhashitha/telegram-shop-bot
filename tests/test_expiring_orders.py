@@ -1,11 +1,10 @@
 """Tests for expiring order recovery loop and warning notifications."""
 
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import OrderStatus
 from app.services import order_service
 
 
@@ -18,12 +17,12 @@ async def test_expiring_orders_warning_window(session: AsyncSession, sample_data
     # Order 1: Created 25 minutes ago (within warning window of 10 min before 30 min expiry)
     res1 = await order_service.create_order(session, user_id=user.id, product_id=product.id)
     order1 = res1["order"]
-    order1.created_at = datetime.now(timezone.utc) - timedelta(minutes=25)
+    order1.created_at = datetime.now(UTC) - timedelta(minutes=25)
 
     # Order 2: Created 5 minutes ago (fresh, not in warning window)
     res2 = await order_service.create_order(session, user_id=user.id, product_id=product.id)
     order2 = res2["order"]
-    order2.created_at = datetime.now(timezone.utc) - timedelta(minutes=5)
+    order2.created_at = datetime.now(UTC) - timedelta(minutes=5)
 
     await session.commit()
 

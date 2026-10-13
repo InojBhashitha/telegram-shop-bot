@@ -23,8 +23,6 @@ from app.database.models import (
     Category,
     Inventory,
     InventoryStatus,
-    Order,
-    OrderStatus,
     Product,
     TopUp,
     TopUpStatus,

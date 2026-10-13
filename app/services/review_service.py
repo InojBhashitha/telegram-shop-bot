@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 
+from sqlalchemy.ext.asyncio import AsyncSession
 from telegram import Bot
 from telegram.error import TelegramError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database.models import OrderStatus, ProductReview
@@ -18,17 +18,16 @@ logger = logging.getLogger(__name__)
 
 class ReviewError(Exception):
     """Raised when review submission fails."""
-    pass
 
 
 async def submit_review(
     session: AsyncSession,
     user_id: int,
     rating: int,
-    order_id: Optional[int] = None,
-    product_id: Optional[int] = None,
-    comment: Optional[str] = None,
-    bot: Optional[Bot] = None,
+    order_id: int | None = None,
+    product_id: int | None = None,
+    comment: str | None = None,
+    bot: Bot | None = None,
 ) -> ProductReview:
     """Submit a rating & review for a fulfilled order or product."""
     if not isinstance(rating, int) or rating < 1 or rating > 5:

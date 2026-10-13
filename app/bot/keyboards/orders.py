@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -28,9 +27,9 @@ def payment_keyboard(
     payment_url: str,
     order_id: int,
     order_status: str = "pending_payment",
-    amount: Optional[str] = None,
-    stars_invoice_url: Optional[str] = None,
-    user_balance: Optional[Decimal] = None,
+    amount: str | None = None,
+    stars_invoice_url: str | None = None,
+    user_balance: Decimal | None = None,
 ) -> InlineKeyboardMarkup:
     """Payment keyboard with crypto checkout URL, 0-second balance pay option, and live status tracker."""
     # Status step indicators
@@ -113,8 +112,8 @@ def order_list_keyboard(
 def order_detail_keyboard(
     order: Order,
     has_warranty: bool = False,
-    payment_url: Optional[str] = None,
-    user_balance: Optional[Decimal] = None,
+    payment_url: str | None = None,
+    user_balance: Decimal | None = None,
 ) -> InlineKeyboardMarkup:
     """Order detail keyboard with payment options, cancel order button, and optional warranty claim button."""
     buttons = []
@@ -148,7 +147,7 @@ def order_detail_keyboard(
 
     # Warranty button for fulfilled orders within warranty period
     if has_warranty and order.status == OrderStatus.FULFILLED:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if order.warranty_expires_at and now < order.warranty_expires_at:
             buttons.append([
                 InlineKeyboardButton(

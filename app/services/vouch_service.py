@@ -4,20 +4,25 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Optional
 
+from sqlalchemy.ext.asyncio import AsyncSession
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import TelegramError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database.models import Order, Payment, User
-from app.database.repositories import category_repo, inventory_repo, payment_repo, product_repo, user_repo
+from app.database.repositories import (
+    category_repo,
+    inventory_repo,
+    payment_repo,
+    product_repo,
+    user_repo,
+)
 
 logger = logging.getLogger(__name__)
 
 
-def anonymize_buyer(user: Optional[User]) -> str:
+def anonymize_buyer(user: User | None) -> str:
     """Safely anonymize buyer username or name for public channel proof."""
     if user is None:
         return "Verified Customer"
@@ -44,7 +49,7 @@ def anonymize_buyer(user: Optional[User]) -> str:
     return "Verified Customer"
 
 
-def format_payment_badge(payment: Optional[Payment]) -> str:
+def format_payment_badge(payment: Payment | None) -> str:
     """Format payment method and currency badge for the proof card."""
     if payment is None:
         return "✅ Verified Automated Payment"
@@ -71,10 +76,10 @@ def format_payment_badge(payment: Optional[Payment]) -> str:
 
 
 async def post_order_vouch_to_channel(
-    bot: Optional[Bot],
+    bot: Bot | None,
     session: AsyncSession,
     order: Order,
-    channel_id: Optional[str] = None,
+    channel_id: str | None = None,
 ) -> tuple[bool, str]:
     """Broadcast an automated verified purchase proof card to the public vouch channel.
 
@@ -164,14 +169,15 @@ async def post_order_vouch_to_channel(
 
     try:
         if photo_file:
-            with open(photo_file, "rb") as f:
-                await bot.send_photo(
-                    chat_id=target_channel,
-                    photo=f,
-                    caption=caption,
-                    reply_markup=keyboard,
-                    parse_mode="Markdown",
-                )
+            photo_bytes = photo_file.read_bytes()
+            await bot.send_photo(
+                chat_id=target_channel,
+                photo=photo_bytes,
+                caption=caption,
+                reply_markup=keyboard,
+                parse_mode="Markdown",
+            )
+
         else:
             await bot.send_message(
                 chat_id=target_channel,

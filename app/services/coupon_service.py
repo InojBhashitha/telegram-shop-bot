@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 class CouponError(Exception):
     """Raised when coupon validation fails."""
-    pass
 
 
 async def create_coupon(
@@ -26,10 +25,10 @@ async def create_coupon(
     discount_type: CouponType,
     discount_value: Decimal,
     min_order_amount: Decimal = Decimal("0.00"),
-    max_discount: Optional[Decimal] = None,
-    max_uses: Optional[int] = None,
-    expiry_at: Optional[datetime] = None,
-    affiliate_user_id: Optional[int] = None,
+    max_discount: Decimal | None = None,
+    max_uses: int | None = None,
+    expiry_at: datetime | None = None,
+    affiliate_user_id: int | None = None,
     affiliate_commission_pct: Decimal = Decimal("0.00"),
     **kwargs,
 ) -> Coupon:
@@ -59,7 +58,7 @@ async def validate_and_apply_coupon(
     session: AsyncSession,
     code: str,
     cart_subtotal: Decimal,
-    user_id: Optional[int] = None,
+    user_id: int | None = None,
 ) -> dict[str, Any]:
     """Validate a coupon code and return its discount info."""
     res = await validate_and_calculate_discount(session, code, cart_subtotal, user_id)
@@ -76,7 +75,7 @@ async def validate_and_calculate_discount(
     session: AsyncSession,
     code: str,
     subtotal: Decimal,
-    user_id: Optional[int] = None,
+    user_id: int | None = None,
 ) -> dict[str, Any]:
     """Validate a coupon code and calculate its applicable discount.
 
@@ -102,11 +101,11 @@ async def validate_and_calculate_discount(
     if not coupon.active:
         raise CouponError(f"Promo code '{coupon.code}' is no longer active.")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if coupon.expiry_at is not None:
         expiry = coupon.expiry_at
         if expiry.tzinfo is None:
-            expiry = expiry.replace(tzinfo=timezone.utc)
+            expiry = expiry.replace(tzinfo=UTC)
         if expiry < now:
             raise CouponError(f"Promo code '{coupon.code}' has expired.")
 
@@ -124,7 +123,7 @@ async def validate_and_calculate_discount(
 
     # Calculate discount amount
     if coupon.discount_type == CouponType.PERCENTAGE:
-        raw_discount = subtotal * (coupon.discount_value / Decimal("100"))
+        raw_discount = subtotal * (coupon.discount_value / Decimal(100))
         if coupon.max_discount is not None:
             discount = min(raw_discount, coupon.max_discount)
         else:
@@ -148,7 +147,7 @@ async def validate_and_calculate_discount(
 async def credit_affiliate_for_order(
     session: AsyncSession,
     order: Order,
-) -> Optional[Decimal]:
+) -> Decimal | None:
     """Credit affiliate commission to referrer balance upon order completion."""
     if not order.coupon_id:
         return None
@@ -160,7 +159,7 @@ async def credit_affiliate_for_order(
     if coupon.affiliate_commission_pct <= Decimal("0.00"):
         return None
 
-    commission = (order.amount * (coupon.affiliate_commission_pct / Decimal("100"))).quantize(Decimal("0.01"))
+    commission = (order.amount * (coupon.affiliate_commission_pct / Decimal(100))).quantize(Decimal("0.01"))
     if commission <= Decimal("0.00"):
         return None
 

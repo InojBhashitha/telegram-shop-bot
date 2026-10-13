@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import Optional
-
 
 # Patterns that must never appear in log output
 _SENSITIVE_PATTERNS = (

@@ -9,10 +9,9 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.handlers import orders as orders_handler
-from app.bot.handlers import profile as profile_handler
 from app.bot.keyboards.orders import order_detail_keyboard, payment_keyboard
-from app.database.models import Order, OrderStatus, Product, User
-from app.services import order_service, user_service
+from app.database.models import OrderStatus
+from app.services import order_service
 
 
 def test_payment_keyboard_with_balance():

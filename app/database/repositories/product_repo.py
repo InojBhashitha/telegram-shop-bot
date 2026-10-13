@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,8 +21,8 @@ async def create(
     name: str,
     price: Decimal,
     currency: str = "USD",
-    description: Optional[str] = None,
-    image_url: Optional[str] = None,
+    description: str | None = None,
+    image_url: str | None = None,
     delivery_type: DeliveryType = DeliveryType.DIGITAL,
     active: bool = True,
 ) -> Product:
@@ -43,7 +42,7 @@ async def create(
     return product
 
 
-async def get_by_id(session: AsyncSession, product_id: int) -> Optional[Product]:
+async def get_by_id(session: AsyncSession, product_id: int) -> Product | None:
     """Get a product by ID."""
     stmt = select(Product).where(Product.id == product_id)
     result = await session.execute(stmt)
@@ -84,7 +83,7 @@ async def update_product(
     session: AsyncSession,
     product_id: int,
     **kwargs,
-) -> Optional[Product]:
+) -> Product | None:
     """Update a product's fields."""
     stmt = select(Product).where(Product.id == product_id)
     result = await session.execute(stmt)
@@ -106,7 +105,7 @@ async def deactivate(session: AsyncSession, product_id: int) -> None:
 
 async def get_product_with_stock(
     session: AsyncSession, product_id: int
-) -> Optional[dict]:
+) -> dict | None:
     """Get product details including stock count."""
     product = await get_by_id(session, product_id)
     if product is None:

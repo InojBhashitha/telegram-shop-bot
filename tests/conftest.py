@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import os
+from collections.abc import AsyncGenerator
 from decimal import Decimal
-from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio

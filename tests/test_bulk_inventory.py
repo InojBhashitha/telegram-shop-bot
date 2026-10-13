@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
-from telegram import Document, Message, Update, User as TgUser
+from telegram import Document, Message, Update
+from telegram import User as TgUser
 from telegram.ext import ConversationHandler
 
 from app.bot.handlers.admin import ADD_STOCK_ITEMS, recv_stock_items
@@ -16,8 +19,6 @@ from app.database.repositories import inventory_repo
 from app.services import stock_alert_service
 from app.utils.crypto_vault import decrypt_content
 
-
-from decimal import Decimal
 
 @pytest_asyncio.fixture(autouse=True)
 async def setup_db():
@@ -52,7 +53,7 @@ async def sample_test_data():
         return {"user": user, "category": cat, "product": product}
 
 
-def _make_update_with_text(text: str, user_id: int = 111111) -> Update:
+def _make_update_with_text(text: str, user_id: int = 111111) -> Any:
     update = MagicMock(spec=Update)
     message = MagicMock(spec=Message)
     user = MagicMock(spec=TgUser)
@@ -69,7 +70,7 @@ def _make_update_with_document(
     file_bytes: bytes,
     file_name: str = "accounts.txt",
     user_id: int = 111111,
-) -> Update:
+) -> Any:
     update = MagicMock(spec=Update)
     message = MagicMock(spec=Message)
     user = MagicMock(spec=TgUser)
@@ -178,11 +179,11 @@ class TestBulkInventoryUpload:
     async def test_bulk_add_stock_txt_document(self, sample_test_data):
         product = sample_test_data["product"]
         file_content = (
-            "key1-xxxx-yyyy\n"
-            "key2-xxxx-yyyy\n"
-            "key3-xxxx-yyyy\n"
-            "key4-xxxx-yyyy\n"
-        ).encode("utf-8")
+            b"key1-xxxx-yyyy\n"
+            b"key2-xxxx-yyyy\n"
+            b"key3-xxxx-yyyy\n"
+            b"key4-xxxx-yyyy\n"
+        )
 
         update = _make_update_with_document(file_content, file_name="keys_batch.txt")
         context = MagicMock()

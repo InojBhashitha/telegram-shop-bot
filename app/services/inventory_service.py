@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,7 +33,7 @@ async def add_stock(
 
 async def reserve_item(
     session: AsyncSession, product_id: int
-) -> Optional[Inventory]:
+) -> Inventory | None:
     """Atomically reserve one inventory item.
 
     Returns:

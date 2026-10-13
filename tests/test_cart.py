@@ -9,12 +9,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.bot.keyboards.cart import (
     cart_added_keyboard,
-    cart_item_edit_keyboard,
-    cart_manage_keyboard,
     cart_view_keyboard,
 )
 from app.database.models import Inventory, InventoryStatus, OrderStatus, Product
-from app.database.repositories import cart_repo, inventory_repo
+from app.database.repositories import cart_repo
 from app.services import cart_service
 
 

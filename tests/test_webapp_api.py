@@ -15,7 +15,7 @@ from httpx import ASGITransport, AsyncClient
 from app.api.main import create_api
 from app.api.webapp import validate_telegram_init_data
 from app.database.database import close_db, get_session, init_db
-from app.database.models import Category, Inventory, InventoryStatus, Product, User
+from app.database.models import Category, Inventory, InventoryStatus, Product
 from app.services import user_service
 
 
@@ -262,8 +262,8 @@ async def test_webapp_coupon_and_stock_alert(test_app_client: AsyncClient):
     assert val_res.json()["valid"] is False
 
     # 2. Create coupon in database
-    from app.services import coupon_service
     from app.database.models import CouponType
+    from app.services import coupon_service
     async with get_session() as session:
         await coupon_service.create_coupon(
             session,

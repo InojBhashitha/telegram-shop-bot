@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Optional
 
+from sqlalchemy.ext.asyncio import AsyncSession
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import TelegramError
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import Order
 
@@ -222,8 +221,8 @@ async def deliver_bulk_to_user(
 
         # Auto-send downloadable .txt credentials file for convenience
         try:
-            from app.services import credential_export_service
             from app.database.database import get_session
+            from app.services import credential_export_service
             async with get_session() as file_session:
                 await credential_export_service.export_and_send_order_credentials(
                     bot=bot,
@@ -305,8 +304,8 @@ async def deliver_cart_order_to_user(
 
         # Auto-send downloadable .txt credentials file for convenience
         try:
-            from app.services import credential_export_service
             from app.database.database import get_session
+            from app.services import credential_export_service
             async with get_session() as file_session:
                 await credential_export_service.export_and_send_order_credentials(
                     bot=bot,
@@ -358,7 +357,7 @@ async def send_payment_update(
 async def deliver_order_if_fulfilled(
     session: AsyncSession,
     order: Order,
-    bot: Optional[Bot] = None,
+    bot: Bot | None = None,
 ) -> bool:
     """Send fulfilled digital order credentials to customer and notify admin."""
     if bot is None:
@@ -404,10 +403,11 @@ async def deliver_order_if_fulfilled(
             bot, user.telegram_id, order, items_by_product
         )
     else:
-        p_name = list(items_by_product.keys())[0] if items_by_product else (order.product.name if order.product else "Product")
+        p_name = next(iter(items_by_product.keys())) if items_by_product else (order.product.name if order.product else "Product")
         success = await deliver_bulk_to_user(
             bot, user.telegram_id, order, decrypted_contents, p_name
         )
+
 
     # Notify admin(s) if configured
     if success:
@@ -434,8 +434,9 @@ async def deliver_order_if_fulfilled(
                                 text=admin_msg,
                                 parse_mode="Markdown",
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug("Admin notification failed for %s: %s", aid, e)
+
         except Exception as e:
             logger.warning("Failed to send admin sale notification: %s", e)
 

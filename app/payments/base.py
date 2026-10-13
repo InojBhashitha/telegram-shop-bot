@@ -5,7 +5,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional
 
 
 @dataclass
@@ -13,8 +12,8 @@ class InvoiceResult:
     """Result from creating a payment invoice."""
     invoice_id: str
     payment_url: str
-    payment_id: Optional[str] = None
-    payment_address: Optional[str] = None
+    payment_id: str | None = None
+    payment_address: str | None = None
 
 
 @dataclass
@@ -22,8 +21,8 @@ class PaymentStatusResult:
     """Result from checking payment status."""
     payment_id: str
     status: str  # Provider-specific status string
-    actually_paid: Optional[Decimal] = None
-    pay_currency: Optional[str] = None
+    actually_paid: Decimal | None = None
+    pay_currency: str | None = None
 
 
 class PaymentProvider(ABC):
@@ -37,8 +36,8 @@ class PaymentProvider(ABC):
         order_id: str,
         order_description: str,
         ipn_callback_url: str,
-        success_url: Optional[str] = None,
-        cancel_url: Optional[str] = None,
+        success_url: str | None = None,
+        cancel_url: str | None = None,
     ) -> InvoiceResult:
         """Create a payment invoice.
 

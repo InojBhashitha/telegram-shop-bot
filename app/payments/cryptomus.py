@@ -15,7 +15,6 @@ import hmac
 import json
 import logging
 from decimal import Decimal
-from typing import Optional
 
 import httpx
 
@@ -70,8 +69,8 @@ class CryptomusProvider(PaymentProvider):
         order_id: str,
         order_description: str,
         ipn_callback_url: str,
-        success_url: Optional[str] = None,
-        cancel_url: Optional[str] = None,
+        success_url: str | None = None,
+        cancel_url: str | None = None,
     ) -> InvoiceResult:
         """Create a hosted checkout payment via POST /v1/payment."""
         payload: dict = {

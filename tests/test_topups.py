@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.database.models import TopUp, TopUpStatus, User
+from app.database.models import TopUpStatus
 from app.database.repositories import topup_repo
 from app.services import topup_service
 
@@ -49,6 +49,7 @@ def test_calculate_deposit_bonus_tiers():
     b200, pct200, label200 = topup_service.calculate_deposit_bonus(Decimal("200.00"))
     assert b200 == Decimal("30.00")
     assert pct200 == 15.0
+    assert "VIP" in label200
 
 
 def test_calculate_deposit_bonus_disabled(monkeypatch):
@@ -103,7 +104,7 @@ async def test_process_topup_webhook_with_bonus(session: AsyncSession, sample_da
     assert user.balance == Decimal("0.00")
 
     # Create a topup of $50 (Mega Bonus: +10% = $5.00)
-    topup = await topup_repo.create(
+    await topup_repo.create(
         session,
         user_id=user.id,
         amount=Decimal("50.00"),
@@ -148,7 +149,7 @@ async def test_process_topup_webhook_with_bonus(session: AsyncSession, sample_da
 async def test_process_topup_webhook_expired(session: AsyncSession, sample_data: dict):
     """Test top-up webhook processing handles expiration."""
     user = sample_data["user"]
-    topup = await topup_repo.create(
+    await topup_repo.create(
         session,
         user_id=user.id,
         amount=Decimal("10.00"),

@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import OrderStatus, PaymentStatus, TopUpStatus
+from app.database.models import OrderStatus, TopUpStatus
 from app.database.repositories import order_repo, payment_repo, topup_repo, user_repo
 from app.payments.base import PaymentStatusResult
 from app.services import order_service, payment_service

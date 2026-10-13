@@ -3,16 +3,22 @@
 from __future__ import annotations
 
 from decimal import Decimal
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.main import create_api
-from app.config import get_settings
 from app.database.database import close_db, get_session, init_db
-from app.database.models import Category, Coupon, CouponType, Inventory, InventoryStatus, OrderStatus, Product, User
-from app.database.repositories import cart_repo, inventory_repo
-from app.services import bulk_pricing_service, cart_service, order_service, user_service
+from app.database.models import (
+    Category,
+    Coupon,
+    CouponType,
+    Inventory,
+    InventoryStatus,
+    Product,
+)
+from app.services import bulk_pricing_service, cart_service, order_service
 
 
 def test_bulk_pricing_calculation_tiers():

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import UTC
 from decimal import Decimal, InvalidOperation
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -31,7 +32,6 @@ from app.config import get_settings
 from app.database.database import get_session
 from app.database.repositories import (
     category_repo,
-    inventory_repo,
     order_repo,
     payment_repo,
     settings_repo,
@@ -211,14 +211,13 @@ async def admin_products(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
 
     async with get_session() as session:
-        from app.database.repositories import product_repo
-        products = await product_repo.list_active(session)
-        # Also get inactive for admin view
         from sqlalchemy import select
+
         from app.database.models import Product
         stmt = select(Product).order_by(Product.name)
         result = await session.execute(stmt)
         all_products = list(result.scalars().all())
+
 
     await query.edit_message_text(
         "⚙️ *Products*",
@@ -242,10 +241,10 @@ async def admin_product_detail(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     product = details["product"]
-    stock = details["stock"]
 
     await query.edit_message_text(
         f"⚙️ *Product: {product.name}*\n\n"
+
         f"💰 Price: ${product.price}\n"
         f"📦 Available: {stock_summary.get('available', 0)}\n"
         f"🔒 Reserved: {stock_summary.get('reserved', 0)}\n"
@@ -637,8 +636,9 @@ async def recv_stock_items(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     for it in raw_items:
         if not it:
             continue
-        if "\n" not in it and (it.startswith("#") or it.startswith("//")):
+        if "\n" not in it and it.startswith(("#", "//")):
             continue
+
         if it in seen:
             duplicates_count += 1
             continue
@@ -1017,9 +1017,9 @@ async def admin_export_orders(update: Update, context: ContextTypes.DEFAULT_TYPE
     async with get_session() as session:
         csv_bytes = await analytics_service.export_orders_csv(session)
 
-    from datetime import datetime, timezone
     import io
-    date_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+    from datetime import datetime
+    date_str = datetime.now(UTC).strftime("%Y%m%d_%H%M")
     filename = f"orders_export_{date_str}.csv"
 
     await context.bot.send_document(
@@ -1043,9 +1043,9 @@ async def admin_export_inventory(update: Update, context: ContextTypes.DEFAULT_T
     async with get_session() as session:
         csv_bytes = await analytics_service.export_inventory_csv(session)
 
-    from datetime import datetime, timezone
     import io
-    date_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+    from datetime import datetime
+    date_str = datetime.now(UTC).strftime("%Y%m%d_%H%M")
     filename = f"inventory_export_{date_str}.csv"
 
     await context.bot.send_document(
@@ -1069,9 +1069,9 @@ async def admin_export_customers(update: Update, context: ContextTypes.DEFAULT_T
     async with get_session() as session:
         csv_bytes = await analytics_service.export_customers_csv(session)
 
-    from datetime import datetime, timezone
     import io
-    date_str = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+    from datetime import datetime
+    date_str = datetime.now(UTC).strftime("%Y%m%d_%H%M")
     filename = f"customers_export_{date_str}.csv"
 
     await context.bot.send_document(
@@ -1405,8 +1405,9 @@ async def create_coupon_command(update: Update, context: ContextTypes.DEFAULT_TY
     if len(args) > 3:
         try:
             min_spend = Decimal(args[3])
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Could not parse min_spend argument '%s': %s", args[3], e)
+
 
     async with get_session() as session:
         from app.database.repositories import coupon_repo
@@ -1664,7 +1665,9 @@ async def admin_approve_warranty(update: Update, context: ContextTypes.DEFAULT_T
             if bot_instance:
                 db_user = await user_repo.get_by_id(session, order.user_id)
                 if db_user:
-                    from app.services.delivery_service import _format_credentials_for_copy
+                    from app.services.delivery_service import (
+                        _format_credentials_for_copy,
+                    )
                     formatted = _format_credentials_for_copy(replacement_content)
                     product_name = order.product.name if order.product else "Product"
 

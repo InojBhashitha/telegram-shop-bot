@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 async def get_or_create_user(
     session: AsyncSession,
     telegram_id: int,
-    username: Optional[str] = None,
-    first_name: Optional[str] = None,
-    last_name: Optional[str] = None,
-    referral_code: Optional[str] = None,
-    bot: Optional[Any] = None,
+    username: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    referral_code: str | None = None,
+    bot: Any | None = None,
 ) -> dict:
     """Get or create a user, optionally processing a referral code.
 
@@ -47,7 +47,7 @@ async def get_or_create_user(
     return {"user": user, "is_new": is_new}
 
 
-async def get_profile(session: AsyncSession, telegram_id: int) -> Optional[dict]:
+async def get_profile(session: AsyncSession, telegram_id: int) -> dict | None:
     """Get complete user profile with stats."""
     user = await user_repo.get_by_telegram_id(session, telegram_id)
     if user is None:

@@ -3,22 +3,25 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.database.models import CartItem, Inventory
-from app.database.repositories import cart_repo, inventory_repo, order_repo, product_repo
+from app.database.repositories import (
+    cart_repo,
+    inventory_repo,
+    order_repo,
+    product_repo,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class CartError(Exception):
     """Raised when a cart operation fails."""
-    pass
 
 
 async def add_to_cart(
@@ -76,7 +79,7 @@ async def update_cart_quantity(
     user_id: int,
     product_id: int,
     quantity: int,
-) -> Optional[CartItem]:
+) -> CartItem | None:
     """Set the exact quantity of a product in the user's cart."""
     if quantity <= 0:
         await cart_repo.remove_item(session, user_id, product_id)
@@ -178,7 +181,7 @@ async def get_cart_summary(
 async def checkout_cart(
     session: AsyncSession,
     user_id: int,
-    coupon_code: Optional[str] = None,
+    coupon_code: str | None = None,
 ) -> dict:
     """Checkout all items in the user's cart.
 
@@ -248,7 +251,7 @@ async def checkout_cart(
     raw_amount = summary.get("raw_amount", summary["total_amount"])
     bulk_discount = summary.get("bulk_discount_amount", Decimal("0.00"))
     subtotal = summary["total_amount"]
-    coupon_id: Optional[int] = None
+    coupon_id: int | None = None
     promo_discount = Decimal("0.00")
 
     if coupon_code and coupon_code.strip():
@@ -278,7 +281,7 @@ async def checkout_cart(
     # Create master order
     settings = get_settings()
     public_order_id = await order_repo.generate_public_order_id(session)
-    warranty_expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.warranty_hours)
+    warranty_expires_at = datetime.now(UTC) + timedelta(hours=settings.warranty_hours)
 
     primary_product_id = items[0]["product_id"] if len(items) == 1 else None
 

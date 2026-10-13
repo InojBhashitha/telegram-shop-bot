@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Optional
 
 
 def format_stock_bar(stock_count: int, max_capacity: int = 10) -> str:
@@ -35,7 +34,7 @@ def format_product_caption(
     name: str,
     price: Decimal,
     stock: int,
-    description: Optional[str] = None,
+    description: str | None = None,
     currency: str = "USD",
     warranty_hours: int = 24,
 ) -> str:
@@ -48,8 +47,10 @@ def format_product_caption(
         bulk_caption = format_bulk_pricing_caption(price)
         if bulk_caption:
             bulk_text = f"\n\n{bulk_caption}"
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).debug("Bulk caption error: %s", e)
+
 
 
     return (

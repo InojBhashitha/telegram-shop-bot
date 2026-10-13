@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,7 +32,7 @@ async def create_topup(
     settings = get_settings()
     ipn_url = f"{settings.webhook_base_url}/webhooks/crypto/{provider.provider_name}"
 
-    order_id = f"TOPUP-{user_id}-{int(datetime.now(timezone.utc).timestamp())}"
+    order_id = f"TOPUP-{user_id}-{int(datetime.now(UTC).timestamp())}"
 
     bot_username = settings.support_username or "CloudDeals"
     return_url = f"https://t.me/{bot_username}" if bot_username else "https://t.me"
@@ -63,7 +62,7 @@ async def create_topup(
     return {"topup": topup, "payment_url": result.payment_url}
 
 
-def calculate_deposit_bonus(amount: Decimal | float | int) -> tuple[Decimal, float, str]:
+def calculate_deposit_bonus(amount: Decimal | float) -> tuple[Decimal, float, str]:
     """Calculate deposit bonus amount, bonus percentage, and tier label based on deposit amount.
 
     Tiers:
@@ -103,7 +102,7 @@ def calculate_deposit_bonus(amount: Decimal | float | int) -> tuple[Decimal, flo
         label = ""
 
     if pct > 0:
-        bonus = (amt * Decimal(str(pct)) / Decimal("100")).quantize(Decimal("0.01"))
+        bonus = (amt * Decimal(str(pct)) / Decimal(100)).quantize(Decimal("0.01"))
     else:
         bonus = Decimal("0.00")
 
@@ -148,7 +147,7 @@ async def process_topup_webhook(
     provider_invoice_id: str,
     provider_name: str,
     status: str,
-) -> Optional[dict]:
+) -> dict | None:
     """Process a top-up payment webhook.
 
     Returns:
@@ -168,7 +167,7 @@ async def process_topup_webhook(
     if status_lower in ("finished", "paid", "paid_over", "pay_success", "success"):
         topup = await topup_repo.update_status(
             session, topup.id, TopUpStatus.PAID,
-            confirmed_at=datetime.now(timezone.utc),
+            confirmed_at=datetime.now(UTC),
         )
         # Calculate deposit bonus
         bonus_amount, bonus_percent, tier_label = calculate_deposit_bonus(topup.amount)

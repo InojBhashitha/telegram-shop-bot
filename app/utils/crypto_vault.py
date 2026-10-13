@@ -9,7 +9,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from cryptography.fernet import Fernet, InvalidToken
@@ -27,10 +27,10 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-_fernet_instance: Optional[Fernet] = None
+_fernet_instance: Fernet | None = None
 
 
-def _get_fernet() -> Optional[Fernet]:
+def _get_fernet() -> Fernet | None:
     """Get or initialize the Fernet cipher instance."""
     if not HAS_CRYPTOGRAPHY or Fernet is None:
         return None

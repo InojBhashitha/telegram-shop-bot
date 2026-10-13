@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import Payment, PaymentStatus
@@ -17,11 +15,11 @@ async def create(
     order_id: int,
     provider: str,
     requested_amount: Decimal,
-    provider_payment_id: Optional[str] = None,
-    provider_invoice_id: Optional[str] = None,
-    payment_currency: Optional[str] = None,
-    payment_url: Optional[str] = None,
-    payment_address: Optional[str] = None,
+    provider_payment_id: str | None = None,
+    provider_invoice_id: str | None = None,
+    payment_currency: str | None = None,
+    payment_url: str | None = None,
+    payment_address: str | None = None,
 ) -> Payment:
     """Create a new payment record."""
     payment = Payment(
@@ -40,7 +38,7 @@ async def create(
     return payment
 
 
-async def get_by_order_id(session: AsyncSession, order_id: int) -> Optional[Payment]:
+async def get_by_order_id(session: AsyncSession, order_id: int) -> Payment | None:
     """Get a payment by its order ID."""
     stmt = select(Payment).where(Payment.order_id == order_id)
     result = await session.execute(stmt)
@@ -49,7 +47,7 @@ async def get_by_order_id(session: AsyncSession, order_id: int) -> Optional[Paym
 
 async def get_by_provider_payment_id(
     session: AsyncSession, provider: str, provider_payment_id: str
-) -> Optional[Payment]:
+) -> Payment | None:
     """Get a payment by provider + provider_payment_id (for idempotency)."""
     stmt = (
         select(Payment)
@@ -62,7 +60,7 @@ async def get_by_provider_payment_id(
 
 async def get_by_provider_invoice_id(
     session: AsyncSession, provider: str, provider_invoice_id: str
-) -> Optional[Payment]:
+) -> Payment | None:
     """Get a payment by provider + provider_invoice_id."""
     stmt = (
         select(Payment)
@@ -78,7 +76,7 @@ async def update_status(
     payment_id: int,
     status: PaymentStatus,
     **extra_fields,
-) -> Optional[Payment]:
+) -> Payment | None:
     """Update a payment's status and optional extra fields."""
     stmt = select(Payment).where(Payment.id == payment_id)
     result = await session.execute(stmt)

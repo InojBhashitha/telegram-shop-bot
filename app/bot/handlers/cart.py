@@ -26,7 +26,12 @@ from app.config import get_settings
 from app.database.database import get_session
 from app.database.repositories import inventory_repo
 from app.payments import get_payment_provider
-from app.services import cart_service, order_service, payment_service, product_service, user_service
+from app.services import (
+    cart_service,
+    payment_service,
+    product_service,
+    user_service,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -230,9 +235,9 @@ async def recv_custom_quantity(update: Update, context: ContextTypes.DEFAULT_TYP
     text = update.message.text.strip()
     product_id = context.user_data.get("custom_qty_product_id")
     max_stock = context.user_data.get("custom_qty_max_stock", 50)
-    cat_id = context.user_data.get("custom_qty_cat_id", 0)
 
     if not product_id:
+
         await update.message.reply_text("❌ Session expired. Please try again.")
         return ConversationHandler.END
 
@@ -457,7 +462,6 @@ async def checkout_cart_handler(update: Update, context: ContextTypes.DEFAULT_TY
     settings = get_settings()
 
     # Check provider configuration
-    from app.payments import get_payment_provider
     is_configured = False
     if settings.crypto_provider.lower() == "cryptopay":
         is_configured = bool(settings.cryptopay_api_token)

@@ -24,7 +24,12 @@ from app.bot.keyboards.orders import (
 from app.config import get_settings
 from app.database.database import get_session
 from app.database.models import OrderStatus
-from app.database.repositories import inventory_repo, order_repo, payment_repo, user_repo
+from app.database.repositories import (
+    inventory_repo,
+    order_repo,
+    payment_repo,
+    user_repo,
+)
 from app.services import (
     delivery_service,
     order_service,

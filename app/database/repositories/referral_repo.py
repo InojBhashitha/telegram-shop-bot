@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,7 +31,7 @@ async def create_referral(
 async def get_referral_by_referred_id(
     session: AsyncSession,
     referred_user_id: int,
-) -> Optional[Referral]:
+) -> Referral | None:
     """Get the referral record for a referred user."""
     stmt = select(Referral).where(Referral.referred_user_id == referred_user_id)
     result = await session.execute(stmt)

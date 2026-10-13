@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Optional
 
 from app.config import get_settings
 
@@ -49,7 +48,7 @@ def get_bulk_pricing_tiers() -> list[dict]:
     ]
 
 
-def calculate_bulk_discount(unit_price: Decimal | float | int, quantity: int) -> dict:
+def calculate_bulk_discount(unit_price: Decimal | float, quantity: int) -> dict:
     """Calculate wholesale volume discount for a given unit price and quantity.
 
     Tiers:
@@ -120,7 +119,7 @@ def calculate_bulk_discount(unit_price: Decimal | float | int, quantity: int) ->
         next_tier_hint = f"Add {needed} more for {t1_pct:g}% Wholesale Discount!"
 
     if discount_percent > 0:
-        discount_amount = (raw_subtotal * Decimal(str(discount_percent)) / Decimal("100")).quantize(Decimal("0.01"))
+        discount_amount = (raw_subtotal * Decimal(str(discount_percent)) / Decimal(100)).quantize(Decimal("0.01"))
     else:
         discount_amount = Decimal("0.00")
 
@@ -140,7 +139,7 @@ def calculate_bulk_discount(unit_price: Decimal | float | int, quantity: int) ->
     }
 
 
-def get_product_bulk_pricing(unit_price: Decimal | float | int) -> list[dict]:
+def get_product_bulk_pricing(unit_price: Decimal | float) -> list[dict]:
     """Generate display tiers with calculated unit prices for a specific product."""
     settings = get_settings()
     if not settings.bulk_pricing_enabled:
@@ -156,25 +155,25 @@ def get_product_bulk_pricing(unit_price: Decimal | float | int) -> list[dict]:
         },
         {
             "min_qty": settings.bulk_tier1_min_qty,
-            "unit_price": f"${(price * (1 - Decimal(str(settings.bulk_tier1_discount_percent)) / Decimal('100'))):.2f}",
+            "unit_price": f"${(price * (1 - Decimal(str(settings.bulk_tier1_discount_percent)) / Decimal(100))):.2f}",
             "discount_percent": settings.bulk_tier1_discount_percent,
             "badge": f"-{settings.bulk_tier1_discount_percent:g}%",
         },
         {
             "min_qty": settings.bulk_tier2_min_qty,
-            "unit_price": f"${(price * (1 - Decimal(str(settings.bulk_tier2_discount_percent)) / Decimal('100'))):.2f}",
+            "unit_price": f"${(price * (1 - Decimal(str(settings.bulk_tier2_discount_percent)) / Decimal(100))):.2f}",
             "discount_percent": settings.bulk_tier2_discount_percent,
             "badge": f"-{settings.bulk_tier2_discount_percent:g}% 🔥",
         },
         {
             "min_qty": settings.bulk_tier3_min_qty,
-            "unit_price": f"${(price * (1 - Decimal(str(settings.bulk_tier3_discount_percent)) / Decimal('100'))):.2f}",
+            "unit_price": f"${(price * (1 - Decimal(str(settings.bulk_tier3_discount_percent)) / Decimal(100))):.2f}",
             "discount_percent": settings.bulk_tier3_discount_percent,
             "badge": f"-{settings.bulk_tier3_discount_percent:g}% 🚀",
         },
         {
             "min_qty": settings.bulk_tier4_min_qty,
-            "unit_price": f"${(price * (1 - Decimal(str(settings.bulk_tier4_discount_percent)) / Decimal('100'))):.2f}",
+            "unit_price": f"${(price * (1 - Decimal(str(settings.bulk_tier4_discount_percent)) / Decimal(100))):.2f}",
             "discount_percent": settings.bulk_tier4_discount_percent,
             "badge": f"-{settings.bulk_tier4_discount_percent:g}% VIP 💎",
         },
@@ -182,7 +181,7 @@ def get_product_bulk_pricing(unit_price: Decimal | float | int) -> list[dict]:
     return tiers
 
 
-def format_bulk_pricing_caption(unit_price: Decimal | float | int) -> str:
+def format_bulk_pricing_caption(unit_price: Decimal | float) -> str:
     """Format markdown text displaying wholesale volume discounts."""
     settings = get_settings()
     if not settings.bulk_pricing_enabled:

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import jwt
-from fastapi import Header, HTTPException, status
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -21,11 +21,11 @@ def create_access_token(
     user_id: int,
     telegram_id: int,
     is_admin: bool = False,
-    expires_delta: Optional[timedelta] = None,
+    expires_delta: timedelta | None = None,
 ) -> str:
     """Create a signed JWT access token containing standard claims."""
     settings = get_settings()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if expires_delta:
         expire = now + expires_delta
     else:
@@ -76,7 +76,7 @@ def decode_access_token(token: str) -> dict[str, Any]:
         )
 
 
-def extract_bearer_token(authorization: Optional[str] = None) -> Optional[str]:
+def extract_bearer_token(authorization: str | None = None) -> str | None:
     """Extract raw JWT token string from Authorization header."""
     if not authorization:
         return None
@@ -92,7 +92,7 @@ def extract_bearer_token(authorization: Optional[str] = None) -> Optional[str]:
 async def get_user_from_token(
     session: AsyncSession,
     token: str,
-) -> Optional[User]:
+) -> User | None:
     """Resolve database User instance from a validated JWT token."""
     payload = decode_access_token(token)
     user_id = payload.get("user_id")

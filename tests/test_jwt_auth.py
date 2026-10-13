@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from datetime import timedelta
+
 import pytest
 import pytest_asyncio
+from fastapi import HTTPException
 from httpx import ASGITransport, AsyncClient
 
 from app.api.auth import (
@@ -13,10 +15,7 @@ from app.api.auth import (
     extract_bearer_token,
 )
 from app.api.main import create_api
-from app.database.database import close_db, get_session, init_db
-from app.database.models import User
-from app.services import user_service
-from fastapi import HTTPException
+from app.database.database import close_db, init_db
 
 
 class TestJWTTokenCore:

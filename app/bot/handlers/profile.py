@@ -164,7 +164,8 @@ async def process_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     total_credit = (amount + bonus_amt).quantize(Decimal("0.01"))
     bonus_preview = ""
     if bonus_amt > Decimal("0.00"):
-        bonus_preview = f"🎁 Deposit Bonus (+{bonus_pct:g}%): *+${bonus_amt:.2f}*\n💳 Total Credited: *${total_credit:.2f}*\n\n"
+        bonus_preview = f"🎁 {tier_label} (+{bonus_pct:g}%): *+${bonus_amt:.2f}*\n💳 Total Credited: *${total_credit:.2f}*\n\n"
+
 
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("💳 Pay with Crypto", url=payment_url)],

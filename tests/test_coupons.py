@@ -1,11 +1,12 @@
 """Tests for coupon & promo code engine and affiliate rewards."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import Coupon, CouponType, User, Order, OrderStatus
+from app.database.models import CouponType, OrderStatus, User
 from app.services import coupon_service, order_service
 from app.services.coupon_service import CouponError
 
@@ -13,7 +14,7 @@ from app.services.coupon_service import CouponError
 @pytest.mark.asyncio
 async def test_percentage_coupon_discount(session: AsyncSession, sample_data: dict):
     """Test 20% discount on $50 subtotal yields $10 discount."""
-    coupon = await coupon_service.create_coupon(
+    await coupon_service.create_coupon(
         session,
         code="SAVE20",
         discount_type=CouponType.PERCENTAGE,
@@ -115,7 +116,7 @@ async def test_coupon_max_uses_limit(session: AsyncSession):
 @pytest.mark.asyncio
 async def test_expired_coupon(session: AsyncSession):
     """Expired coupon raises CouponError."""
-    past_date = datetime.now(timezone.utc) - timedelta(days=2)
+    past_date = datetime.now(UTC) - timedelta(days=2)
     await coupon_service.create_coupon(
         session,
         code="EXPIRED",
@@ -168,6 +169,6 @@ async def test_affiliate_commission_crediting(session: AsyncSession, sample_data
     # Verify affiliate received credit (5% of order.amount)
     from app.database.repositories import user_repo
     updated_affiliate = await user_repo.get_by_id(session, affiliate.id)
-    expected_commission = (order.amount * Decimal("5.00") / Decimal("100")).quantize(Decimal("0.01"))
+    expected_commission = (order.amount * Decimal("5.00") / Decimal(100)).quantize(Decimal("0.01"))
     assert updated_affiliate.balance == expected_commission
     assert updated_affiliate.balance > Decimal("0.00")

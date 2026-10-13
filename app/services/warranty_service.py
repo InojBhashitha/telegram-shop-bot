@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
 from app.database.models import OrderStatus, WarrantyClaimStatus
 from app.database.repositories import inventory_repo, order_repo, warranty_repo
 
@@ -17,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 class WarrantyError(Exception):
     """Raised when a warranty operation fails."""
-    pass
 
 
 async def create_claim(
@@ -46,7 +43,7 @@ async def create_claim(
         raise WarrantyError("Warranty is only available for delivered orders")
 
     # Check warranty expiry
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if order.warranty_expires_at and now > order.warranty_expires_at:
         raise WarrantyError("Warranty period has expired for this order")
 
@@ -80,7 +77,7 @@ async def create_claim(
 async def approve_claim(
     session: AsyncSession,
     claim_id: int,
-    admin_notes: Optional[str] = None,
+    admin_notes: str | None = None,
 ) -> dict:
     """Approve a warranty claim and auto-replace with fresh stock.
 
@@ -136,7 +133,7 @@ async def approve_claim(
 async def reject_claim(
     session: AsyncSession,
     claim_id: int,
-    admin_notes: Optional[str] = None,
+    admin_notes: str | None = None,
 ) -> dict:
     """Reject a warranty claim."""
     claim = await warranty_repo.get_by_id(session, claim_id)

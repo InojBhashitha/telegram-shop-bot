@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -12,8 +11,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.webhooks.crypto import router as crypto_router
 from app.api.webapp import router as webapp_router
+from app.api.webhooks.crypto import router as crypto_router
 
 logger = logging.getLogger(__name__)
 

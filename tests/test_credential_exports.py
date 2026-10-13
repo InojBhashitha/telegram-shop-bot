@@ -3,10 +3,14 @@
 import csv
 import io
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import Inventory, InventoryStatus, Order, OrderStatus, Product, User
+from app.database.models import (
+    Order,
+    OrderStatus,
+)
 from app.services import credential_export_service, order_service
 from app.services.credential_export_service import (
     generate_credentials_csv,

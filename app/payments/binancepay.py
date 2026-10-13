@@ -19,7 +19,6 @@ import re
 import secrets
 import time
 from decimal import Decimal
-from typing import Optional
 
 import httpx
 
@@ -88,8 +87,8 @@ class BinancePayProvider(PaymentProvider):
         order_id: str,
         order_description: str,
         ipn_callback_url: str,
-        success_url: Optional[str] = None,
-        cancel_url: Optional[str] = None,
+        success_url: str | None = None,
+        cancel_url: str | None = None,
     ) -> InvoiceResult:
         """Create a hosted checkout payment via POST /binancepay/openapi/v3/order."""
         # Binance Pay requires a unique alphanumeric trade number (max 32 chars)

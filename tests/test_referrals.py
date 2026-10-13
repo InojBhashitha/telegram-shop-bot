@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from app.api.main import create_api
-from app.config import get_settings
 from app.database.database import close_db, get_engine, get_session, init_db
-from app.database.models import Base, Order, OrderStatus, Product, User
+from app.database.models import Base, Product, User
 from app.database.repositories import referral_repo, user_repo
 from app.services import order_service, referral_service, user_service
 
@@ -139,6 +138,7 @@ class TestReferralSystem:
         async with get_session() as s:
             # First bind
             user = await user_repo.get_or_create_user(s, telegram_id=888003, username="buyer_three")
+            assert referrer.referral_code is not None
             await referral_service.bind_referral(s, user, referrer.referral_code)
             assert user.referred_by == referrer.id
 
@@ -147,7 +147,9 @@ class TestReferralSystem:
             second_ref.referral_code = "ref_secondaffiliate"
             await s.flush()
 
-            res = await referral_service.bind_referral(s, user, second_ref.referral_code)
+            code = second_ref.referral_code
+            assert code is not None
+            res = await referral_service.bind_referral(s, user, code)
             assert res is None
             assert user.referred_by == referrer.id
 

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from app.database.models import Category, Product
@@ -39,7 +37,7 @@ def categories_keyboard(categories: list[Category]) -> InlineKeyboardMarkup:
 def products_keyboard(
     products: list[Product],
     category_id: int,
-    stock_counts: Optional[dict[int, int]] = None,
+    stock_counts: dict[int, int] | None = None,
 ) -> InlineKeyboardMarkup:
     """Build keyboard with product buttons including live stock & price badges.
 

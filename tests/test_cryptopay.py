@@ -12,10 +12,15 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.main import create_api
-from app.database.models import Inventory, InventoryStatus, OrderStatus, PaymentStatus, TopUpStatus
-from app.database.repositories import order_repo, payment_repo, topup_repo, user_repo
+from app.database.models import (
+    Inventory,
+    InventoryStatus,
+    OrderStatus,
+    PaymentStatus,
+)
+from app.database.repositories import order_repo, payment_repo
 from app.payments.cryptopay import CryptoPayProvider
-from app.services import order_service, payment_service, topup_service
+from app.services import order_service, payment_service
 
 
 def _make_cryptopay_provider(token: str = "test_cryptopay_token_123") -> CryptoPayProvider:

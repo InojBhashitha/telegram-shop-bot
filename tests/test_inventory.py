@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import update
@@ -99,7 +98,7 @@ async def test_release_expired_reservations(session: AsyncSession, sample_data: 
     assert item is not None
 
     # Backdate the reservation
-    old_time = datetime.now(timezone.utc) - timedelta(minutes=60)
+    old_time = datetime.now(UTC) - timedelta(minutes=60)
     stmt = (
         update(Inventory)
         .where(Inventory.id == item.id)

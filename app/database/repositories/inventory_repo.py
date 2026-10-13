@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -68,7 +67,7 @@ async def get_stock_counts_for_products(
 async def reserve_item(
     session: AsyncSession,
     product_id: int,
-) -> Optional[Inventory]:
+) -> Inventory | None:
     """Atomically reserve one inventory item for a product.
 
     Uses SELECT ... FOR UPDATE (PostgreSQL) or immediate locking (SQLite)
@@ -92,7 +91,7 @@ async def reserve_item(
         return None
 
     item.status = InventoryStatus.RESERVED
-    item.reserved_at = datetime.now(timezone.utc)
+    item.reserved_at = datetime.now(UTC)
     await session.flush()
     return item
 
@@ -120,7 +119,7 @@ async def reserve_items(
     result = await session.execute(stmt)
     items = list(result.scalars().all())
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for item in items:
         item.status = InventoryStatus.RESERVED
         item.reserved_at = now
@@ -168,7 +167,7 @@ async def mark_sold(
         .where(Inventory.status == InventoryStatus.RESERVED)
         .values(
             status=InventoryStatus.SOLD,
-            sold_at=datetime.now(timezone.utc),
+            sold_at=datetime.now(UTC),
             order_id=order_id,
         )
     )
@@ -184,7 +183,7 @@ async def release_expired_reservations(
     Returns:
         Number of items released.
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=expiry_minutes)
+    cutoff = datetime.now(UTC) - timedelta(minutes=expiry_minutes)
     stmt = (
         update(Inventory)
         .where(Inventory.status == InventoryStatus.RESERVED)
@@ -224,7 +223,7 @@ async def get_stock_summary(session: AsyncSession, product_id: int) -> dict:
     return summary
 
 
-async def get_item_by_id(session: AsyncSession, inventory_id: int) -> Optional[Inventory]:
+async def get_item_by_id(session: AsyncSession, inventory_id: int) -> Inventory | None:
     """Get an inventory item by ID."""
     stmt = select(Inventory).where(Inventory.id == inventory_id)
     result = await session.execute(stmt)

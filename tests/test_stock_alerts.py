@@ -1,10 +1,10 @@
 """Tests for stock alerts and restock notification dispatch."""
 
 from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.models import Product, User
 from app.services import stock_alert_service
 
 

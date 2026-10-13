@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import enum
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import (
     BigInteger,
@@ -19,14 +18,12 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    func,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
     """Base class for all ORM models."""
-    pass
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +92,7 @@ class CouponType(str, enum.Enum):
 # ---------------------------------------------------------------------------
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -107,14 +104,14 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, nullable=False, index=True)
-    username: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    first_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    last_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    first_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     balance: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
-    referral_code: Mapped[Optional[str]] = mapped_column(String(32), unique=True, nullable=True)
-    referred_by: Mapped[Optional[int]] = mapped_column(
+    referral_code: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
+    referred_by: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
     channel_discount_claimed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -141,9 +138,9 @@ class Category(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    icon: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
-    image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    icon: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -163,8 +160,8 @@ class Product(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     category_id: Mapped[int] = mapped_column(Integer, ForeignKey("categories.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(10), default="USD", nullable=False)
     delivery_type: Mapped[DeliveryType] = mapped_column(
@@ -197,9 +194,9 @@ class Inventory(Base):
     status: Mapped[InventoryStatus] = mapped_column(
         Enum(InventoryStatus), default=InventoryStatus.AVAILABLE, nullable=False
     )
-    reserved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    sold_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    order_id: Mapped[Optional[int]] = mapped_column(
+    reserved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sold_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    order_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("orders.id", use_alter=True, name="fk_inventory_order_id"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -222,8 +219,8 @@ class Order(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     public_order_id: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
-    product_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("products.id"), nullable=True)
-    inventory_id: Mapped[Optional[int]] = mapped_column(
+    product_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("products.id"), nullable=True)
+    inventory_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("inventory.id", use_alter=True, name="fk_order_inventory_id"), nullable=True
     )
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
@@ -236,28 +233,28 @@ class Order(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
-    paid_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    cancelled_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    warranty_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    coupon_id: Mapped[Optional[int]] = mapped_column(
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    warranty_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    coupon_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("coupons.id"), nullable=True
     )
     expiry_warned: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Relationships
     user: Mapped[User] = relationship("User", back_populates="orders")
-    product: Mapped[Optional[Product]] = relationship("Product", lazy="selectin")
-    coupon: Mapped[Optional[Coupon]] = relationship("Coupon", lazy="selectin")
-    inventory_item: Mapped[Optional[Inventory]] = relationship(
+    product: Mapped[Product | None] = relationship("Product", lazy="selectin")
+    coupon: Mapped[Coupon | None] = relationship("Coupon", lazy="selectin")
+    inventory_item: Mapped[Inventory | None] = relationship(
         "Inventory", foreign_keys=[inventory_id]
     )
     inventory_items: Mapped[list[Inventory]] = relationship(
         "Inventory", foreign_keys="Inventory.order_id", viewonly=True
     )
-    payment: Mapped[Optional[Payment]] = relationship("Payment", back_populates="order", uselist=False)
+    payment: Mapped[Payment | None] = relationship("Payment", back_populates="order", uselist=False)
     warranty_claims: Mapped[list[WarrantyClaim]] = relationship("WarrantyClaim", back_populates="order")
-    review: Mapped[Optional[ProductReview]] = relationship(
+    review: Mapped[ProductReview | None] = relationship(
         "ProductReview", back_populates="order", uselist=False
     )
 
@@ -268,23 +265,23 @@ class Payment(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     order_id: Mapped[int] = mapped_column(Integer, ForeignKey("orders.id"), nullable=False)
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
-    provider_payment_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    provider_invoice_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    payment_currency: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    provider_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_invoice_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    payment_currency: Mapped[str | None] = mapped_column(String(20), nullable=True)
     requested_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    received_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 8), nullable=True)
+    received_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 8), nullable=True)
     status: Mapped[PaymentStatus] = mapped_column(
         Enum(PaymentStatus), default=PaymentStatus.WAITING, nullable=False
     )
-    payment_address: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
-    payment_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    payment_address: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    payment_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
     )
-    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     order: Mapped[Order] = relationship("Order", back_populates="payment")
@@ -305,16 +302,16 @@ class TopUp(Base):
         Enum(TopUpStatus), default=TopUpStatus.PENDING, nullable=False
     )
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
-    provider_payment_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    provider_invoice_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    payment_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    provider_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_invoice_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    payment_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
     )
-    confirmed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     user: Mapped[User] = relationship("User")
@@ -370,7 +367,7 @@ class SupportTicket(Base):
     status: Mapped[TicketStatus] = mapped_column(
         Enum(TicketStatus), default=TicketStatus.OPEN, nullable=False
     )
-    admin_reply: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    admin_reply: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
@@ -417,14 +414,14 @@ class WarrantyClaim(Base):
     status: Mapped[WarrantyClaimStatus] = mapped_column(
         Enum(WarrantyClaimStatus), default=WarrantyClaimStatus.PENDING, nullable=False
     )
-    replacement_inventory_id: Mapped[Optional[int]] = mapped_column(
+    replacement_inventory_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("inventory.id"), nullable=True
     )
-    admin_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    admin_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
-    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     order: Mapped[Order] = relationship("Order", back_populates="warranty_claims")
@@ -432,7 +429,7 @@ class WarrantyClaim(Base):
     original_item: Mapped[Inventory] = relationship(
         "Inventory", foreign_keys=[inventory_id]
     )
-    replacement_item: Mapped[Optional[Inventory]] = relationship(
+    replacement_item: Mapped[Inventory | None] = relationship(
         "Inventory", foreign_keys=[replacement_inventory_id]
     )
 
@@ -470,11 +467,11 @@ class Coupon(Base):
     )
     discount_value: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     min_order_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"), nullable=False)
-    max_discount: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
-    max_uses: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    max_discount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
+    max_uses: Mapped[int | None] = mapped_column(Integer, nullable=True)
     current_uses: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    expiry_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    affiliate_user_id: Mapped[Optional[int]] = mapped_column(
+    expiry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    affiliate_user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id"), nullable=True
     )
     affiliate_commission_pct: Mapped[Decimal] = mapped_column(
@@ -486,7 +483,7 @@ class Coupon(Base):
     )
 
     # Relationships
-    affiliate_user: Mapped[Optional[User]] = relationship("User", foreign_keys=[affiliate_user_id])
+    affiliate_user: Mapped[User | None] = relationship("User", foreign_keys=[affiliate_user_id])
 
 
 class StockAlert(Base):
@@ -498,7 +495,7 @@ class StockAlert(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
-    notified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     user: Mapped[User] = relationship("User")
@@ -517,7 +514,7 @@ class ProductReview(Base):
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"), nullable=False, index=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     rating: Mapped[int] = mapped_column(Integer, nullable=False)  # 1 to 5
-    comment: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )

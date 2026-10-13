@@ -1,7 +1,6 @@
 """Tests for sensitive inventory encryption vault."""
 
-import pytest
-from app.utils.crypto_vault import encrypt_content, decrypt_content, _get_fernet
+from app.utils.crypto_vault import _get_fernet, decrypt_content, encrypt_content
 
 
 def test_encryption_roundtrip():

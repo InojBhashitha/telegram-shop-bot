@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Optional
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import Order, OrderStatus
@@ -23,7 +22,7 @@ async def create(
     quantity: int = 1,
     warranty_expires_at=None,
     discount_amount: Decimal = Decimal("0.00"),
-    coupon_id: Optional[int] = None,
+    coupon_id: int | None = None,
 ) -> Order:
     """Create a new order."""
     order = Order(
@@ -44,14 +43,14 @@ async def create(
     return order
 
 
-async def get_by_id(session: AsyncSession, order_id: int) -> Optional[Order]:
+async def get_by_id(session: AsyncSession, order_id: int) -> Order | None:
     """Get an order by internal ID."""
     stmt = select(Order).where(Order.id == order_id)
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
 
 
-async def get_by_public_id(session: AsyncSession, public_order_id: str) -> Optional[Order]:
+async def get_by_public_id(session: AsyncSession, public_order_id: str) -> Order | None:
     """Get an order by its public order ID."""
     stmt = select(Order).where(Order.public_order_id == public_order_id)
     result = await session.execute(stmt)
@@ -88,7 +87,7 @@ async def update_status(
     order_id: int,
     status: OrderStatus,
     **extra_fields,
-) -> Optional[Order]:
+) -> Order | None:
     """Update an order's status and optional extra fields."""
     stmt = select(Order).where(Order.id == order_id)
     result = await session.execute(stmt)
@@ -112,7 +111,7 @@ async def expire_old_orders(
     Returns:
         List of inventory IDs that should be released.
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=expiry_minutes)
+    cutoff = datetime.now(UTC) - timedelta(minutes=expiry_minutes)
 
     # Find orders to expire
     stmt = (
@@ -124,14 +123,13 @@ async def expire_old_orders(
     orders = list(result.scalars().all())
 
     inventory_ids: list[int] = []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for order in orders:
         order.status = OrderStatus.EXPIRED
         order.cancelled_at = now
-        if order.discount_amount and order.discount_amount > Decimal("0.00"):
-            user = await session.get(Order, order.id)  # get user or update user
         if order.inventory_id:
             inventory_ids.append(order.inventory_id)
+
 
     await session.flush()
     return inventory_ids
@@ -139,7 +137,7 @@ async def expire_old_orders(
 
 async def get_all_orders(
     session: AsyncSession,
-    status: Optional[OrderStatus] = None,
+    status: OrderStatus | None = None,
     offset: int = 0,
     limit: int = 20,
 ) -> list[Order]:
@@ -183,7 +181,7 @@ async def get_order_stats(session: AsyncSession) -> dict:
 
 async def generate_public_order_id(session: AsyncSession) -> str:
     """Generate a unique public order ID in format CD-YYYYMMDD-NNNNNN."""
-    today = datetime.now(timezone.utc).strftime("%Y%m%d")
+    today = datetime.now(UTC).strftime("%Y%m%d")
     prefix = f"CD-{today}-"
 
     # Count today's orders
@@ -200,7 +198,7 @@ async def get_pending_payment_orders(
 ) -> list[Order]:
     """Find orders in PENDING_PAYMENT or PAYMENT_PROCESSING with associated payment."""
     from sqlalchemy.orm import selectinload
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=max_age_minutes)
+    cutoff = datetime.now(UTC) - timedelta(minutes=max_age_minutes)
     stmt = (
         select(Order)
         .options(
