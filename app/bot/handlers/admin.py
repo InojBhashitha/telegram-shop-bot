@@ -678,9 +678,12 @@ async def recv_stock_items(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     elif channel_status and "No restock channel" not in channel_status:
         channel_info = f"⚠️ *Channel Feed:* {channel_status}\n"
 
+    from telegram.helpers import escape_markdown
+    safe_prod_name = escape_markdown(prod_name, version=1)
+
     await update.message.reply_text(
         f"✅ *Stock Restocked Successfully!*\n\n"
-        f"🏷 *Product:* {prod_name}\n"
+        f"🏷 *Product:* {safe_prod_name}\n"
         f"{source_info}"
         f"📥 *Accounts Added:* +{count}\n"
         f"{dup_info}"
@@ -771,33 +774,21 @@ async def admin_deliver(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             result = await order_service.fulfill_order(session, order_id)
             if result:
                 order = result["order"]
-                content = result["content"]
 
-                # Try to deliver via Telegram
+                # Deliver full order (supports single, bulk, cart items, file export, and vouch broadcast)
                 bot_instance = context.bot
-                user = await user_repo.get_by_id(session, order.user_id)
-                if user and content and bot_instance:
+                if bot_instance:
                     from app.services import delivery_service
-                    product_name = order.product.name if order.product else "Product"
-                    await delivery_service.deliver_to_user(
-                        bot_instance, user.telegram_id, order, content, product_name
+                    await delivery_service.deliver_order_if_fulfilled(
+                        session=session,
+                        order=order,
+                        bot=bot_instance,
                     )
 
                 await query.edit_message_text(
                     f"✅ Order {order.public_order_id} delivered.",
                     reply_markup=admin_main_keyboard(),
                 )
-
-                # Broadcast verified order proof to public vouch channel
-                try:
-                    from app.services import vouch_service
-                    await vouch_service.post_order_vouch_to_channel(
-                        bot=bot_instance,
-                        session=session,
-                        order=order,
-                    )
-                except Exception as e:
-                    logger.warning("Failed to auto-broadcast vouch on admin deliver: %s", e)
 
             else:
                 await query.edit_message_text("❌ Could not fulfill order.")
@@ -1611,7 +1602,9 @@ async def admin_warranty_claims(update: Update, context: ContextTypes.DEFAULT_TY
     text = "⚙️ *Admin — Warranty Claims*\n\n"
     buttons = []
     for claim in claims[:10]:
-        reason_preview = claim.reason[:40] + "..." if len(claim.reason) > 40 else claim.reason
+        from telegram.helpers import escape_markdown
+        raw_reason = claim.reason[:40] + "..." if len(claim.reason) > 40 else claim.reason
+        reason_preview = escape_markdown(raw_reason, version=1)
         text += (
             f"🛡 Claim #{claim.id}\n"
             f"   Order: #{claim.order_id} | User: #{claim.user_id}\n"
@@ -1646,8 +1639,10 @@ async def admin_approve_warranty(update: Update, context: ContextTypes.DEFAULT_T
         try:
             result = await warranty_service.approve_claim(session, claim_id)
         except warranty_service.WarrantyError as e:
+            from telegram.helpers import escape_markdown
+            safe_err = escape_markdown(str(e), version=1)
             await query.edit_message_text(
-                f"⚙️ *Admin — Warranty*\n\n❌ {e}",
+                f"⚙️ *Admin — Warranty*\n\n❌ {safe_err}",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("⬅️ Back", callback_data="adm:warranty")],
                 ]),
@@ -1669,14 +1664,15 @@ async def admin_approve_warranty(update: Update, context: ContextTypes.DEFAULT_T
                         _format_credentials_for_copy,
                     )
                     formatted = _format_credentials_for_copy(replacement_content)
-                    product_name = order.product.name if order.product else "Product"
+                    from telegram.helpers import escape_markdown
+                    safe_pname = escape_markdown(order.product.name if order.product else "Product", version=1)
 
                     await bot_instance.send_message(
                         chat_id=db_user.telegram_id,
                         text=(
                             f"🛡 *Warranty Replacement*\n\n"
                             f"📦 Order: `{order.public_order_id}`\n"
-                            f"🏷 Product: {product_name}\n\n"
+                            f"🏷 Product: {safe_pname}\n\n"
                             f"🎁 *Your replacement account:*\n"
                             f"{formatted}\n\n"
                             f"We apologize for the inconvenience! ☁️"
@@ -1712,8 +1708,10 @@ async def admin_reject_warranty(update: Update, context: ContextTypes.DEFAULT_TY
         try:
             await warranty_service.reject_claim(session, claim_id)
         except warranty_service.WarrantyError as e:
+            from telegram.helpers import escape_markdown
+            safe_err = escape_markdown(str(e), version=1)
             await query.edit_message_text(
-                f"⚙️ *Admin — Warranty*\n\n❌ {e}",
+                f"⚙️ *Admin — Warranty*\n\n❌ {safe_err}",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("⬅️ Back", callback_data="adm:warranty")],
                 ]),

@@ -57,10 +57,13 @@ async def _show_join_required(update: Update, context: ContextTypes.DEFAULT_TYPE
         [InlineKeyboardButton("✅ I've Joined — Check Again", callback_data="main_menu")],
     ])
 
+    from telegram.helpers import escape_markdown
+    safe_channel = escape_markdown(channel, version=1)
+
     text = (
         "☁️ *Cloud Deals*\n\n"
         "🔒 *Channel Membership Required*\n\n"
-        f"Please join our channel {channel} to access the store.\n\n"
+        f"Please join our channel {safe_channel} to access the store.\n\n"
         "After joining, tap the button below:"
     )
 
@@ -86,11 +89,14 @@ async def _show_discount_offer(update: Update, context: ContextTypes.DEFAULT_TYP
         [InlineKeyboardButton("🛍 Skip & Start Shopping", callback_data="skip_channel_discount")],
     ])
 
+    from telegram.helpers import escape_markdown
+    safe_channel = escape_markdown(channel, version=1)
+
     text = (
         "☁️ *Welcome to Cloud Deals!*\n\n"
         "🎁 *EXCLUSIVE NEW CUSTOMER OFFER:*\n"
-        "Join our official channel and get *10% OFF* on your first order\\! *(Max $10 discount)*\n\n"
-        f"📢 *Channel:* {channel}\n\n"
+        "Join our official channel and get *10% OFF* on your first order! *(Max $10 discount)*\n\n"
+        f"📢 *Channel:* {safe_channel}\n\n"
         "Join now to claim your instant discount, or continue to browse:"
     )
 
@@ -252,7 +258,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if update.message is None:
         return
     settings = get_settings()
-    support = f"@{settings.support_username}" if settings.support_username else "the support menu"
+    from telegram.helpers import escape_markdown
+    support = f"@{escape_markdown(settings.support_username, version=1)}" if settings.support_username else "the support menu"
 
     await update.message.reply_text(
         "☁️ *Cloud Deals — Help*\n\n"
@@ -367,11 +374,14 @@ async def _handle_reply_profile(update: Update, context: ContextTypes.DEFAULT_TY
         [InlineKeyboardButton("⬅️ Main Menu", callback_data="main_menu")],
     ])
 
+    from telegram.helpers import escape_markdown
+    safe_uname = escape_markdown(user_tg.username, version=1) if user_tg.username else "N/A"
+
     await update.message.reply_text(
         f"☁️ *Cloud Deals*\n\n"
         f"👤 *Profile*\n\n"
         f"🆔 ID: `{user_tg.id}`\n"
-        f"👤 Username: @{user_tg.username or 'N/A'}\n"
+        f"👤 Username: @{safe_uname}\n"
         f"💰 Balance: ${balance}\n"
         f"📦 Orders: {order_count}",
         reply_markup=keyboard,
@@ -384,7 +394,8 @@ async def _handle_reply_support(update: Update, context: ContextTypes.DEFAULT_TY
     if update.message is None:
         return
     settings = get_settings()
-    support = f"@{settings.support_username}" if settings.support_username else "the support menu"
+    from telegram.helpers import escape_markdown
+    support = f"@{escape_markdown(settings.support_username, version=1)}" if settings.support_username else "the support menu"
 
     from telegram import InlineKeyboardButton, InlineKeyboardMarkup
     keyboard = InlineKeyboardMarkup([

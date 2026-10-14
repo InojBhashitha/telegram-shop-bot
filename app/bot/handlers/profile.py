@@ -38,14 +38,16 @@ async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     user = profile["user"]
-    username = f"@{user.username}" if user.username else user.first_name or "User"
+    from telegram.helpers import escape_markdown
+    raw_uname = f"@{user.username}" if user.username else user.first_name or "User"
+    safe_username = escape_markdown(raw_uname, version=1)
 
     promo_status = "🎁 First Order Promo: *10% OFF Active*\n" if user.channel_discount_claimed and not user.channel_discount_used else ""
 
     text = (
         f"☁️ *Cloud Deals*\n\n"
         f"👤 *Profile*\n\n"
-        f"User: {username}\n"
+        f"User: {safe_username}\n"
         f"💰 Balance: ${user.balance}\n"
         f"📦 Orders: {profile['order_count']}\n"
         f"💸 Total Spent: ${profile['total_spent']}\n"
@@ -77,28 +79,40 @@ async def show_topup(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         user = await user_repo.get_by_telegram_id(session, query.from_user.id)
         balance = user.balance if user else Decimal("0.00")
 
+    settings = get_settings()
+    t1_p = f" (+{settings.deposit_bonus_tier1_percent:g}% 🔥)" if settings.deposit_bonus_enabled and settings.deposit_bonus_tier1_percent > 0 else ""
+    t2_p = f" (+{settings.deposit_bonus_tier2_percent:g}%)" if settings.deposit_bonus_enabled and settings.deposit_bonus_tier2_percent > 0 else ""
+    t3_p = f" (+{settings.deposit_bonus_tier3_percent:g}% 🔥)" if settings.deposit_bonus_enabled and settings.deposit_bonus_tier3_percent > 0 else ""
+    t4_p = f" (+{settings.deposit_bonus_tier4_percent:g}% VIP 🚀)" if settings.deposit_bonus_enabled and settings.deposit_bonus_tier4_percent > 0 else ""
+
     keyboard = InlineKeyboardMarkup([
         [
             InlineKeyboardButton("+ $5", callback_data="topup_amt:5"),
-            InlineKeyboardButton("+ $10 (+5% 🔥)", callback_data="topup_amt:10"),
+            InlineKeyboardButton(f"+ $10{t1_p}", callback_data="topup_amt:10"),
         ],
         [
-            InlineKeyboardButton("+ $20 (+7.5%)", callback_data="topup_amt:20"),
-            InlineKeyboardButton("+ $50 (+10% 🔥)", callback_data="topup_amt:50"),
+            InlineKeyboardButton(f"+ $20{t2_p}", callback_data="topup_amt:20"),
+            InlineKeyboardButton(f"+ $50{t3_p}", callback_data="topup_amt:50"),
         ],
-        [InlineKeyboardButton("+ $100 (+15% VIP 🚀)", callback_data="topup_amt:100")],
+        [InlineKeyboardButton(f"+ $100{t4_p}", callback_data="topup_amt:100")],
         [InlineKeyboardButton("⬅️ Back", callback_data="profile")],
     ])
+
+    bonus_section = ""
+    if settings.deposit_bonus_enabled:
+        bonus_section = (
+            f"🔥 *Tiered Deposit Bonuses (Instant Extra Credit):*\n"
+            f"• ${settings.deposit_bonus_tier1_min:g}+  → *+{settings.deposit_bonus_tier1_percent:g}% Bonus*\n"
+            f"• ${settings.deposit_bonus_tier2_min:g}+  → *+{settings.deposit_bonus_tier2_percent:g}% Bonus*\n"
+            f"• ${settings.deposit_bonus_tier3_min:g}+  → *+{settings.deposit_bonus_tier3_percent:g}% Bonus*\n"
+            f"• ${settings.deposit_bonus_tier4_min:g}+ → *+{settings.deposit_bonus_tier4_percent:g}% VIP Bonus* 🚀\n\n"
+        )
 
     await query.edit_message_text(
         f"☁️ *Cloud Deals*\n\n"
         f"💳 *Store Balance & Deposit Bonuses*\n\n"
         f"💰 Current balance: *${balance:.2f}*\n\n"
-        f"🔥 *Tiered Deposit Bonuses (Instant Extra Credit):*\n"
-        f"• $10+  → *+5% Bonus*\n"
-        f"• $20+  → *+7.5% Bonus*\n"
-        f"• $50+  → *+10% Bonus*\n"
-        f"• $100+ → *+15% VIP Bonus* 🚀\n\n"
+        f"{bonus_section}"
         f"⚡ *Why use Store Balance?*\n"
         f"Enjoy *0-second instant checkout* without waiting for blockchain confirmations!\n\n"
         f"Select an amount to add:",
@@ -214,14 +228,17 @@ async def show_referral(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         [InlineKeyboardButton("⬅️ Back to Profile", callback_data="profile")],
     ])
 
+    from telegram.helpers import escape_markdown
+    safe_store = escape_markdown(settings.store_name, version=1)
+
     await query.edit_message_text(
-        f"☁️ *{settings.store_name} — Referral Program*\n\n"
-        f"Invite your friends and earn *{summary['commission_rate']:.1f}% commission* in wallet credits on every purchase they make\\!\n\n"
+        f"☁️ *{safe_store} — Referral Program*\n\n"
+        f"Invite your friends and earn *{summary['commission_rate']:.1f}% commission* in wallet credits on every purchase they make!\n\n"
         f"🔗 *Your Referral Link:*\n`{referral_link}`\n\n"
         f"👥 *Invited Friends:* {summary['referral_count']}\n"
         f"💰 *Total Earned:* `${summary['total_earned']:.2f}`\n"
         f"💼 *Wallet Balance:* `${user.balance:.2f}`\n\n"
-        f"Tap *Share with Friends* below or copy your link to start earning\\!",
+        f"Tap *Share with Friends* below or copy your link to start earning!",
         reply_markup=keyboard,
         parse_mode="Markdown",
     )

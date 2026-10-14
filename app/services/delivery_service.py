@@ -77,10 +77,13 @@ def _format_credentials_for_copy(content: str) -> str:
             "pin": "📌", "code": "📌",
         }
         for m in kv_lines:
-            key = m.group(1).strip()
-            value = m.group(2).strip()
-            icon = icons.get(key.lower(), "📋")
-            formatted.append(f"{icon} *{key}:* `{value}`")
+            if m:
+                key = m.group(1).strip()
+                value = m.group(2).strip().replace("`", "'")
+                icon = icons.get(key.lower(), "📋")
+                from telegram.helpers import escape_markdown
+                safe_key = escape_markdown(key, version=1)
+                formatted.append(f"{icon} *{safe_key}:* `{value}`")
         return "\n".join(formatted)
 
     # Check if it's single-line combo format (email:pass:accpass or email|pass|accpass)
@@ -92,22 +95,29 @@ def _format_credentials_for_copy(content: str) -> str:
             parts = [p.strip() for p in line.split(":")]
         else:
             # Just a single value; wrap in code block
-            return f"`{line}`"
+            safe_line = line.replace("`", "'")
+            return f"`{safe_line}`"
 
         labels = ["📧 Email", "🔑 Password", "🔒 Account Pass", "🔐 Recovery", "📋 Extra"]
         formatted = []
         for i, part in enumerate(parts):
             label = labels[i] if i < len(labels) else f"📋 Field {i+1}"
+            safe_part = part.replace("`", "'")
             # Check if part has its own label (e.g. "MailPass: secret123")
             kv = kv_pattern.match(part)
             if kv:
-                formatted.append(f"📋 *{kv.group(1).strip()}:* `{kv.group(2).strip()}`")
+                k = kv.group(1).strip()
+                v = kv.group(2).strip().replace("`", "'")
+                from telegram.helpers import escape_markdown
+                safe_k = escape_markdown(k, version=1)
+                formatted.append(f"📋 *{safe_k}:* `{v}`")
             else:
-                formatted.append(f"{label}: `{part}`")
+                formatted.append(f"{label}: `{safe_part}`")
         return "\n".join(formatted)
 
     # Fallback: wrap in code block
-    return f"```\n{content}\n```"
+    safe_content = content.replace("```", "'''")
+    return f"```\n{safe_content}\n```"
 
 
 async def deliver_to_user(
@@ -137,10 +147,13 @@ async def deliver_to_user(
     if settings.vouch_channel_id:
         vouch_note = f"\n📢 *Public Proof:* Order published to {settings.vouch_channel_id}\n"
 
+    from telegram.helpers import escape_markdown
+    safe_pname = escape_markdown(product_name, version=1)
+
     message = (
         f"✅ *Payment Confirmed!*\n\n"
         f"📦 *Order:* `{order.public_order_id}`\n"
-        f"🏷 *Product:* {product_name}\n\n"
+        f"🏷 *Product:* {safe_pname}\n\n"
         f"🎁 *Your Credentials:*\n"
         f"{formatted}\n\n"
         f"🛡️ *Warranty Coverage:* {settings.warranty_hours}h active\n"
@@ -162,11 +175,24 @@ async def deliver_to_user(
         return True
 
     except TelegramError as e:
-        logger.error(
-            "Delivery failed: order=%s user=%s error=%s",
-            order.public_order_id, telegram_id, e,
+        logger.warning(
+            "Markdown delivery failed for order=%s, retrying with plain text: %s",
+            order.public_order_id, e,
         )
-        return False
+        try:
+            plain_text = message.replace("*", "").replace("`", "").replace("_", "")
+            await bot.send_message(
+                chat_id=telegram_id,
+                text=plain_text,
+                reply_markup=_delivery_actions_keyboard(order.id),
+            )
+            return True
+        except TelegramError as err2:
+            logger.error(
+                "Plain text delivery failed: order=%s user=%s error=%s",
+                order.public_order_id, telegram_id, err2,
+            )
+            return False
 
 
 async def deliver_bulk_to_user(
@@ -196,10 +222,13 @@ async def deliver_bulk_to_user(
     if settings.vouch_channel_id:
         vouch_note = f"\n📢 *Public Proof:* Order published to {settings.vouch_channel_id}\n"
 
+    from telegram.helpers import escape_markdown
+    safe_pname = escape_markdown(product_name, version=1)
+
     message = (
         f"✅ *Payment Confirmed!*\n\n"
         f"📦 *Order:* `{order.public_order_id}`\n"
-        f"🏷 *Product:* {product_name}\n"
+        f"🏷 *Product:* {safe_pname}\n"
         f"🔢 *Quantity:* {len(contents)}\n\n"
         f"{all_accounts}\n\n"
         f"🛡️ *Warranty Coverage:* {settings.warranty_hours}h active\n"
@@ -207,6 +236,19 @@ async def deliver_bulk_to_user(
         f"Thank you for choosing {settings.store_name}! ☁️"
     )
 
+    if len(message) > 3800:
+        message = (
+            f"✅ *Payment Confirmed!*\n\n"
+            f"📦 *Order:* `{order.public_order_id}`\n"
+            f"🏷 *Product:* {safe_pname}\n"
+            f"🔢 *Quantity:* {len(contents)} accounts\n\n"
+            f"📄 *All {len(contents)} accounts are attached in the file below for easy download and import!*\n\n"
+            f"🛡️ *Warranty Coverage:* {settings.warranty_hours}h active\n"
+            f"{vouch_note}\n"
+            f"Thank you for choosing {settings.store_name}! ☁️"
+        )
+
+    sent = False
     try:
         await bot.send_message(
             chat_id=telegram_id,
@@ -214,34 +256,46 @@ async def deliver_bulk_to_user(
             reply_markup=_delivery_actions_keyboard(order.id),
             parse_mode="Markdown",
         )
+        sent = True
         logger.info(
             "Bulk delivery sent: order=%s qty=%s user=%s",
             order.public_order_id, len(contents), telegram_id,
         )
-
-        # Auto-send downloadable .txt credentials file for convenience
-        try:
-            from app.database.database import get_session
-            from app.services import credential_export_service
-            async with get_session() as file_session:
-                await credential_export_service.export_and_send_order_credentials(
-                    bot=bot,
-                    session=file_session,
-                    chat_id=telegram_id,
-                    order=order,
-                    file_format="txt",
-                )
-        except Exception as e:
-            logger.warning("Could not auto-deliver credentials .txt file: %s", e)
-
-        return True
-
     except TelegramError as e:
-        logger.error(
-            "Bulk delivery failed: order=%s user=%s error=%s",
-            order.public_order_id, telegram_id, e,
+        logger.warning(
+            "Bulk markdown delivery failed: order=%s error=%s, retrying with plain text",
+            order.public_order_id, e,
         )
-        return False
+        try:
+            plain_text = message.replace("*", "").replace("`", "").replace("_", "")
+            await bot.send_message(
+                chat_id=telegram_id,
+                text=plain_text,
+                reply_markup=_delivery_actions_keyboard(order.id),
+            )
+            sent = True
+        except TelegramError as err2:
+            logger.error(
+                "Bulk delivery failed completely: order=%s user=%s error=%s",
+                order.public_order_id, telegram_id, err2,
+            )
+
+    # Auto-send downloadable .txt credentials file for convenience
+    try:
+        from app.database.database import get_session
+        from app.services import credential_export_service
+        async with get_session() as file_session:
+            await credential_export_service.export_and_send_order_credentials(
+                bot=bot,
+                session=file_session,
+                chat_id=telegram_id,
+                order=order,
+                file_format="txt",
+            )
+    except Exception as e:
+        logger.warning("Could not auto-deliver credentials .txt file: %s", e)
+
+    return sent
 
 
 async def deliver_cart_order_to_user(
@@ -290,6 +344,18 @@ async def deliver_cart_order_to_user(
         f"Thank you for choosing {settings.store_name}! ☁️"
     )
 
+    if len(message) > 3800:
+        message = (
+            f"✅ *Payment Confirmed!*\n\n"
+            f"📦 *Order:* `{order.public_order_id}`\n"
+            f"🔢 *Total Items:* {total_qty}\n\n"
+            f"📄 *All {total_qty} items are compiled into your downloadable credentials file below!*\n\n"
+            f"🛡️ *Warranty Coverage:* {settings.warranty_hours}h active\n"
+            f"{vouch_note}\n"
+            f"Thank you for choosing {settings.store_name}! ☁️"
+        )
+
+    sent = False
     try:
         await bot.send_message(
             chat_id=telegram_id,
@@ -297,33 +363,46 @@ async def deliver_cart_order_to_user(
             reply_markup=_delivery_actions_keyboard(order.id),
             parse_mode="Markdown",
         )
+        sent = True
         logger.info(
             "Cart delivery sent: order=%s items=%s user=%s",
             order.public_order_id, total_qty, telegram_id,
         )
-
-        # Auto-send downloadable .txt credentials file for convenience
-        try:
-            from app.database.database import get_session
-            from app.services import credential_export_service
-            async with get_session() as file_session:
-                await credential_export_service.export_and_send_order_credentials(
-                    bot=bot,
-                    session=file_session,
-                    chat_id=telegram_id,
-                    order=order,
-                    file_format="txt",
-                )
-        except Exception as e:
-            logger.warning("Could not auto-deliver credentials .txt file for cart order: %s", e)
-
-        return True
     except TelegramError as e:
-        logger.error(
-            "Cart delivery failed: order=%s user=%s error=%s",
-            order.public_order_id, telegram_id, e,
+        logger.warning(
+            "Cart markdown delivery failed: order=%s error=%s, retrying with plain text",
+            order.public_order_id, e,
         )
-        return False
+        try:
+            plain_text = message.replace("*", "").replace("`", "").replace("_", "")
+            await bot.send_message(
+                chat_id=telegram_id,
+                text=plain_text,
+                reply_markup=_delivery_actions_keyboard(order.id),
+            )
+            sent = True
+        except TelegramError as err2:
+            logger.error(
+                "Cart delivery failed completely: order=%s user=%s error=%s",
+                order.public_order_id, telegram_id, err2,
+            )
+
+    # Auto-send downloadable .txt credentials file for convenience
+    try:
+        from app.database.database import get_session
+        from app.services import credential_export_service
+        async with get_session() as file_session:
+            await credential_export_service.export_and_send_order_credentials(
+                bot=bot,
+                session=file_session,
+                chat_id=telegram_id,
+                order=order,
+                file_format="txt",
+            )
+    except Exception as e:
+        logger.warning("Could not auto-deliver credentials .txt file for cart order: %s", e)
+
+    return sent
 
 
 async def send_payment_update(
@@ -415,13 +494,15 @@ async def deliver_order_if_fulfilled(
             from app.config import get_settings
             admin_ids_str = get_settings().admin_telegram_ids
             if admin_ids_str:
+                from telegram.helpers import escape_markdown
                 p_display = order.product.name if order.product else f"{len(contents)} item(s)"
-                user_display = f"@{user.username}" if user.username else f"ID {user.telegram_id}"
+                safe_p = escape_markdown(p_display, version=1)
+                user_display = f"@{escape_markdown(user.username, version=1)}" if user.username else f"ID {user.telegram_id}"
                 admin_msg = (
-                    f"🎉 *New Sale Confirmed\\!*\n\n"
+                    f"🎉 *New Sale Confirmed!*\n\n"
                     f"📦 *Order:* `{order.public_order_id}`\n"
                     f"💰 *Amount:* ${order.amount:.2f}\n"
-                    f"🏷 *Product:* {p_display}\n"
+                    f"🏷 *Product:* {safe_p}\n"
                     f"👤 *Customer:* {user_display}\n"
                     f"💳 *Status:* ✅ Fulfilled & Delivered"
                 )

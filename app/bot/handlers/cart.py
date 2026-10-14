@@ -85,13 +85,17 @@ async def show_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 stock_warning = f" ⚠️ *(Only {item['stock']} in stock!)*" if item["active"] else " ⚠️ *(Unavailable)*"
 
             discount_info = ""
+            from telegram.helpers import escape_markdown
             if item.get("bulk_discount") and item["bulk_discount"] > Decimal("0.00"):
-                discount_info = f"\n   📉 _Wholesale ({item.get('bulk_tier', '')}): -${item['bulk_discount']}_"
+                safe_tier = escape_markdown(str(item.get('bulk_tier', '')), version=1)
+                discount_info = f"\n   📉 Wholesale ({safe_tier}): -${item['bulk_discount']}"
             elif item.get("next_tier_hint"):
-                discount_info = f"\n   💡 _{item['next_tier_hint']}_"
+                safe_hint = escape_markdown(str(item['next_tier_hint']), version=1)
+                discount_info = f"\n   💡 _{safe_hint}_"
 
+            safe_pname = escape_markdown(str(item['product_name']), version=1)
             lines.append(
-                f"*{idx}.* 📦 *{item['product_name']}*\n"
+                f"*{idx}.* 📦 *{safe_pname}*\n"
                 f"   {item['quantity']} × ${item['unit_price']} = *${item['subtotal']}*{discount_info}{stock_warning}"
             )
 
@@ -498,8 +502,10 @@ async def checkout_cart_handler(update: Update, context: ContextTypes.DEFAULT_TY
                 session, db_user.id, coupon_code=applied_coupon
             )
         except cart_service.CartError as e:
+            from telegram.helpers import escape_markdown
+            safe_err = escape_markdown(str(e), version=1)
             await query.edit_message_text(
-                f"☁️ *Cloud Deals*\n\n❌ {e}",
+                f"☁️ *Cloud Deals*\n\n❌ {safe_err}",
                 reply_markup=cart_view_keyboard(has_items=True),
                 parse_mode="Markdown",
             )
@@ -608,8 +614,10 @@ async def recv_promo_code(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             )
             return ConversationHandler.END
         except coupon_service.CouponError as e:
+            from telegram.helpers import escape_markdown
+            safe_err = escape_markdown(str(e), version=1)
             await update.message.reply_text(
-                f"❌ {e}\n\nPlease enter a valid code or type /cancel to return.",
+                f"❌ {safe_err}\n\nPlease enter a valid code or type /cancel to return.",
                 parse_mode="Markdown",
             )
             return PROMO_CODE_INPUT

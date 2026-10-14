@@ -36,6 +36,7 @@ from app.services import (
     payment_service,
     user_service,
 )
+from app.utils.crypto_vault import decrypt_content
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,7 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
         payment = await payment_repo.get_by_order_id(session, order.id)
         payment_url = payment.payment_url if payment else None
+        prev_status = order.status
 
         if payment and payment.provider:
             from app.payments import get_payment_provider
@@ -83,18 +85,28 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             await query.edit_message_text("❌ Order not found.")
             return
 
+        # If payment succeeded during check, trigger full delivery pipeline
+        if prev_status != OrderStatus.FULFILLED and order.status == OrderStatus.FULFILLED:
+            try:
+                await delivery_service.deliver_order_if_fulfilled(session, order)
+            except Exception as e:
+                logger.warning("Auto-delivery on check_payment failed: %s", e)
+
         status_text = order.status.value
 
-        # Fetch delivered items if order is fulfilled
+        # Fetch decrypted delivered items if order is fulfilled
         delivered_items = []
         if order.status == OrderStatus.FULFILLED:
             items = await inventory_repo.get_items_by_order_id(session, order.id)
-            delivered_items = [item.content for item in items if item.content]
+            delivered_items = [decrypt_content(item.content) for item in items if item.content]
+            if not delivered_items and order.inventory_item and order.inventory_item.content:
+                delivered_items = [decrypt_content(order.inventory_item.content)]
 
     if order.status == OrderStatus.FULFILLED:
         credentials_block = ""
         if delivered_items:
-            formatted_items = "\n".join(f"• `{item}`" for item in delivered_items)
+            safe_items = [item.replace("`", "'") for item in delivered_items]
+            formatted_items = "\n".join(f"• `{it}`" for it in safe_items)
             credentials_block = f"\n\n🔑 *Your Delivered Credentials:*\n{formatted_items}"
 
         await query.edit_message_text(
@@ -253,11 +265,14 @@ async def pay_balance_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         delivered_items = []
         if order and order.status == OrderStatus.FULFILLED:
             items = await inventory_repo.get_items_by_order_id(session, order.id)
-            delivered_items = [item.content for item in items if item.content]
+            delivered_items = [decrypt_content(item.content) for item in items if item.content]
+            if not delivered_items and order.inventory_item and order.inventory_item.content:
+                delivered_items = [decrypt_content(order.inventory_item.content)]
 
     credentials_block = ""
     if delivered_items:
-        formatted_items = "\n".join(f"• `{item}`" for item in delivered_items)
+        safe_items = [item.replace("`", "'") for item in delivered_items]
+        formatted_items = "\n".join(f"• `{it}`" for it in safe_items)
         credentials_block = f"\n\n🔑 *Delivered Credentials:*\n{formatted_items}"
 
     await query.edit_message_text(
@@ -414,14 +429,20 @@ async def recv_warranty_reason(update: Update, context: ContextTypes.DEFAULT_TYP
                 reason=reason,
             )
         except warranty_service.WarrantyError as e:
+            from telegram.helpers import escape_markdown
+            safe_err = escape_markdown(str(e), version=1)
             await update.message.reply_text(
-                f"☁️ *Cloud Deals*\n\n❌ {e}",
+                f"☁️ *Cloud Deals*\n\n❌ {safe_err}",
                 parse_mode="Markdown",
             )
             return ConversationHandler.END
 
     claim = result["claim"]
     context.user_data.pop("warranty_order_id", None)
+
+    from telegram.helpers import escape_markdown
+    safe_reason = escape_markdown(reason, version=1)
+    safe_user = escape_markdown(user.username, version=1) if user.username else str(user.id)
 
     # Notify admin about the new claim
     settings = get_settings()
@@ -435,8 +456,8 @@ async def recv_warranty_reason(update: Update, context: ContextTypes.DEFAULT_TYP
                     text=(
                         f"🛡 *New Warranty Claim*\n\n"
                         f"Claim ID: `{claim.id}`\n"
-                        f"User: @{user.username or user.id}\n"
-                        f"Reason: {reason}\n\n"
+                        f"User: @{safe_user}\n"
+                        f"Reason: {safe_reason}\n\n"
                         f"Use /admin → 🛡 Warranty Claims to review."
                     ),
                     parse_mode="Markdown",
@@ -448,7 +469,7 @@ async def recv_warranty_reason(update: Update, context: ContextTypes.DEFAULT_TYP
         "☁️ *Cloud Deals*\n\n"
         "✅ *Warranty Claim Submitted*\n\n"
         f"🛡 Claim ID: `{claim.id}`\n"
-        f"📝 Reason: {reason}\n\n"
+        f"📝 Reason: {safe_reason}\n\n"
         "Our team will review your claim and you'll receive a replacement "
         "or notification shortly.",
         parse_mode="Markdown",

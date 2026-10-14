@@ -283,9 +283,11 @@ async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
                 session, user_id=db_user.id, product_id=product_id, quantity=quantity
             )
         except order_service.OrderError as e:
+            from telegram.helpers import escape_markdown
+            safe_err = escape_markdown(str(e), version=1)
             await query.edit_message_text(
                 f"☁️ *Cloud Deals*\n\n"
-                f"❌ {e}",
+                f"❌ {safe_err}",
                 parse_mode="Markdown",
             )
             return
@@ -316,7 +318,8 @@ async def buy_product(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     discount_line = ""
     bulk_discount = order_result.get("bulk_discount", Decimal("0.00"))
     if bulk_discount > Decimal("0.00"):
-        bulk_tier = order_result.get("bulk_tier", "Wholesale")
+        from telegram.helpers import escape_markdown
+        bulk_tier = escape_markdown(str(order_result.get("bulk_tier", "Wholesale")), version=1)
         discount_line += f"📉 Wholesale Discount ({bulk_tier}): -${bulk_discount}\n"
     promo_discount = order.discount_amount - bulk_discount
     if promo_discount > Decimal("0.00"):

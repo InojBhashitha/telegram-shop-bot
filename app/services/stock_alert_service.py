@@ -71,14 +71,18 @@ async def notify_subscribers_of_restock(
     alert_ids: list[int] = []
     notified_count = 0
 
+    from telegram.helpers import escape_markdown
+    safe_name = escape_markdown(product.name, version=1)
+    btn_name = product.name[:35] + ("..." if len(product.name) > 35 else "")
+
     keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"📦 Buy {product.name}", callback_data=f"prod:{product.id}")],
+        [InlineKeyboardButton(f"📦 Buy {btn_name}", callback_data=f"prod:{product.id}")],
         [InlineKeyboardButton("🏪 Open Store", callback_data="products")],
     ])
 
     text = (
         f"🔔 *Stock Restocked!*\n\n"
-        f"📦 *{product.name}* is back in stock!\n\n"
+        f"📦 *{safe_name}* is back in stock!\n\n"
         f"💵 Price: `${product.price:.2f}`\n\n"
         f"⚡ Automated instant delivery upon payment.\n"
         f"Grab yours now before it sells out again! ⚡"
@@ -140,12 +144,17 @@ async def post_restock_to_channel(
         if hasattr(bot, "username") and bot.username
         else settings.support_username or "CloudDealsBot"
     )
-    webapp_url = settings.webapp_url or f"{settings.webhook_base_url}/webapp"
+    webapp_url = settings.effective_webapp_url or f"{settings.webhook_base_url}/webapp"
+
+    from telegram.helpers import escape_markdown
+    safe_store = escape_markdown(settings.store_name.upper(), version=1)
+    safe_prod = escape_markdown(product.name, version=1)
+    safe_cat = escape_markdown(cat_name, version=1)
 
     caption = (
-        f"⚡️ *RESTOCK ALERT | {settings.store_name.upper()}* ⚡️\n\n"
-        f"📦 *Product:* {product.name}\n"
-        f"🏷 *Category:* {cat_icon} {cat_name}\n"
+        f"⚡️ *RESTOCK ALERT | {safe_store}* ⚡️\n\n"
+        f"📦 *Product:* {safe_prod}\n"
+        f"🏷 *Category:* {cat_icon} {safe_cat}\n"
         f"💰 *Price:* ${product.price:.2f} {product.currency}\n"
         f"📥 *Newly Restocked:* +{added_count} accounts\n"
         f"📊 *Current Stock:* {stock_count} available\n\n"

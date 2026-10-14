@@ -1400,10 +1400,14 @@
 
           let credPreview = '';
           if (o.status === 'fulfilled' && o.delivered_items && o.delivered_items.length > 0) {
+            const rawDelivered = o.delivered_items.join('\n');
             credPreview = `
               <div class="order-credentials-preview">
-                <strong>🔑 Credentials:</strong><br>
-                ${escapeHtml(o.delivered_items.join('\n'))}
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                  <strong style="color:var(--text-primary);font-size:12px;">🔑 Delivered Credentials:</strong>
+                  <button type="button" class="btn btn-ghost copy-order-creds-btn" data-creds="${escapeHtml(rawDelivered)}" style="padding:2px 8px;font-size:11px;min-height:unset;height:24px;border:1px solid rgba(255,255,255,0.12);border-radius:6px;cursor:pointer;">📋 Copy</button>
+                </div>
+                <div style="font-family:var(--font-mono);font-size:11px;line-height:1.45;word-break:break-all;color:var(--text-secondary);white-space:pre-wrap;">${escapeHtml(rawDelivered)}</div>
               </div>
             `;
           }
@@ -1420,6 +1424,40 @@
           `;
 
           el.ordersList.appendChild(card);
+        });
+
+        el.ordersList.querySelectorAll('.copy-order-creds-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const textToCopy = btn.getAttribute('data-creds') || '';
+            const fallbackCopy = (text) => {
+              const textArea = document.createElement('textarea');
+              textArea.value = text;
+              textArea.style.position = 'fixed';
+              textArea.style.left = '-999999px';
+              textArea.style.top = '-999999px';
+              document.body.appendChild(textArea);
+              textArea.focus();
+              textArea.select();
+              try {
+                document.execCommand('copy');
+                showToast('Credentials copied to clipboard!', 'success');
+              } catch (err) {
+                showToast('Failed to copy credentials', 'error');
+              }
+              document.body.removeChild(textArea);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast('Credentials copied to clipboard!', 'success');
+              }).catch(() => {
+                fallbackCopy(textToCopy);
+              });
+            } else {
+              fallbackCopy(textToCopy);
+            }
+          });
         });
       }
 

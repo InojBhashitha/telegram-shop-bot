@@ -87,16 +87,16 @@ def calculate_deposit_bonus(amount: Decimal | float) -> tuple[Decimal, float, st
 
     if amt >= t4_min:
         pct = settings.deposit_bonus_tier4_percent
-        label = "VIP Bonus (+15%)"
+        label = "VIP Bonus"
     elif amt >= t3_min:
         pct = settings.deposit_bonus_tier3_percent
-        label = "Mega Bonus (+10%)"
+        label = "Mega Bonus"
     elif amt >= t2_min:
         pct = settings.deposit_bonus_tier2_percent
-        label = "Pro Bonus (+7.5%)"
+        label = "Pro Bonus"
     elif amt >= t1_min:
         pct = settings.deposit_bonus_tier1_percent
-        label = "Starter Bonus (+5%)"
+        label = "Starter Bonus"
     else:
         pct = 0.0
         label = ""

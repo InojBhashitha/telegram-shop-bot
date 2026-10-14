@@ -255,7 +255,7 @@ async def export_and_send_order_credentials(
     if not items_payload:
         return False, "No credentials found for this order"
 
-    order_hash = order.public_order_id[:8].upper()
+    order_hash = (order.public_order_id or str(order.id))[:8].upper()
     fmt = file_format.lower()
 
     if fmt == "csv":
@@ -293,5 +293,20 @@ async def export_and_send_order_credentials(
         return True, filename
 
     except TelegramError as e:
-        logger.error("Failed to send credentials document for order %s: %s", order.public_order_id, e)
-        return False, str(e)
+        logger.warning(
+            "Markdown caption document send failed for %s: %s, retrying with plain text caption",
+            order.public_order_id, e,
+        )
+        try:
+            doc_stream = io.BytesIO(data)
+            doc_stream.name = filename
+            await bot.send_document(
+                chat_id=chat_id,
+                document=doc_stream,
+                filename=filename,
+                caption=caption.replace("*", "").replace("`", "").replace("_", ""),
+            )
+            return True, filename
+        except TelegramError as err2:
+            logger.error("Failed to send credentials document for order %s: %s", order.public_order_id, err2)
+            return False, str(err2)

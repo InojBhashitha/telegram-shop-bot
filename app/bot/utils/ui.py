@@ -38,9 +38,10 @@ def format_product_caption(
     currency: str = "USD",
     warranty_hours: int = 24,
 ) -> str:
-    """Format a high-end visual product detail card caption."""
+    from telegram.helpers import escape_markdown
+    safe_name = escape_markdown(name, version=1)
     stock_bar = format_stock_bar(stock)
-    desc_text = f"\n\n📝 *Description:*\n_{description}_" if description else ""
+    desc_text = f"\n\n📝 *Description:*\n{description}" if description else ""
     bulk_text = ""
     try:
         from app.services.bulk_pricing_service import format_bulk_pricing_caption
@@ -51,11 +52,9 @@ def format_product_caption(
         import logging
         logging.getLogger(__name__).debug("Bulk caption error: %s", e)
 
-
-
     return (
         f"☁️ *Cloud Deals — Digital Store*\n\n"
-        f"📦 *{name}*\n\n"
+        f"📦 *{safe_name}*\n\n"
         f"💰 *Price:* ${price} {currency}\n"
         f"📊 *Availability:* {stock_bar}\n"
         f"🛡 *Warranty:* {warranty_hours} Hours Auto-Replacement\n"

@@ -50,6 +50,7 @@ from app.services import (
     topup_service,
     user_service,
 )
+from app.utils.crypto_vault import decrypt_content
 
 logger = logging.getLogger(__name__)
 
@@ -708,31 +709,25 @@ async def checkout(
                 )
 
             # Deduct balance
-            user.balance -= order.amount
-            await session.flush()
+            await user_service.debit_balance(session, user.id, order.amount)
 
             # Mark order as PAID
             await order_service.mark_paid(session, order.id)
 
-            # Auto-fulfill and deliver credentials
+            # Auto-fulfill order
             fulfill_res = await order_service.fulfill_order(session, order.id)
             credentials = fulfill_res["contents"] if fulfill_res else []
 
-            # Trigger bot message if bot instance is available
-            from app.bot.bot import get_bot_instance
-            bot = get_bot_instance()
-            if bot and fulfill_res and fulfill_res.get("content"):
-                try:
-                    product_name = order.product.name if order.product else "Cloud Deals Items"
-                    await delivery_service.deliver_to_user(
-                        bot=bot,
-                        telegram_id=user.telegram_id,
-                        order=order,
-                        content="\n".join(credentials),
-                        product_name=product_name,
-                    )
-                except Exception as e:
-                    logger.warning("Bot delivery notification skipped: %s", e)
+            # Refresh order state
+            refreshed = await order_service.get_order_by_id(session, order.id)
+            if refreshed:
+                order = refreshed
+
+            # Trigger complete delivery pipeline (user delivery + auto .txt file + admin notification + vouch channel)
+            try:
+                await delivery_service.deliver_order_if_fulfilled(session, order)
+            except Exception as e:
+                logger.warning("Bot delivery notification skipped for webapp balance checkout: %s", e)
 
             return {
                 "success": True,
@@ -819,9 +814,9 @@ async def list_orders(
             delivered = []
             if o.status == OrderStatus.FULFILLED:
                 items = await inventory_repo.get_items_by_order_id(session, o.id)
-                delivered = [i.content for i in items if i.content]
-                if not delivered and o.inventory_item:
-                    delivered = [o.inventory_item.content]
+                delivered = [decrypt_content(i.content) for i in items if i.content]
+                if not delivered and o.inventory_item and o.inventory_item.content:
+                    delivered = [decrypt_content(o.inventory_item.content)]
 
             payment = await payment_repo.get_by_order_id(session, o.id)
             payment_url = payment.payment_url if payment else None
@@ -875,20 +870,26 @@ async def get_order_status(
         payment = await payment_repo.get_by_order_id(session, order.id)
         if payment and payment.provider and order.status in (OrderStatus.PENDING_PAYMENT, OrderStatus.PAYMENT_PROCESSING):
             try:
+                prev_status = order.status
                 provider = get_payment_provider(payment.provider)
                 await payment_service.check_payment_status(session, provider, order.id)
                 # Reload refreshed order
                 order = await order_service.get_order_by_id(session, order_id)
+                if order and prev_status != OrderStatus.FULFILLED and order.status == OrderStatus.FULFILLED:
+                    try:
+                        await delivery_service.deliver_order_if_fulfilled(session, order)
+                    except Exception as err:
+                        logger.warning("Failed to auto-deliver order on status check: %s", err)
             except Exception as e:
                 logger.warning("Error checking order status with provider: %s", e)
 
-        # Retrieve delivered items if fulfilled
+        # Retrieve decrypted delivered items if fulfilled
         delivered = []
         if order.status == OrderStatus.FULFILLED:
             items = await inventory_repo.get_items_by_order_id(session, order.id)
-            delivered = [i.content for i in items if i.content]
-            if not delivered and order.inventory_item:
-                delivered = [order.inventory_item.content]
+            delivered = [decrypt_content(i.content) for i in items if i.content]
+            if not delivered and order.inventory_item and order.inventory_item.content:
+                delivered = [decrypt_content(order.inventory_item.content)]
 
         return {
             "id": order.id,
