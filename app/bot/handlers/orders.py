@@ -98,9 +98,9 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         delivered_items = []
         if order.status == OrderStatus.FULFILLED:
             items = await inventory_repo.get_items_by_order_id(session, order.id)
-            delivered_items = [decrypt_content(item.content) for item in items if item.content]
+            delivered_items = [decrypt_content(str(item.content)) for item in items if item.content]
             if not delivered_items and order.inventory_item and order.inventory_item.content:
-                delivered_items = [decrypt_content(order.inventory_item.content)]
+                delivered_items = [decrypt_content(str(order.inventory_item.content))]
 
     if order.status == OrderStatus.FULFILLED:
         credentials_block = ""
@@ -265,9 +265,9 @@ async def pay_balance_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         delivered_items = []
         if order and order.status == OrderStatus.FULFILLED:
             items = await inventory_repo.get_items_by_order_id(session, order.id)
-            delivered_items = [decrypt_content(item.content) for item in items if item.content]
+            delivered_items = [decrypt_content(str(item.content)) for item in items if item.content]
             if not delivered_items and order.inventory_item and order.inventory_item.content:
-                delivered_items = [decrypt_content(order.inventory_item.content)]
+                delivered_items = [decrypt_content(str(order.inventory_item.content))]
 
     credentials_block = ""
     if delivered_items:
@@ -441,8 +441,8 @@ async def recv_warranty_reason(update: Update, context: ContextTypes.DEFAULT_TYP
     context.user_data.pop("warranty_order_id", None)
 
     from telegram.helpers import escape_markdown
-    safe_reason = escape_markdown(reason, version=1)
-    safe_user = escape_markdown(user.username, version=1) if user.username else str(user.id)
+    safe_reason = escape_markdown(str(reason), version=1)
+    safe_user = escape_markdown(str(user.username), version=1) if user.username else str(user.id)
 
     # Notify admin about the new claim
     settings = get_settings()

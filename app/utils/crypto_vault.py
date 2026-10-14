@@ -9,7 +9,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from cryptography.fernet import Fernet, InvalidToken
@@ -81,7 +81,7 @@ def encrypt_content(plaintext: str) -> str:
     return encrypted.decode("utf-8")
 
 
-def decrypt_content(stored_content: str) -> str:
+def decrypt_content(stored_content: str | Any) -> str:
     """Decrypt stored inventory content.
 
     If the content is not an encrypted Fernet token or cannot be decrypted,
@@ -90,18 +90,19 @@ def decrypt_content(stored_content: str) -> str:
     if not stored_content:
         return ""
 
-    stripped = stored_content.strip()
+    content_str = str(stored_content)
+    stripped = content_str.strip()
     if not (stripped.startswith("gAAAAA") and len(stripped) > 50):
         # Plaintext legacy record
-        return stored_content
+        return content_str
 
     cipher = _get_fernet()
     if cipher is None:
-        return stored_content
+        return content_str
 
     try:
         decrypted = cipher.decrypt(stripped.encode("utf-8"))
         return decrypted.decode("utf-8")
     except (InvalidToken, Exception) as e:
         logger.warning("Could not decrypt content, returning raw stored content: %s", e)
-        return stored_content
+        return content_str

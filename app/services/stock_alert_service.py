@@ -72,8 +72,8 @@ async def notify_subscribers_of_restock(
     notified_count = 0
 
     from telegram.helpers import escape_markdown
-    safe_name = escape_markdown(product.name, version=1)
-    btn_name = product.name[:35] + ("..." if len(product.name) > 35 else "")
+    safe_name = escape_markdown(str(product.name), version=1)
+    btn_name = str(product.name)[:35] + ("..." if len(str(product.name)) > 35 else "")
 
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton(f"📦 Buy {btn_name}", callback_data=f"prod:{product.id}")],
@@ -147,9 +147,9 @@ async def post_restock_to_channel(
     webapp_url = settings.effective_webapp_url or f"{settings.webhook_base_url}/webapp"
 
     from telegram.helpers import escape_markdown
-    safe_store = escape_markdown(settings.store_name.upper(), version=1)
-    safe_prod = escape_markdown(product.name, version=1)
-    safe_cat = escape_markdown(cat_name, version=1)
+    safe_store = escape_markdown(str(settings.store_name).upper(), version=1)
+    safe_prod = escape_markdown(str(product.name), version=1)
+    safe_cat = escape_markdown(str(cat_name), version=1)
 
     caption = (
         f"⚡️ *RESTOCK ALERT | {safe_store}* ⚡️\n\n"
