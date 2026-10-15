@@ -98,9 +98,9 @@ async def check_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         delivered_items = []
         if order.status == OrderStatus.FULFILLED:
             items = await inventory_repo.get_items_by_order_id(session, order.id)
-            delivered_items = [decrypt_content(str(item.content)) for item in items if item.content]
+            delivered_items = [decrypt_content(item.content) for item in items if item.content]
             if not delivered_items and order.inventory_item and order.inventory_item.content:
-                delivered_items = [decrypt_content(str(order.inventory_item.content))]
+                delivered_items = [decrypt_content(order.inventory_item.content)]
 
     if order.status == OrderStatus.FULFILLED:
         credentials_block = ""
@@ -265,9 +265,9 @@ async def pay_balance_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         delivered_items = []
         if order and order.status == OrderStatus.FULFILLED:
             items = await inventory_repo.get_items_by_order_id(session, order.id)
-            delivered_items = [decrypt_content(str(item.content)) for item in items if item.content]
+            delivered_items = [decrypt_content(item.content) for item in items if item.content]
             if not delivered_items and order.inventory_item and order.inventory_item.content:
-                delivered_items = [decrypt_content(str(order.inventory_item.content))]
+                delivered_items = [decrypt_content(order.inventory_item.content)]
 
     credentials_block = ""
     if delivered_items:

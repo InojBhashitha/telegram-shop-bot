@@ -814,9 +814,9 @@ async def list_orders(
             delivered = []
             if o.status == OrderStatus.FULFILLED:
                 items = await inventory_repo.get_items_by_order_id(session, o.id)
-                delivered = [decrypt_content(str(i.content)) for i in items if i.content]
+                delivered = [decrypt_content(i.content) for i in items if i.content]
                 if not delivered and o.inventory_item and o.inventory_item.content:
-                    delivered = [decrypt_content(str(o.inventory_item.content))]
+                    delivered = [decrypt_content(o.inventory_item.content)]
 
             payment = await payment_repo.get_by_order_id(session, o.id)
             payment_url = payment.payment_url if payment else None
@@ -887,9 +887,9 @@ async def get_order_status(
         delivered = []
         if order.status == OrderStatus.FULFILLED:
             items = await inventory_repo.get_items_by_order_id(session, order.id)
-            delivered = [decrypt_content(str(i.content)) for i in items if i.content]
+            delivered = [decrypt_content(i.content) for i in items if i.content]
             if not delivered and order.inventory_item and order.inventory_item.content:
-                delivered = [decrypt_content(str(order.inventory_item.content))]
+                delivered = [decrypt_content(order.inventory_item.content)]
 
         return {
             "id": order.id,
@@ -1168,8 +1168,9 @@ async def create_topup_invoice(
     authorization: str | None = Header(None),
 ):
     """Create a crypto invoice for balance top-up with deposit bonus calculation."""
-    if req.amount < 1.0:
-        raise HTTPException(status_code=400, detail="Minimum top-up amount is $1.00.")
+    import math
+    if math.isnan(req.amount) or math.isinf(req.amount) or req.amount < 1.0 or req.amount > 100000.0:
+        raise HTTPException(status_code=400, detail="Minimum top-up amount is $1.00 (maximum $100,000.00).")
 
     raw_init = req.init_data or x_telegram_init_data
     async with get_session() as session:

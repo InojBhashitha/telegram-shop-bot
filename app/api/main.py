@@ -49,6 +49,18 @@ def create_api() -> FastAPI:
         allow_headers=["*"],
     )
 
+    @api.middleware("http")
+    async def add_security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        # Protect against clickjacking while allowing Telegram Mini App embedding
+        response.headers["Content-Security-Policy"] = (
+            "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://telegram.org;"
+        )
+        return response
+
     # Mount routes
     api.include_router(crypto_router, prefix="/webhooks/crypto", tags=["webhooks"])
     api.include_router(webapp_router, prefix="/api/webapp", tags=["webapp"])

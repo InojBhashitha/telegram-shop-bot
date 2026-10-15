@@ -1414,11 +1414,11 @@
 
           card.innerHTML = `
             <div class="order-top">
-              <span class="order-id">#${o.public_order_id}</span>
-              <span class="order-status-badge status-${o.status}">${o.status.replace('_', ' ')}</span>
+              <span class="order-id">#${escapeHtml(o.public_order_id)}</span>
+              <span class="order-status-badge status-${escapeHtml(o.status)}">${escapeHtml(o.status.replace('_', ' '))}</span>
             </div>
             <div class="order-details-text">
-              ${o.product_name} • <strong>$${parseFloat(o.amount).toFixed(2)}</strong> • ${dateStr}
+              ${escapeHtml(o.product_name)} • <strong>$${parseFloat(o.amount).toFixed(2)}</strong> • ${escapeHtml(dateStr)}
             </div>
             ${credPreview}
           `;

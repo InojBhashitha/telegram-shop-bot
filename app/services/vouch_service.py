@@ -136,10 +136,10 @@ async def post_order_vouch_to_channel(
     webapp_url = settings.effective_webapp_url or f"{settings.webhook_base_url}/webapp"
 
     from telegram.helpers import escape_markdown
-    safe_store = escape_markdown(str(settings.store_name).upper(), version=1)
-    safe_prod = escape_markdown(str(prod_name), version=1)
-    safe_cat = escape_markdown(str(cat_name), version=1)
-    safe_buyer = escape_markdown(str(buyer_display), version=1)
+    safe_store = escape_markdown(settings.store_name.upper(), version=1)
+    safe_prod = escape_markdown(prod_name, version=1)
+    safe_cat = escape_markdown(cat_name, version=1)
+    safe_buyer = escape_markdown(buyer_display, version=1)
 
     caption = (
         f"🛡️ *VERIFIED PURCHASE PROOF | {safe_store}* 🛡️\n\n"
