@@ -1,0 +1,30 @@
+# ==============================================================================
+# Caddy Reverse Proxy & Automatic SSL Configuration
+# Automatically provisions and renews TLS certificates via Let's Encrypt / ZeroSSL
+# ==============================================================================
+
+{
+    email {$SSL_EMAIL:admin@example.com}
+    admin off
+}
+
+# Match the configured DOMAIN (defaults to localhost for local testing)
+{$DOMAIN:localhost} {
+    # High-performance compression for mobile Telegram Mini App
+    encode zstd gzip
+
+    # Reverse proxy to the shop application container
+    reverse_proxy shop-app:8000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Logging format
+    log {
+        output stdout
+        format console
+        level INFO
+    }
+}

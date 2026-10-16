@@ -1,15 +1,24 @@
 #!/bin/sh
 set -e
 
-# Ensure runtime directories exist
-mkdir -p /app/data /app/backups
+# ==============================================================================
+# Telegram Shop Bot Container Entrypoint
+# ==============================================================================
 
-echo "🚀 [Cloud Deals] Running database migrations..."
-if python -m alembic upgrade head; then
-    echo "✅ [Cloud Deals] Database migrations applied successfully."
-else
-    echo "⚠️ [Cloud Deals] Alembic upgrade encountered an issue, continuing startup..."
+# Ensure data directory exists for SQLite database and backups
+mkdir -p /app/data
+
+# Auto-seed demo catalog if requested or if flag is present
+if [ "${AUTO_SEED}" = "true" ] || [ "${SEED_DEMO}" = "true" ]; then
+    echo "📦 Checking and seeding demo catalog into database..."
+    python seed_catalog.py || true
 fi
 
-echo "🌟 [Cloud Deals] Starting application..."
+# Support running only the FastAPI WebApp server (for external bot embedding)
+if [ "$1" = "api" ] || [ "${MODE}" = "api" ]; then
+    echo "🚀 Starting FastAPI WebApp Server only on port 8000..."
+    exec uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --workers 2
+fi
+
+# Default: execute the passed command (usually "python run.py")
 exec "$@"

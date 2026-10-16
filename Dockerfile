@@ -1,31 +1,43 @@
+# ==============================================================================
+# Telegram Shop Bot & Mini App — Production Container
+# Multi-purpose container running FastAPI WebApp + Telegram Bot
+# ==============================================================================
+
 FROM python:3.12-slim
+
+# Prevent Python from writing .pyc files and enable unbuffered logging
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    DATA_DIR=/app/data
 
 WORKDIR /app
 
-# Set production environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8000
+# Install system dependencies (curl for healthchecks, sqlite3, ca-certificates)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    sqlite3 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
+# Install python dependencies with pip cache disabled
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application files
-COPY . .
+# Copy application source code
+COPY app/ ./app/
+COPY seed_catalog.py setup_wizard.py run.py ./
+COPY docker-entrypoint.sh ./
 
-# Create non-root user and persistent directories
-RUN useradd --create-home appuser && \
-    mkdir -p /app/data /app/backups && \
-    chown -R appuser:appuser /app && \
-    chmod +x /app/docker-entrypoint.sh
+# Create persistent data volume directory and ensure permissions
+RUN mkdir -p /app/data && chmod +x /app/docker-entrypoint.sh
 
-USER appuser
-
+# Expose FastAPI WebApp & webhook server port
 EXPOSE 8000
+
+# Health check verifying the FastAPI service is healthy
+HEALTHCHECK --interval=20s --timeout=5s --start-period=15s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["python", "run.py"]
-
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD python -c "import os, httpx; p = os.environ.get('PORT', '8000'); httpx.get(f'http://localhost:{p}/health').raise_for_status()" || exit 1

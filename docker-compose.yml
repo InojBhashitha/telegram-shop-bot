@@ -1,47 +1,59 @@
 services:
-  cloud-deals:
+  # --- Telegram Shop Bot & FastAPI WebApp Service ---
+  shop-app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: cloud-deals
+    container_name: telegram-shop-app
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      - PORT=8000
-    ports:
-      - "${API_PORT:-8000}:8000"
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - DATABASE_URL=sqlite+aiosqlite:////app/data/shop.db
     volumes:
-      - ./data:/app/data
-      - ./backups:/app/backups
-      - ./cloud_deals.db:/app/cloud_deals.db
+      - shop-data:/app/data
+    networks:
+      - shop-network
     healthcheck:
-      test: ["CMD", "python", "-c", "import os, httpx; p = os.environ.get('PORT', '8000'); httpx.get(f'http://localhost:{p}/health').raise_for_status()"]
-      interval: 30s
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 20s
       timeout: 5s
       retries: 3
       start_period: 15s
 
-  # Optional: Production PostgreSQL service (uncomment or run with: docker compose --profile postgres up)
-  postgres:
-    image: postgres:16-alpine
-    container_name: cloud-deals-postgres
+  # --- Caddy Automatic SSL Reverse Proxy ---
+  caddy:
+    image: caddy:2.9-alpine
+    container_name: telegram-shop-caddy
     restart: unless-stopped
-    profiles:
-      - postgres
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-cloud_deals}
-      POSTGRES_USER: ${POSTGRES_USER:-cloud_deals}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cloud_deals_secret}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cloud_deals} -d ${POSTGRES_DB:-cloud_deals}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3 (QUIC) support
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+      - SSL_EMAIL=${SSL_EMAIL:-admin@localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      shop-app:
+        condition: service_healthy
+    networks:
+      - shop-network
 
 volumes:
-  pgdata:
+  shop-data:
+    name: telegram_shop_data
+  caddy-data:
+    name: telegram_shop_caddy_data
+  caddy-config:
+    name: telegram_shop_caddy_config
+
+networks:
+  shop-network:
+    name: telegram_shop_network
+    driver: bridge

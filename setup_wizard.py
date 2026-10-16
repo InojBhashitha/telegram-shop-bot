@@ -242,8 +242,17 @@ async def run_setup_wizard(quick: bool = False) -> None:
         binance_secret_key = prompt("Enter Binance Pay Secret Key", "")
 
     # --- Step 5: WebApp Domain & Security Keys ---
-    header("STEP 5: Security & URL Configuration")
-    webapp_url = prompt("Public WebApp URL (e.g. https://yourdomain.com/webapp)", "https://example.com/webapp")
+    header("STEP 5: Domain & Auto-SSL Configuration")
+    domain = prompt("Public Domain for Auto-SSL (e.g. shop.example.com, or leave empty for localhost)", "")
+    
+    if domain:
+        ssl_email = prompt("Email for SSL certificate expiration alerts", f"admin@{domain}")
+        default_webapp_url = f"https://{domain}/webapp"
+    else:
+        ssl_email = ""
+        default_webapp_url = "http://localhost:8000/webapp"
+
+    webapp_url = prompt("Public WebApp URL", default_webapp_url)
 
     # Auto-generate keys
     from cryptography.fernet import Fernet
@@ -264,6 +273,10 @@ async def run_setup_wizard(quick: bool = False) -> None:
 BOT_TOKEN={bot_token}
 ADMIN_IDS={admin_ids}
 SUPPORT_USERNAME={support_username}
+
+# --- Domain & Auto-SSL Deployment ---
+DOMAIN={domain}
+SSL_EMAIL={ssl_email}
 WEBAPP_URL={webapp_url}
 
 # --- Whitelabel Store Branding & Theming ---
@@ -343,10 +356,10 @@ ORDER_EXPIRY_MINUTES=30
     print(f"  {C_BOLD}Mini App URL:{C_RESET}   {webapp_url}")
     print("\n  " + "-" * 55)
     print(f"  {C_BOLD}To launch your store services:{C_RESET}")
-    print(f"    1. Start FastAPI WebApp:   {C_CYAN}uvicorn app.api.main:app --host 0.0.0.0 --port 8000{C_RESET}")
-    print(f"    2. Start Telegram Bot:     {C_CYAN}python -m app.bot.bot{C_RESET}")
-    print(f"    3. Check Catalog Status:   {C_CYAN}python seed_catalog.py --status{C_RESET}")
-    print(f"    4. Embed in existing bot:  {C_CYAN}Read EMBED_GUIDE.md{C_RESET}")
+    print(f"    🚀 1-Click Docker Launch:  {C_GREEN}./deploy.sh{C_RESET} (or {C_CYAN}docker compose up -d --build{C_RESET})")
+    print(f"    💻 Local Python Run:       {C_CYAN}python run.py{C_RESET}")
+    print(f"    📦 Check Catalog Status:   {C_CYAN}python seed_catalog.py --status{C_RESET}")
+    print(f"    🔌 Embed in existing bot:  {C_CYAN}Read EMBED_GUIDE.md{C_RESET}")
     print("  " + "-" * 55 + "\n")
 
 

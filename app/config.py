@@ -55,8 +55,10 @@ class Settings(BaseSettings):
     cryptomus_payment_key: str = ""
 
     # --- Webhook & Mini App ---
+    domain: str = ""  # Public domain (e.g. shop.example.com) for Caddy Auto-SSL
+    ssl_email: str = ""  # Email for Let's Encrypt / ZeroSSL expiration alerts
     webhook_base_url: str = "http://localhost:8000"
-    webapp_url: str = ""  # Custom Mini App URL; if empty, defaults to webhook_base_url + "/webapp"
+    webapp_url: str = ""  # Custom Mini App URL; if empty, defaults to https://domain/webapp or webhook_base_url + "/webapp"
 
     # --- API Server ---
     api_host: str = "0.0.0.0"
@@ -209,6 +211,13 @@ class Settings(BaseSettings):
         """
         if self.webapp_url and self.webapp_url.strip():
             return self.webapp_url.strip().rstrip("/")
+
+        # Check domain setting for Caddy Auto-SSL deployments
+        if self.domain and self.domain.strip():
+            clean_dom = self.domain.strip().rstrip("/")
+            if not clean_dom.startswith("http"):
+                clean_dom = f"https://{clean_dom}"
+            return f"{clean_dom}/webapp"
 
         # Auto-detect Render deployment environment variable
         render_url = os.environ.get("RENDER_EXTERNAL_URL", "").strip().rstrip("/")

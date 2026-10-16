@@ -68,7 +68,16 @@ The wizard will:
 4. Generate secure encryption & JWT secrets.
 5. Create database tables and optionally seed demo inventory.
 
-### Step 2: Configure Systemd Service (Autostart on Boot)
+### Step 2: Deploy with 1 Click
+
+#### Option A: 1-Click Docker & Auto-SSL (Recommended)
+Simply run:
+```bash
+./deploy.sh
+```
+*Or `docker compose up -d --build` directly.* Caddy will automatically issue and renew Let's Encrypt SSL certificates for the client's domain. See [DOCKER_GUIDE.md](file:///home/inoj/dev/telegram-shop-bot/DOCKER_GUIDE.md) for full container management commands.
+
+#### Option B: Native Systemd Service
 Create `/etc/systemd/system/shop-webapp.service`:
 ```ini
 [Unit]
@@ -78,7 +87,7 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=/opt/telegram-shop-bot
-ExecStart=/opt/telegram-shop-bot/venv/bin/uvicorn app.api.main:app --host 127.0.0.1 --port 8000 --workers 2
+ExecStart=/opt/telegram-shop-bot/venv/bin/python run.py
 Restart=always
 RestartSec=5
 
@@ -91,17 +100,6 @@ Enable and start:
 sudo systemctl daemon-reload
 sudo systemctl enable --now shop-webapp
 ```
-
-### Step 3: Fast Nginx / Caddy Reverse Proxy with Automatic SSL
-
-#### Option A: Caddy (Easiest, zero-config SSL)
-In `/etc/caddy/Caddyfile`:
-```caddy
-shop.clientdomain.com {
-    reverse_proxy 127.0.0.1:8000
-}
-```
-Run `systemctl reload caddy`. SSL is issued automatically.
 
 #### Option B: Nginx with Certbot
 ```nginx
