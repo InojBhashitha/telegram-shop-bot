@@ -70,8 +70,13 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiration_hours: int = 168  # 7 days
 
-    # --- Store Settings ---
+    # --- Store Settings & Whitelabel Branding ---
     store_name: str = "Cloud Deals"
+    store_tagline: str = "Premium Digital Store & Instant Delivery"
+    store_logo_url: str = ""  # Custom logo image URL (e.g. hosted CDN link or /webapp/logo.png)
+    store_accent_color: str = "#0071e3"  # Primary theme accent color (HEX, e.g. #0071e3, #8a2be2, #10b981)
+    store_currency: str = "USD"
+    store_currency_symbol: str = "$"
     support_username: str = ""
     order_expiry_minutes: int = 30
     warranty_hours: int = 24

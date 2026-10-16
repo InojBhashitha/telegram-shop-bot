@@ -23,8 +23,13 @@
     <!-- Top Bar / Apple Store Header -->
     <header class="apple-header">
       <div class="apple-title-block">
-        <span class="apple-eyebrow">Browse. Save. Instant Delivery.</span>
-        <h1 class="apple-large-title">For You</h1>
+        <div class="apple-store-brand">
+          <img id="storeLogo" class="store-brand-logo hidden" alt="Store Logo" />
+          <div class="apple-store-brand-text">
+            <span class="apple-eyebrow" id="storeTagline">Browse. Save. Instant Delivery.</span>
+            <h1 class="apple-large-title" id="storeTitle">For You</h1>
+          </div>
+        </div>
       </div>
 
       <!-- User Profile Avatar Chip -->
@@ -40,8 +45,8 @@
     <!-- Apple Trust Strip -->
     <div class="apple-trust-strip">
       <div class="trust-chip"><span class="chip-icon">⚡</span> Instant Delivery</div>
-      <div class="trust-chip"><span class="chip-icon">🛡️</span> 24h Warranty</div>
-      <div class="trust-chip"><span class="chip-icon">⭐</span> 4.9 Verified Vouches</div>
+      <div class="trust-chip" id="trustWarrantyChip"><span class="chip-icon">🛡️</span> <span id="warrantyHoursText">24h Warranty</span></div>
+      <div class="trust-chip" id="trustVouchesChip"><span class="chip-icon">⭐</span> <span id="vouchText">4.9 Verified Vouches</span></div>
     </div>
 
     <!-- Promo / Discount Card -->

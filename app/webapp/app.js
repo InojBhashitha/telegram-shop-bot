@@ -64,6 +64,7 @@
       discount_amount: '0.00',
       currency: 'USD',
     },
+    currencySymbol: '$',
     selectedProduct: null,
     modalQuantity: 1,
     activeModal: null,
@@ -74,6 +75,13 @@
 
   // --- DOM Elements Cache ---
   const el = {
+    storeTitle: document.getElementById('storeTitle'),
+    storeTagline: document.getElementById('storeTagline'),
+    storeLogo: document.getElementById('storeLogo'),
+    trustWarrantyChip: document.getElementById('trustWarrantyChip'),
+    trustVouchesChip: document.getElementById('trustVouchesChip'),
+    warrantyHoursText: document.getElementById('warrantyHoursText'),
+    vouchText: document.getElementById('vouchText'),
     userChipBtn: document.getElementById('userChipBtn'),
     userAvatar: document.getElementById('userAvatar'),
     userName: document.getElementById('userName'),
@@ -267,6 +275,107 @@
     }, 2800);
   }
 
+  // --- Dynamic White-Label Theming & Helpers ---
+  function formatMoney(amount) {
+    const sym = state.currencySymbol || state.store?.currency_symbol || '$';
+    const val = parseFloat(amount || 0);
+    if (val < 0) {
+      return `-${sym}${Math.abs(val).toFixed(2)}`;
+    }
+    return `${sym}${val.toFixed(2)}`;
+  }
+
+  function hexToRgb(hex) {
+    if (!hex) return null;
+    let c = String(hex).replace('#', '').trim();
+    if (c.length === 3) {
+      c = c.split('').map(x => x + x).join('');
+    }
+    if (c.length !== 6) return null;
+    const num = parseInt(c, 16);
+    if (isNaN(num)) return null;
+    return {
+      r: (num >> 16) & 255,
+      g: (num >> 8) & 255,
+      b: num & 255,
+    };
+  }
+
+  function lightenColor(r, g, b, percent = 20) {
+    const factor = 1 + percent / 100;
+    const nr = Math.min(255, Math.round(r * factor));
+    const ng = Math.min(255, Math.round(g * factor));
+    const nb = Math.min(255, Math.round(b * factor));
+    return `rgb(${nr}, ${ng}, ${nb})`;
+  }
+
+  function applyStoreTheme(store) {
+    if (!store) return;
+
+    if (store.currency_symbol) {
+      state.currencySymbol = store.currency_symbol;
+    }
+
+    // Document Title & Header Brand
+    if (store.name) {
+      document.title = `${store.name} — Store`;
+      if (el.storeTitle) {
+        el.storeTitle.textContent = store.name;
+      }
+    }
+
+    if (store.tagline && el.storeTagline) {
+      el.storeTagline.textContent = store.tagline;
+    }
+
+    if (el.storeLogo) {
+      if (store.logo_url) {
+        el.storeLogo.src = store.logo_url;
+        el.storeLogo.classList.remove('hidden');
+      } else {
+        el.storeLogo.classList.add('hidden');
+      }
+    }
+
+    if (el.warrantyHoursText && store.warranty_hours) {
+      el.warrantyHoursText.textContent = `${store.warranty_hours}h Warranty`;
+    }
+
+    if (el.vouchText && store.vouch_channel) {
+      el.vouchText.textContent = `Verified Vouches`;
+    }
+
+    // Dynamic Accent Color Injection
+    if (store.accent_color) {
+      const rgb = hexToRgb(store.accent_color);
+      if (rgb) {
+        const root = document.documentElement;
+        const tint = lightenColor(rgb.r, rgb.g, rgb.b, 20);
+        const pillBg = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.18)`;
+        const glow = `0 8px 24px rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.35)`;
+
+        root.style.setProperty('--apple-blue', store.accent_color);
+        root.style.setProperty('--apple-accent', store.accent_color);
+        root.style.setProperty('--apple-blue-tint', tint);
+        root.style.setProperty('--apple-blue-pill', pillBg);
+        root.style.setProperty('--apple-accent-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+        root.style.setProperty('--accent-glow', glow);
+      }
+    }
+  }
+
+  async function loadStoreConfig() {
+    try {
+      const data = await api('/config');
+      if (data && data.store) {
+        state.store = Object.assign(state.store || {}, data.store);
+        applyStoreTheme(data.store);
+      }
+    } catch (e) {
+      // Non-critical background fallback
+    }
+  }
+
 
   // --- Modal & Drawer Management with Fluid Transitions & Touch Gestures ---
   function openModal(modalEl) {
@@ -406,6 +515,30 @@
   el.closeOrdersModal.addEventListener('click', () => closeModal());
   el.closeProfileModal.addEventListener('click', () => closeModal());
 
+  // Trust Chip click actions
+  if (el.trustWarrantyChip) {
+    el.trustWarrantyChip.addEventListener('click', () => {
+      const hours = state.store?.warranty_hours || 24;
+      showToast(`🛡️ All products are backed by a ${hours}-hour replacement guarantee.`, 'success');
+    });
+  }
+
+  if (el.trustVouchesChip) {
+    el.trustVouchesChip.addEventListener('click', () => {
+      const ch = state.store?.vouch_channel;
+      if (ch) {
+        const clean = ch.replace('@', '');
+        const url = `https://t.me/${clean}`;
+        if (tg?.openTelegramLink) {
+          tg.openTelegramLink(url);
+        } else {
+          window.open(url, '_blank');
+        }
+      } else {
+        showToast('⭐ 100% verified customer ratings & automated delivery', 'normal');
+      }
+    });
+  }
 
   // --- Bootstrap & Authentication ---
   async function initAuth() {
@@ -430,6 +563,7 @@
       state.store = authData.store;
       state.telegramId = authData.user.telegram_id;
 
+      applyStoreTheme(state.store);
       renderUserProfile();
       renderPromotions();
       await fetchCatalog();
@@ -454,22 +588,22 @@
 
     el.userName.textContent = displayName;
     el.userAvatar.textContent = initials;
-    el.userBalance.textContent = `$${parseFloat(u.balance || 0).toFixed(2)}`;
+    el.userBalance.textContent = formatMoney(u.balance);
 
     // Profile drawer
     el.profAvatar.textContent = initials;
     el.profName.textContent = displayName;
     el.profUsername.textContent = u.username ? `@${u.username}` : 'No username';
     el.profId.textContent = `Telegram ID: ${u.telegram_id}`;
-    el.profBalance.textContent = `$${parseFloat(u.balance || 0).toFixed(2)}`;
-    el.methodBalanceSub.textContent = `Available: $${parseFloat(u.balance || 0).toFixed(2)} • Zero Confirmation Wait`;
+    el.profBalance.textContent = formatMoney(u.balance);
+    el.methodBalanceSub.textContent = `Available: ${formatMoney(u.balance)} • Zero Confirmation Wait`;
 
     // Referral stats in profile
     if (el.referralSubText) {
       const count = u.referral_count || 0;
-      const earned = parseFloat(u.referral_earnings || 0).toFixed(2);
+      const earned = formatMoney(u.referral_earnings || 0);
       const rate = u.referral_commission_percent ? `${u.referral_commission_percent}%` : '5%';
-      el.referralSubText.textContent = `${count} invited • $${earned} earned (${rate} per order)`;
+      el.referralSubText.textContent = `${count} invited • ${earned} earned (${rate} per order)`;
     }
   }
 
@@ -717,7 +851,7 @@
         <div class="card-bottom-info">
           <h3 class="card-item-title" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</h3>
           <div class="card-meta-line">
-            <span class="card-price-text">$${parseFloat(p.price).toFixed(2)}</span>
+            <span class="card-price-text">${formatMoney(p.price)}</span>
             <div class="card-stock-dot-wrap">
               <span class="stock-indicator-dot ${isOutOfStock ? 'out' : ''}"></span>
               <span>${isOutOfStock ? 'Sold out' : `${p.stock} left`}</span>
@@ -748,7 +882,7 @@
 
     el.modalCategory.textContent = `${prod.category_icon || '📦'} ${prod.category_name}`;
     el.modalTitle.textContent = prod.name;
-    el.modalPrice.textContent = `$${parseFloat(prod.price).toFixed(2)}`;
+    el.modalPrice.textContent = formatMoney(prod.price);
     el.modalDescription.textContent = prod.description || 'Verified working digital accounts delivered instantly upon payment.';
 
     // Rating Badge
@@ -860,18 +994,18 @@
       const finalTotal = Math.max(0.01, rawTotal - discountAmt);
       const effectiveUnit = finalTotal / qty;
 
-      el.modalQtySubtotal.textContent = `Total: $${finalTotal.toFixed(2)}`;
+      el.modalQtySubtotal.textContent = `Total: ${formatMoney(finalTotal)}`;
       if (el.modalEffectiveUnitPrice) {
-        el.modalEffectiveUnitPrice.textContent = `($${effectiveUnit.toFixed(2)}/ea • -${discountPct}% OFF)`;
+        el.modalEffectiveUnitPrice.textContent = `(${formatMoney(effectiveUnit)}/ea • -${discountPct}% OFF)`;
         el.modalEffectiveUnitPrice.classList.remove('hidden');
       }
       if (el.modalBulkSavingsHint && el.modalBulkActiveTier && el.modalBulkSavedAmt) {
         el.modalBulkActiveTier.textContent = `Wholesale (${activeTierLabel}):`;
-        el.modalBulkSavedAmt.textContent = `$${discountAmt.toFixed(2)}`;
+        el.modalBulkSavedAmt.textContent = formatMoney(discountAmt);
         el.modalBulkSavingsHint.classList.remove('hidden');
       }
     } else {
-      el.modalQtySubtotal.textContent = `Total: $${rawTotal.toFixed(2)}`;
+      el.modalQtySubtotal.textContent = `Total: ${formatMoney(rawTotal)}`;
       if (el.modalEffectiveUnitPrice) {
         el.modalEffectiveUnitPrice.classList.add('hidden');
       }
@@ -984,7 +1118,7 @@
       el.cartBadge.textContent = count;
       el.cartBadge.classList.remove('hidden');
       el.stickyCheckoutBar.classList.remove('hidden');
-      el.stickyTotalAmount.textContent = `$${parseFloat(c.final_amount || 0).toFixed(2)}`;
+      el.stickyTotalAmount.textContent = formatMoney(c.final_amount);
     } else {
       el.cartBadge.classList.add('hidden');
       el.stickyCheckoutBar.classList.add('hidden');
@@ -1017,7 +1151,7 @@
 
       let bulkBadgeHtml = '';
       if (item.bulk_discount && parseFloat(item.bulk_discount) > 0) {
-        bulkBadgeHtml = `<span class="cart-item-bulk-badge">📉 ${escapeHtml(item.bulk_tier || 'Wholesale Tier')} (-$${parseFloat(item.bulk_discount).toFixed(2)})</span>`;
+        bulkBadgeHtml = `<span class="cart-item-bulk-badge">📉 ${escapeHtml(item.bulk_tier || 'Wholesale Tier')} (-${formatMoney(item.bulk_discount)})</span>`;
       } else if (item.next_tier_hint) {
         bulkBadgeHtml = `<span class="cart-item-upsell-hint">💡 ${escapeHtml(item.next_tier_hint)}</span>`;
       }
@@ -1028,7 +1162,7 @@
         </div>
         <div class="item-left">
           <span class="item-title">${escapeHtml(item.product_name)}</span>
-          <span class="item-sub">$${parseFloat(item.unit_price).toFixed(2)} each</span>
+          <span class="item-sub">${formatMoney(item.unit_price)} each</span>
           ${bulkBadgeHtml}
         </div>
         <div class="item-right">
@@ -1037,7 +1171,7 @@
             <span class="step-count">${item.quantity}</span>
             <button class="step-btn btn-cart-inc" data-id="${item.product_id}" data-qty="${item.quantity + 1}">&plus;</button>
           </div>
-          <span class="item-price">$${parseFloat(item.subtotal).toFixed(2)}</span>
+          <span class="item-price">${formatMoney(item.subtotal)}</span>
           <button class="btn-remove-item" data-remove-id="${item.product_id}" title="Remove">&times;</button>
         </div>
       `;
@@ -1054,12 +1188,12 @@
     const rawSubtotal = parseFloat(c.raw_subtotal || c.subtotal || 0);
     const bulkSavings = parseFloat(c.bulk_discount_amount || 0);
 
-    el.cartSubtotalAmount.textContent = `$${rawSubtotal.toFixed(2)}`;
+    el.cartSubtotalAmount.textContent = formatMoney(rawSubtotal);
 
     // Wholesale volume savings line
     if (bulkSavings > 0 && el.cartBulkDiscountRow && el.cartBulkDiscountAmount) {
       el.cartBulkDiscountRow.classList.remove('hidden');
-      el.cartBulkDiscountAmount.textContent = `-$${bulkSavings.toFixed(2)}`;
+      el.cartBulkDiscountAmount.textContent = `-${formatMoney(bulkSavings)}`;
     } else if (el.cartBulkDiscountRow) {
       el.cartBulkDiscountRow.classList.add('hidden');
     }
@@ -1077,14 +1211,14 @@
       } else {
         el.cartDiscountLabel.textContent = `🎁 10% First Order Discount`;
       }
-      el.cartDiscountAmount.textContent = `-$${totalPromoDiscount.toFixed(2)}`;
+      el.cartDiscountAmount.textContent = `-${formatMoney(totalPromoDiscount)}`;
     } else {
       el.cartDiscountRow.classList.add('hidden');
     }
 
     const finalAmount = Math.max(0, parseFloat(c.subtotal || 0) - totalPromoDiscount);
-    el.cartFinalAmount.textContent = `$${finalAmount.toFixed(2)}`;
-    el.btnCheckoutTotal.textContent = `$${finalAmount.toFixed(2)}`;
+    el.cartFinalAmount.textContent = formatMoney(finalAmount);
+    el.btnCheckoutTotal.textContent = formatMoney(finalAmount);
 
   }
 
@@ -1269,7 +1403,7 @@
       haptic('error');
     } finally {
       el.executeCheckoutBtn.disabled = false;
-      el.executeCheckoutBtn.innerHTML = `Proceed to Payment • <span id="btnCheckoutTotal">$${parseFloat(state.cart.final_amount || 0).toFixed(2)}</span>`;
+      el.executeCheckoutBtn.innerHTML = `Proceed to Payment • <span id="btnCheckoutTotal">${formatMoney(state.cart.final_amount)}</span>`;
     }
   });
 
@@ -1277,7 +1411,7 @@
   function openCryptoPaymentModal(orderData) {
     state.currentPaymentOrder = orderData;
     el.payModalOrderId.textContent = `Order #${orderData.public_order_id}`;
-    el.payModalAmount.textContent = `$${parseFloat(orderData.amount).toFixed(2)}`;
+    el.payModalAmount.textContent = formatMoney(orderData.amount);
 
     if (orderData.payment_url) {
       el.payInvoiceLink.href = orderData.payment_url;
@@ -1418,7 +1552,7 @@
               <span class="order-status-badge status-${escapeHtml(o.status)}">${escapeHtml(o.status.replace('_', ' '))}</span>
             </div>
             <div class="order-details-text">
-              ${escapeHtml(o.product_name)} • <strong>$${parseFloat(o.amount).toFixed(2)}</strong> • ${escapeHtml(dateStr)}
+              ${escapeHtml(o.product_name)} • <strong>${formatMoney(o.amount)}</strong> • ${escapeHtml(dateStr)}
             </div>
             ${credPreview}
           `;
@@ -1546,23 +1680,23 @@
 
   function updateTopupCalculation(amount) {
     const calc = calculateDepositBonus(amount);
-    if (el.topupPayAmtDisplay) el.topupPayAmtDisplay.textContent = `$${calc.amount.toFixed(2)}`;
+    if (el.topupPayAmtDisplay) el.topupPayAmtDisplay.textContent = formatMoney(calc.amount);
     if (el.topupBonusAmtDisplay) {
       if (calc.bonus > 0) {
-        el.topupBonusAmtDisplay.textContent = `+$${calc.bonus.toFixed(2)} (${calc.label})`;
+        el.topupBonusAmtDisplay.textContent = `+${formatMoney(calc.bonus)} (${calc.label})`;
         el.topupBonusAmtDisplay.style.color = '#ff9f0a';
       } else {
-        el.topupBonusAmtDisplay.textContent = `$0.00 (Standard)`;
+        el.topupBonusAmtDisplay.textContent = `${formatMoney(0)} (Standard)`;
         el.topupBonusAmtDisplay.style.color = 'var(--text-secondary)';
       }
     }
-    if (el.topupTotalCreditDisplay) el.topupTotalCreditDisplay.textContent = `$${calc.total.toFixed(2)}`;
-    if (el.btnTopupAmount) el.btnTopupAmount.textContent = `$${calc.amount.toFixed(2)}`;
+    if (el.topupTotalCreditDisplay) el.topupTotalCreditDisplay.textContent = formatMoney(calc.total);
+    if (el.btnTopupAmount) el.btnTopupAmount.textContent = formatMoney(calc.amount);
   }
 
   function openTopupModal() {
     if (el.topupCurrentBalText && state.user) {
-      el.topupCurrentBalText.textContent = `$${parseFloat(state.user.balance || 0).toFixed(2)}`;
+      el.topupCurrentBalText.textContent = formatMoney(state.user.balance);
     }
     updateTopupCalculation(10);
     document.querySelectorAll('.preset-btn').forEach(b => {
@@ -1825,5 +1959,6 @@
   }
 
   // --- App Initialization ---
+  loadStoreConfig();
   initAuth();
 })();

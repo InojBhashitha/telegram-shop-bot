@@ -252,6 +252,39 @@ class TopUpRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Configuration & Whitelabel Branding Endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/config")
+async def get_store_config():
+    """Public store configuration & whitelabel branding for frontend initialization."""
+    settings = get_settings()
+    return {
+        "store": {
+            "name": settings.store_name,
+            "tagline": settings.store_tagline,
+            "logo_url": settings.store_logo_url,
+            "accent_color": settings.store_accent_color,
+            "currency": settings.store_currency,
+            "currency_symbol": settings.store_currency_symbol,
+            "warranty_hours": settings.warranty_hours,
+            "support_username": settings.support_username,
+            "force_channel": settings.force_channel_id,
+            "vouch_channel": settings.vouch_channel_id,
+            "restock_channel": settings.restock_channel_id,
+            "deposit_bonuses": {
+                "enabled": settings.deposit_bonus_enabled,
+                "tiers": topup_service.get_deposit_bonus_tiers(),
+            },
+            "bulk_pricing": {
+                "enabled": settings.bulk_pricing_enabled,
+                "tiers": bulk_pricing_service.get_bulk_pricing_tiers(),
+            },
+        }
+    }
+
+
+# ---------------------------------------------------------------------------
 # Authentication & User Profile Endpoints
 # ---------------------------------------------------------------------------
 
@@ -304,7 +337,14 @@ async def auth_user(
             },
             "store": {
                 "name": settings.store_name,
+                "tagline": settings.store_tagline,
+                "logo_url": settings.store_logo_url,
+                "accent_color": settings.store_accent_color,
+                "currency": settings.store_currency,
+                "currency_symbol": settings.store_currency_symbol,
                 "force_channel": settings.force_channel_id,
+                "vouch_channel": settings.vouch_channel_id,
+                "restock_channel": settings.restock_channel_id,
                 "warranty_hours": settings.warranty_hours,
                 "support_username": settings.support_username,
                 "deposit_bonuses": {

@@ -24,9 +24,12 @@
   --apple-separator: rgba(255, 255, 255, 0.06);
 
   /* Apple Accent Colors */
-  --apple-blue: #0071e3;                   /* Apple Primary Blue */
+  --apple-blue: #0071e3;                   /* Apple Primary Blue / Brand Accent */
   --apple-blue-tint: #2997ff;              /* Apple Tint Blue */
   --apple-blue-pill: rgba(41, 151, 255, 0.18);
+  --apple-accent: var(--apple-blue);
+  --apple-accent-rgb: 0, 113, 227;
+  --accent-glow: 0 8px 24px rgba(0, 113, 227, 0.35);
   --apple-green: #30d158;                  /* iOS Emerald */
   --apple-orange: #ff9f0a;                 /* iOS Amber */
   --apple-red: #ff453a;                    /* iOS Coral Red */
@@ -104,6 +107,27 @@ html, body {
   flex-direction: column;
 }
 
+.apple-store-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.store-brand-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid var(--apple-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  flex-shrink: 0;
+}
+
+.apple-store-brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
 .apple-eyebrow {
   font-size: 13px;
   font-weight: 600;
@@ -113,7 +137,7 @@ html, body {
 }
 
 .apple-large-title {
-  font-size: 34px;
+  font-size: 32px;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.8px;
