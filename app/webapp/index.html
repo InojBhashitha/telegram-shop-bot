@@ -148,6 +148,15 @@
           </div>
           <span>Bag</span>
         </button>
+
+        <!-- Admin Suite Button (Revealed only for Store Admins) -->
+        <button class="apple-dock-tab admin-tab hidden" id="dockAdminBtn" data-tab="admin" title="Admin Portal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="dock-svg admin-tab-svg">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2"/>
+            <circle cx="12" cy="12" r="3" stroke-width="2"/>
+          </svg>
+          <span class="admin-tab-label">Admin</span>
+        </button>
       </div>
 
       <!-- Separate Circular Search Button on Right (Matching Reference) -->
@@ -522,6 +531,16 @@
           </div>
           <span class="action-chevron">&rsaquo;</span>
         </div>
+
+        <!-- Store Owner Admin Suite (Revealed only to Store Admins) -->
+        <div class="apple-action-row admin-profile-row hidden" id="adminSuiteActionCard">
+          <div class="action-icon">⚡</div>
+          <div class="action-text">
+            <strong>Merchant Admin Suite <span class="badge-admin">Owner</span></strong>
+            <small>Live analytics, stock, coupons & refunds</small>
+          </div>
+          <span class="action-chevron">&rsaquo;</span>
+        </div>
       </div>
     </div>
   </div>
@@ -609,6 +628,239 @@
       <button class="apple-btn-primary apple-full-btn" id="confirmTopupBtn">
         💳 Pay with Crypto • <span id="btnTopupAmount">$10.00</span>
       </button>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       Merchant Admin Suite Modal
+       ===================================================================== -->
+  <div id="adminModal" class="apple-bottom-sheet apple-admin-sheet hidden">
+    <div class="sheet-drag-handle"></div>
+    <div class="sheet-header admin-sheet-header">
+      <div class="cart-title-wrap">
+        <div class="admin-title-badge-wrap">
+          <h2>Merchant Admin Suite</h2>
+          <span class="admin-live-pulse"><span class="pulse-dot"></span> LIVE</span>
+        </div>
+        <span class="apple-badge-sub">Real-Time Store Control & Financial Analytics</span>
+      </div>
+      <button class="apple-close-btn" id="closeAdminModal">&times;</button>
+    </div>
+
+    <!-- Admin Segmented Tab Control -->
+    <div class="admin-segmented-nav">
+      <button class="admin-nav-tab active" data-admin-tab="analytics">📊 Overview</button>
+      <button class="admin-nav-tab" data-admin-tab="inventory">📦 Products & Stock</button>
+      <button class="admin-nav-tab" data-admin-tab="coupons">🎟️ Coupons</button>
+      <button class="admin-nav-tab" data-admin-tab="orders">🧾 Orders</button>
+      <button class="admin-nav-tab" data-admin-tab="broadcast">📢 Broadcast</button>
+    </div>
+
+    <div class="sheet-body admin-sheet-body">
+      <!-- 1. ANALYTICS VIEW -->
+      <section id="adminSecAnalytics" class="admin-view-panel">
+        <div class="admin-kpi-grid">
+          <div class="admin-kpi-card glow-card">
+            <span class="kpi-label">Today's Revenue</span>
+            <div class="kpi-value-row">
+              <h3 id="adminRevToday">$0.00</h3>
+              <span class="kpi-sub-badge" id="adminOrdersToday">0 orders</span>
+            </div>
+            <span class="kpi-micro-text">Past 24 hours</span>
+          </div>
+
+          <div class="admin-kpi-card">
+            <span class="kpi-label">7-Day Revenue</span>
+            <div class="kpi-value-row">
+              <h3 id="adminRev7d">$0.00</h3>
+              <span class="kpi-sub-badge" id="adminOrders7d">0 orders</span>
+            </div>
+            <span class="kpi-micro-text">Trailing 7 days</span>
+          </div>
+
+          <div class="admin-kpi-card">
+            <span class="kpi-label">Lifetime Revenue</span>
+            <div class="kpi-value-row">
+              <h3 id="adminRevLifetime">$0.00</h3>
+              <span class="kpi-sub-badge" id="adminOrdersLifetime">0 orders</span>
+            </div>
+            <span class="kpi-micro-text" id="adminCustomerCount">0 customers</span>
+          </div>
+
+          <div class="admin-kpi-card">
+            <span class="kpi-label">Vault Stock Available</span>
+            <div class="kpi-value-row">
+              <h3 id="adminTotalStock">0</h3>
+              <span class="kpi-sub-badge badge-green" id="adminFulfillmentRate">100% OK</span>
+            </div>
+            <span class="kpi-micro-text" id="adminActiveProductsCount">0 active products</span>
+          </div>
+        </div>
+
+        <!-- Low Stock / Out of Stock Alerts Box -->
+        <div id="adminStockAlertsBox" class="admin-card-section hidden">
+          <div class="admin-card-section-header">
+            <h4>⚠️ Low Stock Attention Required</h4>
+          </div>
+          <div id="adminStockAlertsList" class="admin-alerts-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Top Selling Products in Last 7 Days -->
+        <div class="admin-card-section">
+          <div class="admin-card-section-header">
+            <h4>🔥 Top Sellers (Last 7 Days)</h4>
+          </div>
+          <div id="adminTopSellersList" class="admin-top-sellers-list">
+            <div class="admin-loading-row">Loading analytics...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. PRODUCTS & INVENTORY VIEW -->
+      <section id="adminSecInventory" class="admin-view-panel hidden">
+        <div class="admin-panel-toolbar">
+          <button class="apple-pill-btn btn-primary" id="btnAdminOpenNewProductModal">+ Add New Product</button>
+          <input type="text" id="adminProductSearchInput" class="admin-search-field" placeholder="Filter products...">
+        </div>
+
+        <div id="adminProductsList" class="admin-products-list">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- 3. COUPONS & PROMOS VIEW -->
+      <section id="adminSecCoupons" class="admin-view-panel hidden">
+        <div class="admin-panel-toolbar">
+          <button class="apple-pill-btn btn-primary" id="btnAdminOpenNewCouponModal">+ Create Promo Code</button>
+        </div>
+
+        <div id="adminCouponsList" class="admin-coupons-list">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- 4. ORDERS VAULT VIEW -->
+      <section id="adminSecOrders" class="admin-view-panel hidden">
+        <div class="admin-panel-toolbar">
+          <input type="text" id="adminOrderSearchInput" class="admin-search-field" placeholder="Search Order # or Username...">
+          <button class="apple-pill-btn" id="btnAdminRefreshOrders">Refresh</button>
+        </div>
+
+        <div id="adminOrdersVaultList" class="admin-orders-list">
+          <!-- Populated dynamically -->
+        </div>
+      </section>
+
+      <!-- 5. BROADCAST VIEW -->
+      <section id="adminSecBroadcast" class="admin-view-panel hidden">
+        <div class="admin-broadcast-card">
+          <div class="broadcast-icon">📢</div>
+          <h3>Send Customer Broadcast</h3>
+          <p>Deliver an instant announcement notification to all registered customers via Telegram.</p>
+
+          <textarea id="adminBroadcastMessageInput" class="admin-textarea" rows="5" placeholder="Write your announcement message in Telegram Markdown... (e.g. 🔥 Flash Sale! Use code FLASH20 for 20% off all VPN keys today!)"></textarea>
+
+          <button id="btnAdminSendBroadcast" class="apple-btn-primary full-width">🚀 Send Broadcast Now</button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Sub-Modal: Quick Restock Credentials -->
+  <div id="adminRestockModal" class="apple-bottom-sheet admin-sub-sheet hidden">
+    <div class="sheet-drag-handle"></div>
+    <div class="sheet-header">
+      <div class="cart-title-wrap">
+        <h2 id="restockProductTitle">Restock Product</h2>
+        <span class="apple-badge-sub">Paste new accounts / keys (1 item per line)</span>
+      </div>
+      <button class="apple-close-btn" id="closeAdminRestockModal">&times;</button>
+    </div>
+    <div class="sheet-body">
+      <input type="hidden" id="restockProductId">
+      <label class="section-label">Raw Credentials / Keys List:</label>
+      <textarea id="restockCredsInput" class="admin-textarea creds-textarea" rows="8" placeholder="user1@mail.com:PassWord123!&#10;user2@mail.com:PassWord123!&#10;KEY-ABCD-1234-EFGH"></textarea>
+      <div class="restock-hint">Credentials are automatically encrypted with 256-bit Fernet before storing.</div>
+      <button id="btnAdminSubmitRestock" class="apple-btn-primary full-width" style="margin-top:14px;">🔒 Encrypt & Add to Stock</button>
+    </div>
+  </div>
+
+  <!-- Sub-Modal: Create Product -->
+  <div id="adminNewProductModal" class="apple-bottom-sheet admin-sub-sheet hidden">
+    <div class="sheet-drag-handle"></div>
+    <div class="sheet-header">
+      <div class="cart-title-wrap">
+        <h2>Create New Product</h2>
+        <span class="apple-badge-sub">Add digital item to store catalog</span>
+      </div>
+      <button class="apple-close-btn" id="closeAdminNewProductModal">&times;</button>
+    </div>
+    <div class="sheet-body">
+      <div class="admin-form-group">
+        <label>Category:</label>
+        <select id="newProdCategorySelect" class="admin-select"></select>
+      </div>
+      <div class="admin-form-group">
+        <label>Product Name:</label>
+        <input type="text" id="newProdNameInput" class="admin-input" placeholder="e.g. Proton VPN — 1 Month Key">
+      </div>
+      <div class="admin-form-group">
+        <label>Price ($ USD):</label>
+        <input type="number" id="newProdPriceInput" class="admin-input" step="0.01" min="0.01" placeholder="9.99">
+      </div>
+      <div class="admin-form-group">
+        <label>Description:</label>
+        <textarea id="newProdDescInput" class="admin-textarea" rows="3" placeholder="Features, warranty details, supported devices..."></textarea>
+      </div>
+      <div class="admin-form-group">
+        <label>Initial Stock (Optional, 1 per line):</label>
+        <textarea id="newProdStockInput" class="admin-textarea" rows="4" placeholder="key123...&#10;key456..."></textarea>
+      </div>
+      <button id="btnAdminSubmitNewProduct" class="apple-btn-primary full-width" style="margin-top:14px;">✨ Create & Publish Product</button>
+    </div>
+  </div>
+
+  <!-- Sub-Modal: Create Coupon -->
+  <div id="adminNewCouponModal" class="apple-bottom-sheet admin-sub-sheet hidden">
+    <div class="sheet-drag-handle"></div>
+    <div class="sheet-header">
+      <div class="cart-title-wrap">
+        <h2>Create Promo Code</h2>
+        <span class="apple-badge-sub">Generate customer discount code</span>
+      </div>
+      <button class="apple-close-btn" id="closeAdminNewCouponModal">&times;</button>
+    </div>
+    <div class="sheet-body">
+      <div class="admin-form-group">
+        <label>Coupon Code:</label>
+        <input type="text" id="newCouponCodeInput" class="admin-input" placeholder="e.g. SUMMER25">
+      </div>
+      <div class="admin-form-row">
+        <div class="admin-form-group flex-1">
+          <label>Discount Type:</label>
+          <select id="newCouponTypeSelect" class="admin-select">
+            <option value="percent">Percentage (% OFF)</option>
+            <option value="fixed">Fixed Amount ($ OFF)</option>
+          </select>
+        </div>
+        <div class="admin-form-group flex-1">
+          <label>Discount Value:</label>
+          <input type="number" id="newCouponValueInput" class="admin-input" step="0.01" min="0.01" placeholder="20">
+        </div>
+      </div>
+      <div class="admin-form-row">
+        <div class="admin-form-group flex-1">
+          <label>Max Uses (optional):</label>
+          <input type="number" id="newCouponMaxUsesInput" class="admin-input" min="1" placeholder="Unlimited">
+        </div>
+        <div class="admin-form-group flex-1">
+          <label>Expires In (Days):</label>
+          <input type="number" id="newCouponDaysInput" class="admin-input" min="1" value="30">
+        </div>
+      </div>
+      <button id="btnAdminSubmitNewCoupon" class="apple-btn-primary full-width" style="margin-top:14px;">🎟️ Activate Coupon</button>
     </div>
   </div>
 

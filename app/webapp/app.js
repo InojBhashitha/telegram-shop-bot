@@ -71,6 +71,13 @@
     currentPaymentOrder: null,
     pollTimer: null,
     appliedCoupon: null,
+    adminState: {
+      activeTab: 'analytics',
+      products: [],
+      categories: [],
+      coupons: [],
+      orders: [],
+    },
   };
 
   // --- DOM Elements Cache ---
@@ -217,6 +224,66 @@
     devUserIdInput: document.getElementById('devUserIdInput'),
     devSwitchUserBtn: document.getElementById('devSwitchUserBtn'),
     toastContainer: document.getElementById('toastContainer'),
+
+    // Admin Suite Elements
+    dockAdminBtn: document.getElementById('dockAdminBtn'),
+    adminSuiteActionCard: document.getElementById('adminSuiteActionCard'),
+    adminModal: document.getElementById('adminModal'),
+    closeAdminModal: document.getElementById('closeAdminModal'),
+    adminSecAnalytics: document.getElementById('adminSecAnalytics'),
+    adminSecInventory: document.getElementById('adminSecInventory'),
+    adminSecCoupons: document.getElementById('adminSecCoupons'),
+    adminSecOrders: document.getElementById('adminSecOrders'),
+    adminSecBroadcast: document.getElementById('adminSecBroadcast'),
+    adminRevToday: document.getElementById('adminRevToday'),
+    adminOrdersToday: document.getElementById('adminOrdersToday'),
+    adminRev7d: document.getElementById('adminRev7d'),
+    adminOrders7d: document.getElementById('adminOrders7d'),
+    adminRevLifetime: document.getElementById('adminRevLifetime'),
+    adminOrdersLifetime: document.getElementById('adminOrdersLifetime'),
+    adminCustomerCount: document.getElementById('adminCustomerCount'),
+    adminTotalStock: document.getElementById('adminTotalStock'),
+    adminFulfillmentRate: document.getElementById('adminFulfillmentRate'),
+    adminActiveProductsCount: document.getElementById('adminActiveProductsCount'),
+    adminStockAlertsBox: document.getElementById('adminStockAlertsBox'),
+    adminStockAlertsList: document.getElementById('adminStockAlertsList'),
+    adminTopSellersList: document.getElementById('adminTopSellersList'),
+    btnAdminOpenNewProductModal: document.getElementById('btnAdminOpenNewProductModal'),
+    adminProductSearchInput: document.getElementById('adminProductSearchInput'),
+    adminProductsList: document.getElementById('adminProductsList'),
+    btnAdminOpenNewCouponModal: document.getElementById('btnAdminOpenNewCouponModal'),
+    adminCouponsList: document.getElementById('adminCouponsList'),
+    adminOrderSearchInput: document.getElementById('adminOrderSearchInput'),
+    btnAdminRefreshOrders: document.getElementById('btnAdminRefreshOrders'),
+    adminOrdersVaultList: document.getElementById('adminOrdersVaultList'),
+    adminBroadcastMessageInput: document.getElementById('adminBroadcastMessageInput'),
+    btnAdminSendBroadcast: document.getElementById('btnAdminSendBroadcast'),
+
+    // Admin Sub-Modals
+    adminRestockModal: document.getElementById('adminRestockModal'),
+    closeAdminRestockModal: document.getElementById('closeAdminRestockModal'),
+    restockProductTitle: document.getElementById('restockProductTitle'),
+    restockProductId: document.getElementById('restockProductId'),
+    restockCredsInput: document.getElementById('restockCredsInput'),
+    btnAdminSubmitRestock: document.getElementById('btnAdminSubmitRestock'),
+
+    adminNewProductModal: document.getElementById('adminNewProductModal'),
+    closeAdminNewProductModal: document.getElementById('closeAdminNewProductModal'),
+    newProdCategorySelect: document.getElementById('newProdCategorySelect'),
+    newProdNameInput: document.getElementById('newProdNameInput'),
+    newProdPriceInput: document.getElementById('newProdPriceInput'),
+    newProdDescInput: document.getElementById('newProdDescInput'),
+    newProdStockInput: document.getElementById('newProdStockInput'),
+    btnAdminSubmitNewProduct: document.getElementById('btnAdminSubmitNewProduct'),
+
+    adminNewCouponModal: document.getElementById('adminNewCouponModal'),
+    closeAdminNewCouponModal: document.getElementById('closeAdminNewCouponModal'),
+    newCouponCodeInput: document.getElementById('newCouponCodeInput'),
+    newCouponTypeSelect: document.getElementById('newCouponTypeSelect'),
+    newCouponValueInput: document.getElementById('newCouponValueInput'),
+    newCouponMaxUsesInput: document.getElementById('newCouponMaxUsesInput'),
+    newCouponDaysInput: document.getElementById('newCouponDaysInput'),
+    btnAdminSubmitNewCoupon: document.getElementById('btnAdminSubmitNewCoupon'),
   };
 
   // --- API Request Wrapper ---
@@ -514,6 +581,10 @@
   el.closeVaultModal.addEventListener('click', () => closeModal());
   el.closeOrdersModal.addEventListener('click', () => closeModal());
   el.closeProfileModal.addEventListener('click', () => closeModal());
+  if (el.closeAdminModal) el.closeAdminModal.addEventListener('click', () => closeModal());
+  if (el.closeAdminRestockModal) el.closeAdminRestockModal.addEventListener('click', () => closeModal(() => openAdminModal('inventory')));
+  if (el.closeAdminNewProductModal) el.closeAdminNewProductModal.addEventListener('click', () => closeModal(() => openAdminModal('inventory')));
+  if (el.closeAdminNewCouponModal) el.closeAdminNewCouponModal.addEventListener('click', () => closeModal(() => openAdminModal('coupons')));
 
   // Trust Chip click actions
   if (el.trustWarrantyChip) {
@@ -604,6 +675,15 @@
       const earned = formatMoney(u.referral_earnings || 0);
       const rate = u.referral_commission_percent ? `${u.referral_commission_percent}%` : '5%';
       el.referralSubText.textContent = `${count} invited • ${earned} earned (${rate} per order)`;
+    }
+
+    // Admin Suite Access
+    const isAdmin = Boolean(u.is_admin);
+    if (el.dockAdminBtn) {
+      el.dockAdminBtn.classList.toggle('hidden', !isAdmin);
+    }
+    if (el.adminSuiteActionCard) {
+      el.adminSuiteActionCard.classList.toggle('hidden', !isAdmin);
     }
   }
 
@@ -1835,6 +1915,23 @@
     });
   }
 
+  if (el.dockAdminBtn) {
+    el.dockAdminBtn.addEventListener('click', () => {
+      haptic('light');
+      setActiveDockBtn(el.dockAdminBtn);
+      openAdminModal('analytics');
+    });
+  }
+
+  if (el.adminSuiteActionCard) {
+    el.adminSuiteActionCard.addEventListener('click', () => {
+      haptic('light');
+      closeModal(() => {
+        openAdminModal('analytics');
+      });
+    });
+  }
+
   // Circular Search Button on Right (Matching Apple reference)
   if (el.dockSearchBtn) {
     el.dockSearchBtn.addEventListener('click', () => {
@@ -1925,6 +2022,612 @@
         initAuth();
       }
     });
+  }
+
+  // =========================================================================
+  // MERCHANT ADMIN SUITE MODULE
+  // =========================================================================
+
+  function openAdminModal(tab = 'analytics') {
+    if (!state.user?.is_admin) {
+      showToast('Administrative privileges required.', 'error');
+      return;
+    }
+    openModal(el.adminModal);
+    switchAdminTab(tab);
+  }
+
+  function switchAdminTab(tabName) {
+    state.adminState.activeTab = tabName;
+
+    // Update tab bar active classes
+    const tabBtns = el.adminModal?.querySelectorAll('.admin-nav-tab') || [];
+    tabBtns.forEach((btn) => {
+      btn.classList.toggle('active', btn.getAttribute('data-admin-tab') === tabName);
+    });
+
+    // Hide all view panels
+    const panels = {
+      analytics: el.adminSecAnalytics,
+      inventory: el.adminSecInventory,
+      coupons: el.adminSecCoupons,
+      orders: el.adminSecOrders,
+      broadcast: el.adminSecBroadcast,
+    };
+
+    Object.entries(panels).forEach(([name, panelEl]) => {
+      if (panelEl) {
+        panelEl.classList.toggle('hidden', name !== tabName);
+      }
+    });
+
+    // Load data for active panel
+    if (tabName === 'analytics') {
+      loadAdminAnalytics();
+    } else if (tabName === 'inventory') {
+      loadAdminProducts();
+    } else if (tabName === 'coupons') {
+      loadAdminCoupons();
+    } else if (tabName === 'orders') {
+      loadAdminOrders();
+    }
+  }
+
+  // --- 1. Analytics & KPI Pulse ---
+  async function loadAdminAnalytics() {
+    try {
+      const res = await api('/admin/analytics');
+      const o = res.overview || {};
+
+      if (el.adminRevToday) el.adminRevToday.textContent = formatMoney(o.revenue_today || 0);
+      if (el.adminOrdersToday) el.adminOrdersToday.textContent = `${o.orders_today || 0} orders`;
+      if (el.adminRev7d) el.adminRev7d.textContent = formatMoney(o.revenue_7d || 0);
+      if (el.adminOrders7d) el.adminOrders7d.textContent = `${o.orders_7d || 0} orders`;
+      if (el.adminRevLifetime) el.adminRevLifetime.textContent = formatMoney(o.lifetime_revenue || 0);
+      if (el.adminOrdersLifetime) el.adminOrdersLifetime.textContent = `${o.lifetime_orders || 0} orders`;
+      if (el.adminCustomerCount) el.adminCustomerCount.textContent = `${o.lifetime_customers || 0} customers`;
+      if (el.adminTotalStock) el.adminTotalStock.textContent = String(o.total_available_stock || 0);
+      if (el.adminFulfillmentRate) el.adminFulfillmentRate.textContent = `${o.fulfillment_rate || 100}% OK`;
+      if (el.adminActiveProductsCount) el.adminActiveProductsCount.textContent = `${o.active_products || 0} active products`;
+
+      // Low Stock Alerts
+      const alerts = res.low_stock_alerts || [];
+      if (alerts.length > 0 && el.adminStockAlertsBox) {
+        el.adminStockAlertsBox.classList.remove('hidden');
+        if (el.adminStockAlertsList) {
+          el.adminStockAlertsList.innerHTML = alerts.map((a) => `
+            <div class="admin-prod-card" style="border-color: rgba(255, 69, 58, 0.3);">
+              <div class="admin-prod-info">
+                <div class="admin-prod-name">${escapeHtml(a.name)}</div>
+                <div class="admin-prod-meta">
+                  <span class="stock-tag out">${a.stock} units remaining</span>
+                </div>
+              </div>
+              <button type="button" class="btn-admin-action primary btn-quick-restock" data-product-id="${a.id}" data-product-name="${escapeHtml(a.name)}">⚡ Restock</button>
+            </div>
+          `).join('');
+
+          el.adminStockAlertsList.querySelectorAll('.btn-quick-restock').forEach((b) => {
+            b.addEventListener('click', () => {
+              const pid = b.getAttribute('data-product-id');
+              const pname = b.getAttribute('data-product-name');
+              openRestockModal(pid, pname);
+            });
+          });
+        }
+      } else if (el.adminStockAlertsBox) {
+        el.adminStockAlertsBox.classList.add('hidden');
+      }
+
+      // Top Sellers
+      const tops = res.top_products || [];
+      if (el.adminTopSellersList) {
+        if (tops.length === 0) {
+          el.adminTopSellersList.innerHTML = '<div class="admin-loading-row">No orders recorded in the last 7 days yet.</div>';
+        } else {
+          el.adminTopSellersList.innerHTML = tops.map((tp, idx) => `
+            <div class="admin-prod-card">
+              <div class="admin-prod-info">
+                <div class="admin-prod-name">#${idx + 1} ${escapeHtml(tp.name)}</div>
+                <div class="admin-prod-meta">
+                  <span>${tp.units} sold</span>
+                  <span>•</span>
+                  <span>${formatMoney(tp.revenue)} revenue</span>
+                </div>
+              </div>
+            </div>
+          `).join('');
+        }
+      }
+    } catch (err) {
+      showToast('Error loading analytics: ' + err.message, 'error');
+    }
+  }
+
+  // --- 2. Products & Inventory Management ---
+  async function loadAdminProducts() {
+    if (!el.adminProductsList) return;
+    el.adminProductsList.innerHTML = '<div class="admin-loading-row">Loading inventory...</div>';
+
+    try {
+      const res = await api('/admin/products');
+      state.adminState.products = res.products || [];
+      state.adminState.categories = res.categories || [];
+
+      // Populate category dropdown in New Product modal
+      if (el.newProdCategorySelect) {
+        el.newProdCategorySelect.innerHTML = (res.categories || []).map((c) => `
+          <option value="${c.id}">${c.icon || '📦'} ${escapeHtml(c.name)}</option>
+        `).join('');
+      }
+
+      renderAdminProductsList();
+    } catch (err) {
+      el.adminProductsList.innerHTML = `<div class="admin-loading-row" style="color:var(--apple-red);">Failed to load products: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  function renderAdminProductsList() {
+    if (!el.adminProductsList) return;
+    const query = (el.adminProductSearchInput?.value || '').trim().toLowerCase();
+
+    let prods = state.adminState.products || [];
+    if (query) {
+      prods = prods.filter((p) =>
+        p.name.toLowerCase().includes(query) ||
+        (p.category_name && p.category_name.toLowerCase().includes(query))
+      );
+    }
+
+    if (prods.length === 0) {
+      el.adminProductsList.innerHTML = '<div class="admin-loading-row">No products found matching your filter.</div>';
+      return;
+    }
+
+    el.adminProductsList.innerHTML = prods.map((p) => {
+      const stock = p.stock || 0;
+      let stockClass = 'in';
+      let stockText = `${stock} in stock`;
+      if (stock === 0) {
+        stockClass = 'out';
+        stockText = 'Out of Stock';
+      } else if (stock <= 3) {
+        stockClass = 'low';
+        stockText = `${stock} low stock`;
+      }
+
+      return `
+        <div class="admin-prod-card" data-product-id="${p.id}">
+          <div class="admin-prod-info">
+            <div class="admin-prod-name">${escapeHtml(p.name)}</div>
+            <div class="admin-prod-meta">
+              <span>${p.category_icon || '📦'} ${escapeHtml(p.category_name || 'General')}</span>
+              <span>•</span>
+              <span class="stock-tag ${stockClass}">${stockText}</span>
+              <span>•</span>
+              <span style="font-weight:700; color:var(--text-primary);">${formatMoney(p.price)}</span>
+              ${!p.active ? '<span class="stock-tag out" style="opacity:0.8;">Hidden</span>' : ''}
+            </div>
+          </div>
+          <div class="admin-prod-actions">
+            <button type="button" class="btn-admin-action primary btn-admin-restock" data-product-id="${p.id}" data-product-name="${escapeHtml(p.name)}">⚡ Restock</button>
+            <button type="button" class="btn-admin-action btn-admin-toggle" data-product-id="${p.id}">${p.active ? '👁️ Hide' : '👁️ Show'}</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Wire action buttons
+    el.adminProductsList.querySelectorAll('.btn-admin-restock').forEach((b) => {
+      b.addEventListener('click', () => {
+        openRestockModal(b.getAttribute('data-product-id'), b.getAttribute('data-product-name'));
+      });
+    });
+
+    el.adminProductsList.querySelectorAll('.btn-admin-toggle').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const pid = b.getAttribute('data-product-id');
+        try {
+          haptic('medium');
+          const res = await api(`/admin/products/${pid}/toggle`, { method: 'PATCH' });
+          showToast(res.message, 'success');
+          await loadAdminProducts();
+          await fetchCatalog();
+        } catch (e) {
+          showToast('Toggle failed: ' + e.message, 'error');
+        }
+      });
+    });
+  }
+
+  function openRestockModal(productId, productName) {
+    if (el.restockProductId) el.restockProductId.value = productId;
+    if (el.restockProductTitle) el.restockProductTitle.textContent = `Restock ${productName}`;
+    if (el.restockCredsInput) el.restockCredsInput.value = '';
+    openModal(el.adminRestockModal);
+  }
+
+  async function handleAdminSubmitRestock() {
+    const pid = parseInt(el.restockProductId?.value, 10);
+    const content = el.restockCredsInput?.value?.trim();
+
+    if (!pid || !content) {
+      showToast('Please paste at least one credential or key to add to stock.', 'warning');
+      return;
+    }
+
+    try {
+      haptic('medium');
+      if (el.btnAdminSubmitRestock) {
+        el.btnAdminSubmitRestock.disabled = true;
+        el.btnAdminSubmitRestock.textContent = 'Encrypting & Storing...';
+      }
+
+      const res = await api('/admin/products/stock', {
+        method: 'POST',
+        body: JSON.stringify({ product_id: pid, content }),
+      });
+
+      showToast(`Added ${res.added_count} items! ${res.subscribers_notified} alert subscribers notified.`, 'success');
+      closeModal(() => {
+        openAdminModal('inventory');
+      });
+      await fetchCatalog();
+    } catch (e) {
+      showToast('Restock failed: ' + e.message, 'error');
+    } finally {
+      if (el.btnAdminSubmitRestock) {
+        el.btnAdminSubmitRestock.disabled = false;
+        el.btnAdminSubmitRestock.textContent = '🔒 Encrypt & Add to Stock';
+      }
+    }
+  }
+
+  async function handleAdminSubmitNewProduct() {
+    const catId = parseInt(el.newProdCategorySelect?.value, 10);
+    const name = el.newProdNameInput?.value?.trim();
+    const price = parseFloat(el.newProdPriceInput?.value);
+    const desc = el.newProdDescInput?.value?.trim() || '';
+    const stock = el.newProdStockInput?.value?.trim() || '';
+
+    if (!catId || !name || isNaN(price) || price <= 0) {
+      showToast('Please provide a valid category, name, and positive price.', 'warning');
+      return;
+    }
+
+    try {
+      haptic('medium');
+      if (el.btnAdminSubmitNewProduct) {
+        el.btnAdminSubmitNewProduct.disabled = true;
+        el.btnAdminSubmitNewProduct.textContent = 'Creating...';
+      }
+
+      const res = await api('/admin/products', {
+        method: 'POST',
+        body: JSON.stringify({
+          category_id: catId,
+          name,
+          price,
+          description: desc,
+          initial_stock: stock,
+        }),
+      });
+
+      showToast(res.message, 'success');
+      closeModal(() => {
+        openAdminModal('inventory');
+      });
+      await fetchCatalog();
+    } catch (e) {
+      showToast('Product creation failed: ' + e.message, 'error');
+    } finally {
+      if (el.btnAdminSubmitNewProduct) {
+        el.btnAdminSubmitNewProduct.disabled = false;
+        el.btnAdminSubmitNewProduct.textContent = '✨ Create & Publish Product';
+      }
+    }
+  }
+
+  // --- 3. Promo Codes & Coupons ---
+  async function loadAdminCoupons() {
+    if (!el.adminCouponsList) return;
+    el.adminCouponsList.innerHTML = '<div class="admin-loading-row">Loading promo codes...</div>';
+
+    try {
+      const res = await api('/admin/coupons');
+      state.adminState.coupons = res.coupons || [];
+
+      if (state.adminState.coupons.length === 0) {
+        el.adminCouponsList.innerHTML = '<div class="admin-loading-row">No active promo codes yet. Click "+ Create Promo Code" above to make one.</div>';
+        return;
+      }
+
+      el.adminCouponsList.innerHTML = state.adminState.coupons.map((c) => {
+        const valStr = c.discount_type === 'percent'
+          ? `${c.discount_value}% OFF`
+          : `${formatMoney(c.discount_value)} OFF`;
+
+        const usageStr = c.max_uses ? `${c.current_uses} / ${c.max_uses} used` : `${c.current_uses} used (Unlimited)`;
+        const expiryStr = c.expires_at ? `Expires ${new Date(c.expires_at).toLocaleDateString()}` : 'No expiration';
+
+        return `
+          <div class="admin-coupon-card" data-coupon-id="${c.id}">
+            <div class="admin-prod-info">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="coupon-code-badge">${escapeHtml(c.code)}</span>
+                <span style="font-weight:700; color:#30d158; font-size:12px;">${valStr}</span>
+              </div>
+              <div class="admin-prod-meta" style="margin-top:4px;">
+                <span>${usageStr}</span>
+                <span>•</span>
+                <span>${expiryStr}</span>
+              </div>
+            </div>
+            <button type="button" class="btn-admin-action btn-admin-del-coupon" data-coupon-id="${c.id}" style="color:var(--apple-red); border-color:rgba(255,69,58,0.3);">🗑️ Delete</button>
+          </div>
+        `;
+      }).join('');
+
+      el.adminCouponsList.querySelectorAll('.btn-admin-del-coupon').forEach((b) => {
+        b.addEventListener('click', async () => {
+          const cid = b.getAttribute('data-coupon-id');
+          if (!confirm('Are you sure you want to deactivate and delete this promo code?')) return;
+          try {
+            haptic('medium');
+            const res = await api(`/admin/coupons/${cid}`, { method: 'DELETE' });
+            showToast(res.message, 'success');
+            await loadAdminCoupons();
+          } catch (e) {
+            showToast('Failed to delete coupon: ' + e.message, 'error');
+          }
+        });
+      });
+    } catch (err) {
+      el.adminCouponsList.innerHTML = `<div class="admin-loading-row" style="color:var(--apple-red);">Failed to load coupons: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  async function handleAdminSubmitNewCoupon() {
+    const code = el.newCouponCodeInput?.value?.trim();
+    const type = el.newCouponTypeSelect?.value || 'percent';
+    const val = parseFloat(el.newCouponValueInput?.value);
+    const maxUses = parseInt(el.newCouponMaxUsesInput?.value, 10) || null;
+    const days = parseInt(el.newCouponDaysInput?.value, 10) || null;
+
+    if (!code || isNaN(val) || val <= 0) {
+      showToast('Please enter a coupon code and positive discount value.', 'warning');
+      return;
+    }
+
+    try {
+      haptic('medium');
+      if (el.btnAdminSubmitNewCoupon) {
+        el.btnAdminSubmitNewCoupon.disabled = true;
+        el.btnAdminSubmitNewCoupon.textContent = 'Activating...';
+      }
+
+      const res = await api('/admin/coupons', {
+        method: 'POST',
+        body: JSON.stringify({
+          code,
+          discount_type: type,
+          discount_value: val,
+          max_uses: maxUses,
+          expires_in_days: days,
+        }),
+      });
+
+      showToast(res.message, 'success');
+      closeModal(() => {
+        openAdminModal('coupons');
+      });
+    } catch (e) {
+      showToast('Coupon creation failed: ' + e.message, 'error');
+    } finally {
+      if (el.btnAdminSubmitNewCoupon) {
+        el.btnAdminSubmitNewCoupon.disabled = false;
+        el.btnAdminSubmitNewCoupon.textContent = '🎟️ Activate Coupon';
+      }
+    }
+  }
+
+  // --- 4. Orders Vault & Customer Support Refunds ---
+  async function loadAdminOrders() {
+    if (!el.adminOrdersVaultList) return;
+    el.adminOrdersVaultList.innerHTML = '<div class="admin-loading-row">Loading orders vault...</div>';
+
+    const search = (el.adminOrderSearchInput?.value || '').trim();
+    const qParam = search ? `?search=${encodeURIComponent(search)}` : '';
+
+    try {
+      const res = await api(`/admin/orders${qParam}`);
+      state.adminState.orders = res.orders || [];
+
+      if (state.adminState.orders.length === 0) {
+        el.adminOrdersVaultList.innerHTML = '<div class="admin-loading-row">No orders found.</div>';
+        return;
+      }
+
+      el.adminOrdersVaultList.innerHTML = state.adminState.orders.map((o) => {
+        const dateStr = new Date(o.created_at).toLocaleString();
+        const custName = o.customer.username ? `@${o.customer.username}` : (o.customer.name || `User #${o.customer.telegram_id}`);
+        const isRefunded = o.status.toLowerCase() === 'refunded';
+
+        let credsHtml = '';
+        if (o.delivered_credentials && o.delivered_credentials.length > 0) {
+          credsHtml = `
+            <div class="admin-order-creds-box">
+              <div style="font-size:10px; font-weight:700; color:var(--text-tertiary); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px;">Decrypted Delivered Credentials:</div>
+              <div style="font-family:var(--font-mono); font-size:11px; color:#30d158; word-break:break-all; max-height:80px; overflow-y:auto; line-height:1.4;">
+                ${o.delivered_credentials.map((c) => escapeHtml(c)).join('<br>')}
+              </div>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="admin-order-card" data-order-id="${o.id}">
+            <div class="admin-order-top">
+              <div>
+                <span class="order-id-badge">#${escapeHtml(o.public_order_id)}</span>
+                <span style="font-size:11px; color:var(--text-secondary); margin-left:6px;">${dateStr}</span>
+              </div>
+              <span class="order-status-badge status-${escapeHtml(o.status.toLowerCase())}">${escapeHtml(o.status.toUpperCase())}</span>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <div style="font-size:13px; font-weight:700; color:var(--text-primary);">${escapeHtml(o.product.name)}</div>
+                <div style="font-size:11px; color:var(--text-secondary);">Customer: <strong>${escapeHtml(custName)}</strong> (ID: ${o.customer.telegram_id})</div>
+              </div>
+              <div style="font-size:15px; font-weight:800; color:var(--text-primary);">${formatMoney(o.amount)}</div>
+            </div>
+
+            ${credsHtml}
+
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
+              ${!isRefunded ? `
+                <button type="button" class="btn-admin-action btn-admin-refund" data-order-id="${o.id}" data-amount="${o.amount}" style="color:var(--apple-orange); border-color:rgba(255,159,10,0.3);">
+                  💸 1-Click Balance Refund
+                </button>
+              ` : `
+                <span style="font-size:11px; color:var(--apple-orange); font-weight:600;">✓ Refunded to customer balance</span>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Wire refund button
+      el.adminOrdersVaultList.querySelectorAll('.btn-admin-refund').forEach((b) => {
+        b.addEventListener('click', async () => {
+          const oid = b.getAttribute('data-order-id');
+          const amt = b.getAttribute('data-amount');
+          if (!confirm(`Are you sure you want to refund ${formatMoney(amt)} to the customer's wallet balance? This action cannot be undone.`)) {
+            return;
+          }
+
+          try {
+            haptic('medium');
+            b.disabled = true;
+            b.textContent = 'Refunding...';
+            const res = await api(`/admin/orders/${oid}/refund`, { method: 'POST' });
+            showToast(res.message, 'success');
+            await loadAdminOrders();
+          } catch (e) {
+            showToast('Refund failed: ' + e.message, 'error');
+            b.disabled = false;
+            b.textContent = '💸 1-Click Balance Refund';
+          }
+        });
+      });
+    } catch (err) {
+      el.adminOrdersVaultList.innerHTML = `<div class="admin-loading-row" style="color:var(--apple-red);">Failed to load orders: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  // --- 5. Broadcast Announcement ---
+  async function handleAdminSendBroadcast() {
+    const msg = el.adminBroadcastMessageInput?.value?.trim();
+    if (!msg) {
+      showToast('Please type an announcement message to broadcast.', 'warning');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to broadcast this message to ALL store customers on Telegram?')) {
+      return;
+    }
+
+    try {
+      haptic('heavy');
+      if (el.btnAdminSendBroadcast) {
+        el.btnAdminSendBroadcast.disabled = true;
+        el.btnAdminSendBroadcast.textContent = '📡 Delivering announcement...';
+      }
+
+      const res = await api('/admin/broadcast', {
+        method: 'POST',
+        body: JSON.stringify({ message: msg }),
+      });
+
+      showToast(res.message, 'success');
+      if (el.adminBroadcastMessageInput) el.adminBroadcastMessageInput.value = '';
+    } catch (e) {
+      showToast('Broadcast failed: ' + e.message, 'error');
+    } finally {
+      if (el.btnAdminSendBroadcast) {
+        el.btnAdminSendBroadcast.disabled = false;
+        el.btnAdminSendBroadcast.textContent = '🚀 Send Broadcast Now';
+      }
+    }
+  }
+
+  // --- Admin Event Listeners Binding ---
+  if (el.adminModal) {
+    el.adminModal.querySelectorAll('.admin-nav-tab').forEach((tabBtn) => {
+      tabBtn.addEventListener('click', () => {
+        haptic('selection');
+        const tabName = tabBtn.getAttribute('data-admin-tab');
+        if (tabName) switchAdminTab(tabName);
+      });
+    });
+  }
+
+  if (el.btnAdminOpenNewProductModal) {
+    el.btnAdminOpenNewProductModal.addEventListener('click', () => {
+      if (el.newProdNameInput) el.newProdNameInput.value = '';
+      if (el.newProdPriceInput) el.newProdPriceInput.value = '';
+      if (el.newProdDescInput) el.newProdDescInput.value = '';
+      if (el.newProdStockInput) el.newProdStockInput.value = '';
+      openModal(el.adminNewProductModal);
+    });
+  }
+  if (el.btnAdminSubmitNewProduct) {
+    el.btnAdminSubmitNewProduct.addEventListener('click', handleAdminSubmitNewProduct);
+  }
+
+  if (el.btnAdminSubmitRestock) {
+    el.btnAdminSubmitRestock.addEventListener('click', handleAdminSubmitRestock);
+  }
+
+  if (el.btnAdminOpenNewCouponModal) {
+    el.btnAdminOpenNewCouponModal.addEventListener('click', () => {
+      if (el.newCouponCodeInput) el.newCouponCodeInput.value = '';
+      if (el.newCouponValueInput) el.newCouponValueInput.value = '';
+      if (el.newCouponMaxUsesInput) el.newCouponMaxUsesInput.value = '';
+      if (el.newCouponDaysInput) el.newCouponDaysInput.value = '30';
+      openModal(el.adminNewCouponModal);
+    });
+  }
+  if (el.btnAdminSubmitNewCoupon) {
+    el.btnAdminSubmitNewCoupon.addEventListener('click', handleAdminSubmitNewCoupon);
+  }
+
+  if (el.adminProductSearchInput) {
+    el.adminProductSearchInput.addEventListener('input', () => {
+      renderAdminProductsList();
+    });
+  }
+
+  if (el.adminOrderSearchInput) {
+    let orderDebounce = null;
+    el.adminOrderSearchInput.addEventListener('input', () => {
+      clearTimeout(orderDebounce);
+      orderDebounce = setTimeout(() => {
+        loadAdminOrders();
+      }, 300);
+    });
+  }
+
+  if (el.btnAdminRefreshOrders) {
+    el.btnAdminRefreshOrders.addEventListener('click', () => {
+      haptic('light');
+      loadAdminOrders();
+    });
+  }
+
+  if (el.btnAdminSendBroadcast) {
+    el.btnAdminSendBroadcast.addEventListener('click', handleAdminSendBroadcast);
   }
 
   // --- Clipboard Utility ---

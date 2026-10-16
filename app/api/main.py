@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.api.admin_portal import router as admin_router
 from app.api.webapp import router as webapp_router
 from app.api.webhooks.crypto import router as crypto_router
 
@@ -64,6 +65,7 @@ def create_api() -> FastAPI:
     # Mount routes
     api.include_router(crypto_router, prefix="/webhooks/crypto", tags=["webhooks"])
     api.include_router(webapp_router, prefix="/api/webapp", tags=["webapp"])
+    api.include_router(admin_router, prefix="/api/webapp/admin", tags=["admin"])
 
     # Mount static assets for Telegram Mini App storefront
     webapp_dir = Path(__file__).resolve().parent.parent / "webapp"
