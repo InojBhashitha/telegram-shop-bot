@@ -23,6 +23,7 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 # --- ANSI Terminal Formatting Helpers ---
 
@@ -93,7 +94,7 @@ def choose_option(title: str, options: list[tuple[str, str]], default_idx: int =
 
 # --- Telegram Bot Verification ---
 
-def verify_telegram_bot_token(token: str) -> dict | None:
+def verify_telegram_bot_token(token: str) -> dict[str, Any] | None:
     """Call Telegram getMe API to verify bot token and fetch bot info."""
     clean_token = token.strip()
     if not clean_token or ":" not in clean_token:

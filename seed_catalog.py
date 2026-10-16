@@ -18,6 +18,7 @@ import argparse
 import asyncio
 import sys
 from decimal import Decimal
+from typing import TypedDict
 
 from sqlalchemy import delete, func, select
 
@@ -25,9 +26,30 @@ from app.database.database import close_db, get_session, init_db
 from app.database.models import Category, DeliveryType, Inventory, InventoryStatus, Product
 from app.database.repositories.inventory_repo import add_items
 
-# --- High-Converting Demo Catalog Definition ---
 
-DEMO_CATALOG = [
+# --- High-Converting Demo Catalog Definition & Typed Models ---
+
+class CategoryInfo(TypedDict):
+    name: str
+    icon: str
+    description: str
+    sort_order: int
+
+
+class ProductInfo(TypedDict):
+    name: str
+    description: str
+    price: Decimal
+    stock_count: int
+    prefix: str
+
+
+class CatalogCategory(TypedDict):
+    category: CategoryInfo
+    products: list[ProductInfo]
+
+
+DEMO_CATALOG: list[CatalogCategory] = [
     {
         "category": {
             "name": "VPN & Privacy",
@@ -205,16 +227,21 @@ async def seed_catalog(force: bool = False) -> tuple[int, int, int]:
 
     async with get_session() as session:
         for cat_data in DEMO_CATALOG:
-            cat_info = cat_data["category"]
-            stmt = select(Category).where(Category.name == cat_info["name"])
+            cat_info: CategoryInfo = cat_data["category"]
+            c_name: str = cat_info["name"]
+            c_icon: str = cat_info["icon"]
+            c_desc: str = cat_info["description"]
+            c_sort: int = cat_info["sort_order"]
+
+            stmt = select(Category).where(Category.name == c_name)
             existing_cat = (await session.execute(stmt)).scalars().first()
 
             if existing_cat is None:
                 category = Category(
-                    name=cat_info["name"],
-                    icon=cat_info["icon"],
-                    description=cat_info["description"],
-                    sort_order=cat_info["sort_order"],
+                    name=c_name,
+                    icon=c_icon,
+                    description=c_desc,
+                    sort_order=c_sort,
                     active=True,
                 )
                 session.add(category)
@@ -223,9 +250,16 @@ async def seed_catalog(force: bool = False) -> tuple[int, int, int]:
             else:
                 category = existing_cat
 
-            for prod_data in cat_data["products"]:
+            products_list: list[ProductInfo] = cat_data["products"]
+            for prod_data in products_list:
+                p_name: str = prod_data["name"]
+                p_desc: str = prod_data["description"]
+                p_price: Decimal = prod_data["price"]
+                p_stock: int = prod_data["stock_count"]
+                p_prefix: str = prod_data["prefix"]
+
                 stmt = select(Product).where(
-                    Product.name == prod_data["name"],
+                    Product.name == p_name,
                     Product.category_id == category.id,
                 )
                 existing_prod = (await session.execute(stmt)).scalars().first()
@@ -233,9 +267,9 @@ async def seed_catalog(force: bool = False) -> tuple[int, int, int]:
                 if existing_prod is None:
                     product = Product(
                         category_id=category.id,
-                        name=prod_data["name"],
-                        description=prod_data["description"],
-                        price=prod_data["price"],
+                        name=p_name,
+                        description=p_desc,
+                        price=p_price,
                         currency="USD",
                         delivery_type=DeliveryType.DIGITAL,
                         active=True,
@@ -252,12 +286,12 @@ async def seed_catalog(force: bool = False) -> tuple[int, int, int]:
                     Inventory.status == InventoryStatus.AVAILABLE,
                 )
                 current_stock = (await session.execute(stock_stmt)).scalar() or 0
-                needed_stock = prod_data["stock_count"] - current_stock
+                needed_stock = p_stock - current_stock
 
                 if needed_stock > 0 or force:
-                    add_qty = prod_data["stock_count"] if force else needed_stock
+                    add_qty = p_stock if force else needed_stock
                     contents = [
-                        f"{prod_data['prefix']}{i+100:04d} | PASS: SafePass_{i+10}! | EXP: 2027-12-31"
+                        f"{p_prefix}{i+100:04d} | PASS: SafePass_{i+10}! | EXP: 2027-12-31"
                         for i in range(1, add_qty + 1)
                     ]
                     created_items = await add_items(session, product.id, contents)
