@@ -649,9 +649,15 @@
       await fetchCart();
 
       // Show dev preview bar if not running inside Telegram WebApp
-      if (!state.initData && el.devPreviewBar) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hideDev = urlParams.get('hide_dev') === '1';
+      if (!state.initData && el.devPreviewBar && !hideDev) {
         el.devPreviewBar.classList.remove('hidden');
         el.devUserIdInput.value = state.telegramId;
+      }
+
+      if (urlParams.get('open_admin') === '1') {
+        setTimeout(() => openAdminModal('analytics'), 400);
       }
     } catch (err) {
       showToast('Connection error: ' + err.message, 'error');
@@ -2108,7 +2114,7 @@
               <div class="admin-prod-info">
                 <div class="admin-prod-name">${escapeHtml(a.name)}</div>
                 <div class="admin-prod-meta">
-                  <span class="stock-tag out">${a.stock} units remaining</span>
+                  <span class="stock-tag out">${a.stock ?? a.available ?? 0} units remaining</span>
                 </div>
               </div>
               <button type="button" class="btn-admin-action primary btn-quick-restock" data-product-id="${a.id}" data-product-name="${escapeHtml(a.name)}">⚡ Restock</button>
