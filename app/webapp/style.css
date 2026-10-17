@@ -515,11 +515,14 @@ html, body {
 }
 
 .card-item-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1.25;
-  margin-bottom: 4px;
+  font-family: var(--font-apple);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.35;
+  letter-spacing: -0.15px;
+  margin-bottom: 8px;
+  min-height: 36px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -529,22 +532,45 @@ html, body {
 
 .card-meta-line {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  margin-top: 2px;
+  margin-top: auto;
+  padding-top: 2px;
 }
 
 .card-price-text {
-  font-size: 14px;
+  font-family: var(--font-apple);
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1.5px;
+}
+
+.card-price-text .price-currency {
+  font-size: 12px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--apple-blue-tint);
+  opacity: 0.95;
+  transform: translateY(-0.5px);
+}
+
+.card-price-text .price-amount {
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.5px;
 }
 
 .card-stock-dot-wrap {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 500;
   color: var(--text-secondary);
 }
 

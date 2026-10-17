@@ -352,6 +352,14 @@
     return `${sym}${val.toFixed(2)}`;
   }
 
+  function formatPriceHtml(amount) {
+    const sym = state.currencySymbol || state.store?.currency_symbol || '$';
+    const val = parseFloat(amount || 0);
+    const sign = val < 0 ? '-' : '';
+    const formattedNum = Math.abs(val).toFixed(2);
+    return `<span class="price-currency">${sign}${escapeHtml(sym)}</span><span class="price-amount">${formattedNum}</span>`;
+  }
+
   function hexToRgb(hex) {
     if (!hex) return null;
     let c = String(hex).replace('#', '').trim();
@@ -931,7 +939,7 @@
         <div class="card-bottom-info">
           <h3 class="card-item-title" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</h3>
           <div class="card-meta-line">
-            <span class="card-price-text">${formatMoney(p.price)}</span>
+            <span class="card-price-text">${formatPriceHtml(p.price)}</span>
             <div class="card-stock-dot-wrap">
               <span class="stock-indicator-dot ${isOutOfStock ? 'out' : ''}"></span>
               <span>${isOutOfStock ? 'Sold out' : `${p.stock} left`}</span>
