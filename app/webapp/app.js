@@ -70,12 +70,9 @@
     activeModal: null,
     currentPaymentOrder: null,
     pollTimer: null,
-    appliedCoupon: null,
     adminState: {
       activeTab: 'analytics',
       products: [],
-      categories: [],
-      coupons: [],
       orders: [],
     },
   };
@@ -93,9 +90,6 @@
     userAvatar: document.getElementById('userAvatar'),
     userName: document.getElementById('userName'),
     userBalance: document.getElementById('userBalance'),
-    promoBanner: document.getElementById('promoBanner'),
-    claimDiscountBtn: document.getElementById('claimDiscountBtn'),
-    discountActiveCard: document.getElementById('discountActiveCard'),
     searchInput: document.getElementById('searchInput'),
     clearSearchBtn: document.getElementById('clearSearchBtn'),
     categoriesBar: document.getElementById('categoriesBar'),
@@ -143,17 +137,10 @@
     cartModalItemCount: document.getElementById('cartModalItemCount'),
     cartItemsList: document.getElementById('cartItemsList'),
     emptyCartView: document.getElementById('emptyCartView'),
-    cartSummaryCard: document.getElementById('cartSummaryCard'),
-    couponInput: document.getElementById('couponInput'),
-    applyCouponBtn: document.getElementById('applyCouponBtn'),
-    couponStatusMsg: document.getElementById('couponStatusMsg'),
     cartSubtotalAmount: document.getElementById('cartSubtotalAmount'),
     cartBulkDiscountRow: document.getElementById('cartBulkDiscountRow'),
     cartBulkDiscountLabel: document.getElementById('cartBulkDiscountLabel'),
     cartBulkDiscountAmount: document.getElementById('cartBulkDiscountAmount'),
-    cartDiscountRow: document.getElementById('cartDiscountRow'),
-    cartDiscountLabel: document.getElementById('cartDiscountLabel'),
-    cartDiscountAmount: document.getElementById('cartDiscountAmount'),
     cartFinalAmount: document.getElementById('cartFinalAmount'),
 
     btnCheckoutTotal: document.getElementById('btnCheckoutTotal'),
@@ -232,7 +219,6 @@
     closeAdminModal: document.getElementById('closeAdminModal'),
     adminSecAnalytics: document.getElementById('adminSecAnalytics'),
     adminSecInventory: document.getElementById('adminSecInventory'),
-    adminSecCoupons: document.getElementById('adminSecCoupons'),
     adminSecOrders: document.getElementById('adminSecOrders'),
     adminSecBroadcast: document.getElementById('adminSecBroadcast'),
     adminRevToday: document.getElementById('adminRevToday'),
@@ -251,8 +237,6 @@
     btnAdminOpenNewProductModal: document.getElementById('btnAdminOpenNewProductModal'),
     adminProductSearchInput: document.getElementById('adminProductSearchInput'),
     adminProductsList: document.getElementById('adminProductsList'),
-    btnAdminOpenNewCouponModal: document.getElementById('btnAdminOpenNewCouponModal'),
-    adminCouponsList: document.getElementById('adminCouponsList'),
     adminOrderSearchInput: document.getElementById('adminOrderSearchInput'),
     btnAdminRefreshOrders: document.getElementById('btnAdminRefreshOrders'),
     adminOrdersVaultList: document.getElementById('adminOrdersVaultList'),
@@ -275,15 +259,6 @@
     newProdDescInput: document.getElementById('newProdDescInput'),
     newProdStockInput: document.getElementById('newProdStockInput'),
     btnAdminSubmitNewProduct: document.getElementById('btnAdminSubmitNewProduct'),
-
-    adminNewCouponModal: document.getElementById('adminNewCouponModal'),
-    closeAdminNewCouponModal: document.getElementById('closeAdminNewCouponModal'),
-    newCouponCodeInput: document.getElementById('newCouponCodeInput'),
-    newCouponTypeSelect: document.getElementById('newCouponTypeSelect'),
-    newCouponValueInput: document.getElementById('newCouponValueInput'),
-    newCouponMaxUsesInput: document.getElementById('newCouponMaxUsesInput'),
-    newCouponDaysInput: document.getElementById('newCouponDaysInput'),
-    btnAdminSubmitNewCoupon: document.getElementById('btnAdminSubmitNewCoupon'),
   };
 
   // --- API Request Wrapper ---
@@ -592,7 +567,6 @@
   if (el.closeAdminModal) el.closeAdminModal.addEventListener('click', () => closeModal());
   if (el.closeAdminRestockModal) el.closeAdminRestockModal.addEventListener('click', () => closeModal(() => openAdminModal('inventory')));
   if (el.closeAdminNewProductModal) el.closeAdminNewProductModal.addEventListener('click', () => closeModal(() => openAdminModal('inventory')));
-  if (el.closeAdminNewCouponModal) el.closeAdminNewCouponModal.addEventListener('click', () => closeModal(() => openAdminModal('coupons')));
 
   // Trust Chip click actions
   if (el.trustWarrantyChip) {
@@ -644,7 +618,6 @@
 
       applyStoreTheme(state.store);
       renderUserProfile();
-      renderPromotions();
       await fetchCatalog();
       await fetchCart();
 
@@ -701,49 +674,7 @@
     }
   }
 
-  // --- Promo Banner Rendering ---
-  function renderPromotions() {
-    if (!state.user) return;
-    const u = state.user;
 
-    if (!u.channel_discount_claimed && !u.channel_discount_used) {
-      el.promoBanner.classList.remove('hidden');
-      el.discountActiveCard.classList.add('hidden');
-    } else if (u.channel_discount_claimed && !u.channel_discount_used) {
-      el.promoBanner.classList.add('hidden');
-      el.discountActiveCard.classList.remove('hidden');
-    } else {
-      el.promoBanner.classList.add('hidden');
-      el.discountActiveCard.classList.add('hidden');
-    }
-  }
-
-  // Claim discount button
-  el.claimDiscountBtn.addEventListener('click', async () => {
-    haptic('medium');
-    try {
-      const res = await api('/discount/claim', {
-        method: 'POST',
-        body: JSON.stringify({
-          init_data: state.initData || undefined,
-          telegram_id: state.telegramId || undefined,
-        }),
-      });
-
-      if (res.claimed) {
-        state.user.channel_discount_claimed = true;
-        renderPromotions();
-        await fetchCart();
-        showToast('🎉 10% First-Order Discount activated!', 'success');
-        haptic('success');
-      } else {
-        showToast(res.message, 'normal');
-      }
-    } catch (err) {
-      showToast(err.message, 'error');
-      haptic('error');
-    }
-  });
 
   // --- Catalog & Products Rendering ---
   async function fetchCatalog() {
@@ -1292,81 +1223,9 @@
       el.cartBulkDiscountRow.classList.add('hidden');
     }
 
-    let channelDiscount = parseFloat(c.discount_amount || 0);
-    let couponDiscount = state.appliedCoupon ? parseFloat(state.appliedCoupon.discount_amount || 0) : 0;
-    let totalPromoDiscount = channelDiscount + couponDiscount;
-
-    if (totalPromoDiscount > 0) {
-      el.cartDiscountRow.classList.remove('hidden');
-      if (state.appliedCoupon && channelDiscount > 0) {
-        el.cartDiscountLabel.textContent = `🎟️ Promo (${state.appliedCoupon.code}) + 🎁 10% Off`;
-      } else if (state.appliedCoupon) {
-        el.cartDiscountLabel.textContent = `🎟️ Promo Code (${state.appliedCoupon.code})`;
-      } else {
-        el.cartDiscountLabel.textContent = `🎁 10% First Order Discount`;
-      }
-      el.cartDiscountAmount.textContent = `-${formatMoney(totalPromoDiscount)}`;
-    } else {
-      el.cartDiscountRow.classList.add('hidden');
-    }
-
-    const finalAmount = Math.max(0, parseFloat(c.subtotal || 0) - totalPromoDiscount);
+    const finalAmount = Math.max(0, parseFloat(c.subtotal ?? (rawSubtotal - bulkSavings)));
     el.cartFinalAmount.textContent = formatMoney(finalAmount);
     el.btnCheckoutTotal.textContent = formatMoney(finalAmount);
-
-  }
-
-  // --- Promo Code / Coupon Application ---
-  if (el.applyCouponBtn) {
-    el.applyCouponBtn.addEventListener('click', async () => {
-      const code = (el.couponInput?.value || '').trim();
-      if (!code) {
-        showToast('Please enter a coupon code', 'normal');
-        return;
-      }
-      haptic('medium');
-      el.applyCouponBtn.disabled = true;
-      el.applyCouponBtn.textContent = '...';
-      try {
-        const res = await api('/coupon/validate', {
-          method: 'POST',
-          body: JSON.stringify({
-            code: code,
-            cart_subtotal: state.cart.subtotal,
-            init_data: state.initData || undefined,
-            telegram_id: state.telegramId || undefined,
-          }),
-        });
-
-        if (res.valid) {
-          state.appliedCoupon = res;
-          el.couponStatusMsg.className = 'coupon-status-msg success';
-          const valStr = res.discount_type === 'PERCENTAGE' ? `${res.discount_value}%` : `$${res.discount_value}`;
-          el.couponStatusMsg.textContent = `🎉 Promo ${res.code} applied! (${valStr} off: -$${parseFloat(res.discount_amount).toFixed(2)})`;
-          el.couponStatusMsg.classList.remove('hidden');
-          renderCartUI();
-          showToast(`Coupon ${res.code} applied!`, 'success');
-          haptic('success');
-        } else {
-          state.appliedCoupon = null;
-          el.couponStatusMsg.className = 'coupon-status-msg error';
-          el.couponStatusMsg.textContent = res.message || 'Invalid coupon code';
-          el.couponStatusMsg.classList.remove('hidden');
-          renderCartUI();
-          haptic('error');
-        }
-      } catch (err) {
-        state.appliedCoupon = null;
-        el.couponStatusMsg.className = 'coupon-status-msg error';
-        el.couponStatusMsg.textContent = err.message;
-        el.couponStatusMsg.classList.remove('hidden');
-        renderCartUI();
-        haptic('error');
-      } finally {
-        el.applyCouponBtn.disabled = false;
-        el.applyCouponBtn.textContent = 'Apply';
-      }
-    });
   }
 
   async function updateCartQty(productId, newQty) {
@@ -1415,9 +1274,6 @@
           telegram_id: state.telegramId || undefined,
         }),
       });
-      state.appliedCoupon = null;
-      if (el.couponInput) el.couponInput.value = '';
-      if (el.couponStatusMsg) el.couponStatusMsg.classList.add('hidden');
       showToast('Cart cleared', 'normal');
       await fetchCart();
     } catch (err) {
@@ -1466,16 +1322,12 @@
         method: 'POST',
         body: JSON.stringify({
           payment_method: selectedMethod,
-          coupon_code: state.appliedCoupon ? state.appliedCoupon.code : undefined,
           init_data: state.initData || undefined,
           telegram_id: state.telegramId || undefined,
         }),
       });
 
       closeModal();
-      state.appliedCoupon = null;
-      if (el.couponInput) el.couponInput.value = '';
-      if (el.couponStatusMsg) el.couponStatusMsg.classList.add('hidden');
       await fetchCart();
 
       // OPTION A: STORE BALANCE (Instant Fulfillment)
@@ -2064,7 +1916,6 @@
     const panels = {
       analytics: el.adminSecAnalytics,
       inventory: el.adminSecInventory,
-      coupons: el.adminSecCoupons,
       orders: el.adminSecOrders,
       broadcast: el.adminSecBroadcast,
     };
@@ -2080,8 +1931,6 @@
       loadAdminAnalytics();
     } else if (tabName === 'inventory') {
       loadAdminProducts();
-    } else if (tabName === 'coupons') {
-      loadAdminCoupons();
     } else if (tabName === 'orders') {
       loadAdminOrders();
     }
@@ -2342,108 +2191,7 @@
     }
   }
 
-  // --- 3. Promo Codes & Coupons ---
-  async function loadAdminCoupons() {
-    if (!el.adminCouponsList) return;
-    el.adminCouponsList.innerHTML = '<div class="admin-loading-row">Loading promo codes...</div>';
 
-    try {
-      const res = await api('/admin/coupons');
-      state.adminState.coupons = res.coupons || [];
-
-      if (state.adminState.coupons.length === 0) {
-        el.adminCouponsList.innerHTML = '<div class="admin-loading-row">No active promo codes yet. Click "+ Create Promo Code" above to make one.</div>';
-        return;
-      }
-
-      el.adminCouponsList.innerHTML = state.adminState.coupons.map((c) => {
-        const valStr = c.discount_type === 'percent'
-          ? `${c.discount_value}% OFF`
-          : `${formatMoney(c.discount_value)} OFF`;
-
-        const usageStr = c.max_uses ? `${c.current_uses} / ${c.max_uses} used` : `${c.current_uses} used (Unlimited)`;
-        const expiryStr = c.expires_at ? `Expires ${new Date(c.expires_at).toLocaleDateString()}` : 'No expiration';
-
-        return `
-          <div class="admin-coupon-card" data-coupon-id="${c.id}">
-            <div class="admin-prod-info">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span class="coupon-code-badge">${escapeHtml(c.code)}</span>
-                <span style="font-weight:700; color:#30d158; font-size:12px;">${valStr}</span>
-              </div>
-              <div class="admin-prod-meta" style="margin-top:4px;">
-                <span>${usageStr}</span>
-                <span>•</span>
-                <span>${expiryStr}</span>
-              </div>
-            </div>
-            <button type="button" class="btn-admin-action btn-admin-del-coupon" data-coupon-id="${c.id}" style="color:var(--apple-red); border-color:rgba(255,69,58,0.3);">🗑️ Delete</button>
-          </div>
-        `;
-      }).join('');
-
-      el.adminCouponsList.querySelectorAll('.btn-admin-del-coupon').forEach((b) => {
-        b.addEventListener('click', async () => {
-          const cid = b.getAttribute('data-coupon-id');
-          if (!confirm('Are you sure you want to deactivate and delete this promo code?')) return;
-          try {
-            haptic('medium');
-            const res = await api(`/admin/coupons/${cid}`, { method: 'DELETE' });
-            showToast(res.message, 'success');
-            await loadAdminCoupons();
-          } catch (e) {
-            showToast('Failed to delete coupon: ' + e.message, 'error');
-          }
-        });
-      });
-    } catch (err) {
-      el.adminCouponsList.innerHTML = `<div class="admin-loading-row" style="color:var(--apple-red);">Failed to load coupons: ${escapeHtml(err.message)}</div>`;
-    }
-  }
-
-  async function handleAdminSubmitNewCoupon() {
-    const code = el.newCouponCodeInput?.value?.trim();
-    const type = el.newCouponTypeSelect?.value || 'percent';
-    const val = parseFloat(el.newCouponValueInput?.value);
-    const maxUses = parseInt(el.newCouponMaxUsesInput?.value, 10) || null;
-    const days = parseInt(el.newCouponDaysInput?.value, 10) || null;
-
-    if (!code || isNaN(val) || val <= 0) {
-      showToast('Please enter a coupon code and positive discount value.', 'warning');
-      return;
-    }
-
-    try {
-      haptic('medium');
-      if (el.btnAdminSubmitNewCoupon) {
-        el.btnAdminSubmitNewCoupon.disabled = true;
-        el.btnAdminSubmitNewCoupon.textContent = 'Activating...';
-      }
-
-      const res = await api('/admin/coupons', {
-        method: 'POST',
-        body: JSON.stringify({
-          code,
-          discount_type: type,
-          discount_value: val,
-          max_uses: maxUses,
-          expires_in_days: days,
-        }),
-      });
-
-      showToast(res.message, 'success');
-      closeModal(() => {
-        openAdminModal('coupons');
-      });
-    } catch (e) {
-      showToast('Coupon creation failed: ' + e.message, 'error');
-    } finally {
-      if (el.btnAdminSubmitNewCoupon) {
-        el.btnAdminSubmitNewCoupon.disabled = false;
-        el.btnAdminSubmitNewCoupon.textContent = '🎟️ Activate Coupon';
-      }
-    }
-  }
 
   // --- 4. Orders Vault & Customer Support Refunds ---
   async function loadAdminOrders() {
@@ -2604,18 +2352,7 @@
     el.btnAdminSubmitRestock.addEventListener('click', handleAdminSubmitRestock);
   }
 
-  if (el.btnAdminOpenNewCouponModal) {
-    el.btnAdminOpenNewCouponModal.addEventListener('click', () => {
-      if (el.newCouponCodeInput) el.newCouponCodeInput.value = '';
-      if (el.newCouponValueInput) el.newCouponValueInput.value = '';
-      if (el.newCouponMaxUsesInput) el.newCouponMaxUsesInput.value = '';
-      if (el.newCouponDaysInput) el.newCouponDaysInput.value = '30';
-      openModal(el.adminNewCouponModal);
-    });
-  }
-  if (el.btnAdminSubmitNewCoupon) {
-    el.btnAdminSubmitNewCoupon.addEventListener('click', handleAdminSubmitNewCoupon);
-  }
+
 
   if (el.adminProductSearchInput) {
     el.adminProductSearchInput.addEventListener('input', () => {

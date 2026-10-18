@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="/webapp/style.css?v=4">
+  <link rel="stylesheet" href="/webapp/style.css?v=5">
 </head>
 <body class="apple-dark">
 
@@ -49,20 +49,7 @@
       <div class="trust-chip" id="trustVouchesChip"><span class="chip-icon">⭐</span> <span id="vouchText">4.9 Verified Vouches</span></div>
     </div>
 
-    <!-- Promo / Discount Card -->
-    <div id="promoBanner" class="apple-promo-card hidden">
-      <div class="promo-leading-icon">🎁</div>
-      <div class="promo-text-wrap">
-        <div class="promo-headline">10% First-Order Discount Available</div>
-        <div class="promo-subheadline">Join our official channel to activate savings at checkout.</div>
-      </div>
-      <button id="claimDiscountBtn" class="apple-pill-btn">Claim</button>
-    </div>
 
-    <div id="discountActiveCard" class="apple-discount-active hidden">
-      <span class="discount-check">✓</span>
-      <span><strong>10% First-Order Discount Active</strong> • Applied automatically</span>
-    </div>
 
     <!-- Search Section (Toggleable via Dock Search Icon) -->
     <section class="apple-search-section" id="searchSection">
@@ -312,14 +299,7 @@
         <button class="apple-btn-primary" id="continueShoppingBtn">Explore Products</button>
       </div>
 
-      <!-- Order Summary Card -->
       <div id="cartSummaryCard" class="apple-summary-card">
-        <div class="apple-coupon-group">
-          <input type="text" id="couponInput" placeholder="Promo code (e.g. SAVE10)" autocomplete="off">
-          <button id="applyCouponBtn" class="apple-coupon-btn">Apply</button>
-        </div>
-        <div id="couponStatusMsg" class="coupon-status-msg hidden"></div>
-
         <div class="summary-line">
           <span>Subtotal</span>
           <span id="cartSubtotalAmount">$0.00</span>
@@ -327,10 +307,6 @@
         <div class="summary-line bulk-discount-line hidden" id="cartBulkDiscountRow">
           <span id="cartBulkDiscountLabel">📉 Wholesale Volume Savings</span>
           <span class="discount-amount" id="cartBulkDiscountAmount">-$0.00</span>
-        </div>
-        <div class="summary-line discount-line hidden" id="cartDiscountRow">
-          <span id="cartDiscountLabel">🎁 10% First Order Discount</span>
-          <span class="discount-amount" id="cartDiscountAmount">-$0.00</span>
         </div>
 
         <div class="summary-divider"></div>
@@ -557,14 +533,7 @@
     </div>
 
     <div class="sheet-body">
-      <!-- Promo Banner -->
-      <div class="bonus-promo-banner">
-        <span class="promo-fire">🔥</span>
-        <div class="promo-text">
-          <strong>Deposit Bonuses Active!</strong>
-          <small>Get up to +15% extra wallet credit automatically credited.</small>
-        </div>
-      </div>
+
 
       <!-- Current Balance Info -->
       <div class="topup-current-bal-box">
@@ -651,7 +620,7 @@
     <div class="admin-segmented-nav">
       <button class="admin-nav-tab active" data-admin-tab="analytics">📊 Overview</button>
       <button class="admin-nav-tab" data-admin-tab="inventory">📦 Products & Stock</button>
-      <button class="admin-nav-tab" data-admin-tab="coupons">🎟️ Coupons</button>
+
       <button class="admin-nav-tab" data-admin-tab="orders">🧾 Orders</button>
       <button class="admin-nav-tab" data-admin-tab="broadcast">📢 Broadcast</button>
     </div>
@@ -730,16 +699,7 @@
         </div>
       </section>
 
-      <!-- 3. COUPONS & PROMOS VIEW -->
-      <section id="adminSecCoupons" class="admin-view-panel hidden">
-        <div class="admin-panel-toolbar">
-          <button class="apple-pill-btn btn-primary" id="btnAdminOpenNewCouponModal">+ Create Promo Code</button>
-        </div>
 
-        <div id="adminCouponsList" class="admin-coupons-list">
-          <!-- Populated dynamically -->
-        </div>
-      </section>
 
       <!-- 4. ORDERS VAULT VIEW -->
       <section id="adminSecOrders" class="admin-view-panel hidden">
@@ -822,47 +782,7 @@
     </div>
   </div>
 
-  <!-- Sub-Modal: Create Coupon -->
-  <div id="adminNewCouponModal" class="apple-bottom-sheet admin-sub-sheet hidden">
-    <div class="sheet-drag-handle"></div>
-    <div class="sheet-header">
-      <div class="cart-title-wrap">
-        <h2>Create Promo Code</h2>
-        <span class="apple-badge-sub">Generate customer discount code</span>
-      </div>
-      <button class="apple-close-btn" id="closeAdminNewCouponModal">&times;</button>
-    </div>
-    <div class="sheet-body">
-      <div class="admin-form-group">
-        <label>Coupon Code:</label>
-        <input type="text" id="newCouponCodeInput" class="admin-input" placeholder="e.g. SUMMER25">
-      </div>
-      <div class="admin-form-row">
-        <div class="admin-form-group flex-1">
-          <label>Discount Type:</label>
-          <select id="newCouponTypeSelect" class="admin-select">
-            <option value="percent">Percentage (% OFF)</option>
-            <option value="fixed">Fixed Amount ($ OFF)</option>
-          </select>
-        </div>
-        <div class="admin-form-group flex-1">
-          <label>Discount Value:</label>
-          <input type="number" id="newCouponValueInput" class="admin-input" step="0.01" min="0.01" placeholder="20">
-        </div>
-      </div>
-      <div class="admin-form-row">
-        <div class="admin-form-group flex-1">
-          <label>Max Uses (optional):</label>
-          <input type="number" id="newCouponMaxUsesInput" class="admin-input" min="1" placeholder="Unlimited">
-        </div>
-        <div class="admin-form-group flex-1">
-          <label>Expires In (Days):</label>
-          <input type="number" id="newCouponDaysInput" class="admin-input" min="1" value="30">
-        </div>
-      </div>
-      <button id="btnAdminSubmitNewCoupon" class="apple-btn-primary full-width" style="margin-top:14px;">🎟️ Activate Coupon</button>
-    </div>
-  </div>
+
 
   <!-- Toast Notification Container -->
   <div id="toastContainer" class="apple-toast-container"></div>
@@ -878,6 +798,6 @@
   </aside>
 
   <!-- Core App Logic -->
-  <script src="/webapp/app.js?v=4"></script>
+  <script src="/webapp/app.js?v=5"></script>
 </body>
 </html>
