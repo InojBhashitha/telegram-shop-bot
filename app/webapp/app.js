@@ -119,7 +119,6 @@
     productModal: document.getElementById('productModal'),
     modalCategory: document.getElementById('modalCategory'),
     modalStockBadge: document.getElementById('modalStockBadge'),
-    modalRatingBadge: document.getElementById('modalRatingBadge'),
     modalTitle: document.getElementById('modalTitle'),
     modalPrice: document.getElementById('modalPrice'),
     modalDescription: document.getElementById('modalDescription'),
@@ -599,7 +598,7 @@
           window.open(url, '_blank');
         }
       } else {
-        showToast('⭐ 100% verified customer ratings & automated delivery', 'normal');
+        showToast('🔒 100% verified working accounts with automated delivery', 'normal');
       }
     });
   }
@@ -952,9 +951,6 @@
       const logoSrc = resolveCloudLogo(p);
       const isOutOfStock = p.stock === 0;
       const glowStyle = resolveProviderColor(p);
-      const ratingVal = p.review_count && p.review_count > 0 
-        ? parseFloat(p.average_rating || 5.0).toFixed(1) 
-        : '5.0';
 
       // Apple Tag (e.g., "Saved for you", "Instant Stock", "Low Stock")
       let tagText = 'Saved for you';
@@ -973,7 +969,6 @@
       card.innerHTML = `
         <div class="card-top-tag">
           <span class="card-tag-badge">${tagIcon} ${tagText}</span>
-          <span class="card-rating-mini">⭐ ${ratingVal}</span>
         </div>
         <div class="card-logo-container" style="--provider-glow: ${glowStyle};">
           <div class="card-ambient-glow"></div>
@@ -1039,16 +1034,7 @@
     el.modalPrice.textContent = formatMoney(prod.price);
     el.modalDescription.textContent = prod.description || 'Verified working digital accounts delivered instantly upon payment.';
 
-    // Rating Badge
-    if (el.modalRatingBadge) {
-      if (prod.review_count && prod.review_count > 0) {
-        el.modalRatingBadge.textContent = `⭐ ${parseFloat(prod.average_rating || 5.0).toFixed(1)} (${prod.review_count})`;
-        el.modalRatingBadge.classList.remove('hidden');
-      } else {
-        el.modalRatingBadge.textContent = `⭐ 5.0`;
-        el.modalRatingBadge.classList.remove('hidden');
-      }
-    }
+
 
     // Stock Badge & Out of Stock Alert Box
     let stockText = `${prod.stock} in stock`;

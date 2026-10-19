@@ -145,22 +145,15 @@ async def show_product_detail(
         if db_user:
             cart_count = await cart_repo.get_cart_item_count(session, db_user.id)
 
-        from app.services import review_service
-        rating_info = await review_service.get_product_rating(session, product.id)
-
     in_stock = stock > 0
-
     settings = get_settings()
     from app.bot.utils.ui import format_product_caption
-    rating_text = ""
-    if rating_info["review_count"] > 0:
-        rating_text = f"\n⭐ *Customer Rating:* {rating_info['average_rating']}/5.0 ({rating_info['review_count']} reviews)"
 
     caption = format_product_caption(
         name=product.name,
         price=product.price,
         stock=stock,
-        description=(product.description or "") + rating_text,
+        description=product.description or "",
         currency=product.currency,
         warranty_hours=settings.warranty_hours,
     )
