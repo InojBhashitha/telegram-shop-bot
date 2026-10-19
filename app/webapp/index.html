@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="/webapp/style.css?v=5">
+  <link rel="stylesheet" href="/webapp/style.css?v=6">
 </head>
 <body class="apple-dark">
 
@@ -44,10 +44,39 @@
 
     <!-- Apple Trust Strip -->
     <div class="apple-trust-strip">
-      <div class="trust-chip"><span class="chip-icon">⚡</span> Instant Delivery</div>
+      <div class="trust-chip"><span class="live-pulse-dot"></span> <span class="chip-icon">⚡</span> Instant Delivery</div>
       <div class="trust-chip" id="trustWarrantyChip"><span class="chip-icon">🛡️</span> <span id="warrantyHoursText">24h Warranty</span></div>
       <div class="trust-chip" id="trustVouchesChip"><span class="chip-icon">⭐</span> <span id="vouchText">4.9 Verified Vouches</span></div>
+      <div class="trust-chip" id="trustSupportChip"><span class="chip-icon">💬</span> <span>Direct Support</span></div>
     </div>
+
+    <!-- Featured Hero Spotlight Showcase (Dynamic Top Pick) -->
+    <section class="apple-spotlight-section hidden" id="featuredShowcaseCard">
+      <div class="spotlight-card">
+        <div class="spotlight-badge-row">
+          <span class="spotlight-pill"><span class="live-pulse-dot"></span> TOP RECOMMENDED</span>
+          <span class="spotlight-cat-tag" id="spotlightCategory">Cloud Account</span>
+        </div>
+        <div class="spotlight-body">
+          <div class="spotlight-text-col">
+            <h2 class="spotlight-title" id="spotlightTitle">Oracle Cloud Free Tier</h2>
+            <p class="spotlight-desc" id="spotlightSubtitle">Instant automated credential delivery • Verified working with 24h warranty</p>
+            <div class="spotlight-price-row">
+              <span class="spotlight-price" id="spotlightPrice">$35.00</span>
+              <span class="spotlight-stock-chip" id="spotlightStockChip">⚡ Ready in Vault</span>
+            </div>
+          </div>
+          <div class="spotlight-logo-wrap">
+            <div class="spotlight-glow-aura" id="spotlightGlowAura"></div>
+            <img id="spotlightLogoImg" src="/webapp/logos/oracle.png" alt="Featured Logo" class="spotlight-logo">
+          </div>
+        </div>
+        <div class="spotlight-footer">
+          <button class="spotlight-btn-buy" id="spotlightBuyBtn">⚡ Instant Buy</button>
+          <button class="spotlight-btn-view" id="spotlightViewBtn">View Specs & Bulk Tiers ›</button>
+        </div>
+      </div>
+    </section>
 
 
 
@@ -798,6 +827,6 @@
   </aside>
 
   <!-- Core App Logic -->
-  <script src="/webapp/app.js?v=5"></script>
+  <script src="/webapp/app.js?v=6"></script>
 </body>
 </html>

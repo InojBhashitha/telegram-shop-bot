@@ -84,8 +84,19 @@
     storeLogo: document.getElementById('storeLogo'),
     trustWarrantyChip: document.getElementById('trustWarrantyChip'),
     trustVouchesChip: document.getElementById('trustVouchesChip'),
+    trustSupportChip: document.getElementById('trustSupportChip'),
     warrantyHoursText: document.getElementById('warrantyHoursText'),
     vouchText: document.getElementById('vouchText'),
+    featuredShowcaseCard: document.getElementById('featuredShowcaseCard'),
+    spotlightCategory: document.getElementById('spotlightCategory'),
+    spotlightTitle: document.getElementById('spotlightTitle'),
+    spotlightSubtitle: document.getElementById('spotlightSubtitle'),
+    spotlightPrice: document.getElementById('spotlightPrice'),
+    spotlightStockChip: document.getElementById('spotlightStockChip'),
+    spotlightLogoImg: document.getElementById('spotlightLogoImg'),
+    spotlightGlowAura: document.getElementById('spotlightGlowAura'),
+    spotlightBuyBtn: document.getElementById('spotlightBuyBtn'),
+    spotlightViewBtn: document.getElementById('spotlightViewBtn'),
     userChipBtn: document.getElementById('userChipBtn'),
     userAvatar: document.getElementById('userAvatar'),
     userName: document.getElementById('userName'),
@@ -593,6 +604,23 @@
     });
   }
 
+  if (el.trustSupportChip) {
+    el.trustSupportChip.addEventListener('click', () => {
+      const sup = state.store?.support_username;
+      if (sup) {
+        const clean = sup.replace('@', '');
+        const url = `https://t.me/${clean}`;
+        if (tg?.openTelegramLink) {
+          tg.openTelegramLink(url);
+        } else {
+          window.open(url, '_blank');
+        }
+      } else {
+        showToast('💬 24/7 automated delivery & support active.', 'normal');
+      }
+    });
+  }
+
   // --- Bootstrap & Authentication ---
   async function initAuth() {
     try {
@@ -762,6 +790,32 @@
     return '/webapp/logos/vps.svg';
   }
 
+  function resolveProviderColor(prod) {
+    const name = (prod?.name || '').toLowerCase();
+    const cat = (prod?.category_name || '').toLowerCase();
+    const haystack = `${name} ${cat}`;
+
+    if (haystack.includes('oracle') || haystack.includes('oci')) {
+      return 'radial-gradient(circle, rgba(248, 0, 0, 0.32) 0%, transparent 70%)';
+    }
+    if (haystack.includes('aws') || haystack.includes('amazon')) {
+      return 'radial-gradient(circle, rgba(255, 153, 0, 0.32) 0%, transparent 70%)';
+    }
+    if (haystack.includes('digitalocean') || haystack.includes('digital ocean') || haystack.includes('do ')) {
+      return 'radial-gradient(circle, rgba(0, 128, 255, 0.32) 0%, transparent 70%)';
+    }
+    if (haystack.includes('google') || haystack.includes('gcp')) {
+      return 'radial-gradient(circle, rgba(66, 133, 244, 0.32) 0%, transparent 70%)';
+    }
+    if (haystack.includes('upcloud')) {
+      return 'radial-gradient(circle, rgba(123, 31, 162, 0.32) 0%, transparent 70%)';
+    }
+    if (haystack.includes('azure') || haystack.includes('microsoft')) {
+      return 'radial-gradient(circle, rgba(0, 120, 212, 0.32) 0%, transparent 70%)';
+    }
+    return 'radial-gradient(circle, rgba(41, 151, 255, 0.25) 0%, transparent 70%)';
+  }
+
   // --- Smart Search Matcher (Alias & Fuzzy Aware) ---
   function matchesSearch(product, rawQuery) {
     if (!rawQuery) return true;
@@ -834,6 +888,54 @@
       }
     }
 
+    // Dynamic Featured Hero Spotlight Card
+    if (el.featuredShowcaseCard) {
+      if (!query && state.activeCategory === 'all' && state.products.length > 0) {
+        const featured = state.products.find((p) => p.stock > 0) || state.products[0];
+        if (featured) {
+          el.featuredShowcaseCard.classList.remove('hidden');
+          if (el.spotlightCategory) el.spotlightCategory.textContent = featured.category_name || 'Cloud Account';
+          if (el.spotlightTitle) el.spotlightTitle.textContent = featured.name;
+          if (el.spotlightSubtitle) {
+            el.spotlightSubtitle.textContent = featured.description || 'Instant automated credential delivery • Verified working with 24h warranty';
+          }
+          if (el.spotlightPrice) el.spotlightPrice.textContent = formatMoney(featured.price);
+          if (el.spotlightStockChip) {
+            el.spotlightStockChip.textContent = featured.stock > 0 ? `⚡ ${featured.stock} Ready in Vault` : '⏳ Restocking Soon';
+          }
+          if (el.spotlightLogoImg) {
+            el.spotlightLogoImg.src = resolveCloudLogo(featured);
+            el.spotlightLogoImg.alt = featured.name;
+          }
+          if (el.spotlightGlowAura) {
+            el.spotlightGlowAura.style.background = resolveProviderColor(featured);
+          }
+
+          if (el.spotlightBuyBtn) {
+            el.spotlightBuyBtn.onclick = async (e) => {
+              e.stopPropagation();
+              if (featured.stock > 0) {
+                await quickAddToCart(featured.id, 1);
+                openCartSheet();
+              } else {
+                openProductSheet(featured);
+              }
+            };
+          }
+          if (el.spotlightViewBtn) {
+            el.spotlightViewBtn.onclick = (e) => {
+              e.stopPropagation();
+              openProductSheet(featured);
+            };
+          }
+        } else {
+          el.featuredShowcaseCard.classList.add('hidden');
+        }
+      } else {
+        el.featuredShowcaseCard.classList.add('hidden');
+      }
+    }
+
     el.productsGrid.innerHTML = '';
 
     if (list.length === 0) {
@@ -849,8 +951,12 @@
 
       const logoSrc = resolveCloudLogo(p);
       const isOutOfStock = p.stock === 0;
+      const glowStyle = resolveProviderColor(p);
+      const ratingVal = p.review_count && p.review_count > 0 
+        ? parseFloat(p.average_rating || 5.0).toFixed(1) 
+        : '5.0';
 
-      // Apple Tag (e.g., "Saved for you ›", "Instant Stock ›", "Low Stock ›")
+      // Apple Tag (e.g., "Saved for you", "Instant Stock", "Low Stock")
       let tagText = 'Saved for you';
       let tagIcon = '🔖';
       if (p.stock > 0 && p.stock <= 2) {
@@ -866,24 +972,44 @@
 
       card.innerHTML = `
         <div class="card-top-tag">
-          <span class="tag-icon">${tagIcon}</span>
-          <span>${tagText}</span>
-          <span class="tag-chevron">›</span>
+          <span class="card-tag-badge">${tagIcon} ${tagText}</span>
+          <span class="card-rating-mini">⭐ ${ratingVal}</span>
         </div>
-        <div class="card-logo-container">
+        <div class="card-logo-container" style="--provider-glow: ${glowStyle};">
+          <div class="card-ambient-glow"></div>
           <img src="${logoSrc}" alt="${escapeHtml(p.name)}" class="card-cloud-logo" loading="lazy">
         </div>
         <div class="card-bottom-info">
           <h3 class="card-item-title" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</h3>
           <div class="card-meta-line">
-            <span class="card-price-text">${formatPriceHtml(p.price)}</span>
-            <div class="card-stock-dot-wrap">
-              <span class="stock-indicator-dot ${isOutOfStock ? 'out' : ''}"></span>
-              <span>${isOutOfStock ? 'Sold out' : `${p.stock} left`}</span>
+            <div class="card-price-block">
+              <span class="card-price-text">${formatPriceHtml(p.price)}</span>
+              <div class="card-stock-dot-wrap">
+                <span class="stock-indicator-dot ${isOutOfStock ? 'out' : ''}"></span>
+                <span>${isOutOfStock ? 'Sold out' : `${p.stock} left`}</span>
+              </div>
             </div>
+            <button class="card-quick-buy-btn ${isOutOfStock ? 'disabled' : ''}" data-product-id="${p.id}" title="${isOutOfStock ? 'Out of Stock' : 'Quick Add to Bag'}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
           </div>
         </div>
       `;
+
+      // Quick Buy button tap
+      const quickBuyBtn = card.querySelector('.card-quick-buy-btn');
+      if (quickBuyBtn && !isOutOfStock) {
+        quickBuyBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await quickAddToCart(p.id, 1);
+          // Pop animation on cart badge
+          if (el.cartBadge) {
+            el.cartBadge.classList.remove('pop');
+            void el.cartBadge.offsetWidth;
+            el.cartBadge.classList.add('pop');
+          }
+        });
+      }
 
       // Card tap opens Apple Product Sheet
       card.addEventListener('click', () => {
@@ -903,6 +1029,9 @@
     if (el.modalLogoImg) {
       el.modalLogoImg.src = resolveCloudLogo(prod);
       el.modalLogoImg.alt = prod.name;
+    }
+    if (el.modalLogoPreview) {
+      el.modalLogoPreview.style.background = resolveProviderColor(prod);
     }
 
     el.modalCategory.textContent = `${prod.category_icon || '📦'} ${prod.category_name}`;
