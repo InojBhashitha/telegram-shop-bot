@@ -190,9 +190,6 @@
     profId: document.getElementById('profId'),
     profBalance: document.getElementById('profBalance'),
     topupActionCard: document.getElementById('topupActionCard'),
-    referralActionCard: document.getElementById('referralActionCard'),
-    referralSubText: document.getElementById('referralSubText'),
-    copyRefLinkBtn: document.getElementById('copyRefLinkBtn'),
     supportActionCard: document.getElementById('supportActionCard'),
     closeProfileModal: document.getElementById('closeProfileModal'),
 
@@ -683,13 +680,6 @@
     el.profBalance.textContent = formatMoney(u.balance);
     el.methodBalanceSub.textContent = `Available: ${formatMoney(u.balance)} • Zero Confirmation Wait`;
 
-    // Referral stats in profile
-    if (el.referralSubText) {
-      const count = u.referral_count || 0;
-      const earned = formatMoney(u.referral_earnings || 0);
-      const rate = u.referral_commission_percent ? `${u.referral_commission_percent}%` : '5%';
-      el.referralSubText.textContent = `${count} invited • ${earned} earned (${rate} per order)`;
-    }
 
     // Admin Suite Access
     const isAdmin = Boolean(u.is_admin);
@@ -1671,40 +1661,15 @@
 
   el.userChipBtn.addEventListener('click', openProfileDrawer);
 
-  el.copyRefLinkBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (!state.user) return;
-    const botUser = state.store?.support_username || 'CloudDealsBot';
-    const rawCode = state.user.referral_code || state.user.telegram_id;
-    const code = String(rawCode).startsWith('ref_') ? rawCode : `ref_${rawCode}`;
-    const link = `https://t.me/${botUser}?start=${code}`;
-    copyToClipboard(link, 'Referral link copied! 🎁');
-  });
-
-  el.referralActionCard.addEventListener('click', () => {
-    if (!state.user) return;
-    haptic('light');
-    const botUser = state.store?.support_username || 'CloudDealsBot';
-    const rawCode = state.user.referral_code || state.user.telegram_id;
-    const code = String(rawCode).startsWith('ref_') ? rawCode : `ref_${rawCode}`;
-    const link = `https://t.me/${botUser}?start=${code}`;
-    const shareText = encodeURIComponent('🔥 Check out Cloud Deals for instant cloud accounts, keys & subscriptions!');
-    const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${shareText}`;
-    if (tg?.openTelegramLink) {
-      tg.openTelegramLink(shareUrl);
-    } else {
-      window.open(shareUrl, '_blank');
-    }
-  });
-
   el.supportActionCard.addEventListener('click', () => {
     haptic('light');
     const sup = state.store?.support_username || '';
     if (sup) {
+      const cleanUser = sup.replace('@', '');
       if (tg?.openTelegramLink) {
-        tg.openTelegramLink(`https://t.me/${sup.lstrip ? sup.replace('@', '') : sup}`);
+        tg.openTelegramLink(`https://t.me/${cleanUser}`);
       } else {
-        window.open(`https://t.me/${sup.replace('@', '')}`, '_blank');
+        window.open(`https://t.me/${cleanUser}`, '_blank');
       }
     } else {
       showToast('Contact support via bot chat.', 'normal');

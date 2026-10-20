@@ -42,23 +42,18 @@ async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     raw_uname = f"@{user.username}" if user.username else user.first_name or "User"
     safe_username = escape_markdown(raw_uname, version=1)
 
-    promo_status = "🎁 First Order Promo: *10% OFF Active*\n" if user.channel_discount_claimed and not user.channel_discount_used else ""
-
     text = (
         f"☁️ *Cloud Deals*\n\n"
         f"👤 *Profile*\n\n"
         f"User: {safe_username}\n"
         f"💰 Balance: ${user.balance}\n"
         f"📦 Orders: {profile['order_count']}\n"
-        f"💸 Total Spent: ${profile['total_spent']}\n"
-        f"{promo_status}"
-        f"🎁 Referrals: {profile['referral_count']}"
+        f"💸 Total Spent: ${profile['total_spent']}"
     )
 
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("📦 My Orders", callback_data="orders")],
         [InlineKeyboardButton("💰 Balance & Top-up", callback_data="topup")],
-        [InlineKeyboardButton("🎁 Referral", callback_data="referral")],
         [InlineKeyboardButton("⬅️ Back", callback_data="main_menu")],
     ])
 
