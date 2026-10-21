@@ -579,12 +579,15 @@ async def refund_order_to_balance(
         bot = get_bot_instance()
         if bot and order.user.telegram_id:
             try:
-                prod_name = order.product.name if order.product else "Order"
+                from telegram.helpers import escape_markdown
+                raw_prod_name = order.product.name if order.product else "Order"
+                safe_prod_name = escape_markdown(raw_prod_name, version=1)
+                safe_order_id = escape_markdown(order.public_order_id, version=1)
                 await bot.send_message(
                     chat_id=order.user.telegram_id,
                     text=(
                         f"💰 *Customer Support Refund Processed!*\n\n"
-                        f"Order `#{order.public_order_id}` ({prod_name}) has been refunded by store support.\n\n"
+                        f"Order `#{safe_order_id}` ({safe_prod_name}) has been refunded by store support.\n\n"
                         f"💵 *Refunded Amount:* ${refund_amt:.2f}\n"
                         f"💳 *New Wallet Balance:* ${order.user.balance:.2f}\n\n"
                         f"Your credit is ready to use immediately on any product!"
@@ -638,7 +641,14 @@ async def broadcast_store_announcement(
                 )
                 sent_count += 1
             except Exception:
-                fail_count += 1
+                try:
+                    await bot.send_message(
+                        chat_id=u.telegram_id,
+                        text=msg_text,
+                    )
+                    sent_count += 1
+                except Exception:
+                    fail_count += 1
 
     return {
         "success": True,

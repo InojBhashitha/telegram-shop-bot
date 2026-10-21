@@ -396,3 +396,29 @@ async def test_webapp_topup_tiers_and_invoice(test_app_client: AsyncClient):
         assert res_data["bonus_percent"] == 10.0
         assert res_data["total_credit"] == "55.00"
         assert "Mega" in res_data["tier_label"]
+
+
+@pytest.mark.asyncio
+async def test_webapp_validation_guards(test_app_client):
+    """Test input validation guards for cart quantity and checkout payment method."""
+    # Invalid quantity
+    bad_qty = await test_app_client.post(
+        "/api/webapp/cart/add",
+        json={"product_id": 1, "quantity": 0, "telegram_id": 999111},
+    )
+    assert bad_qty.status_code == 400
+    assert "between 1 and 500" in bad_qty.json()["detail"]
+
+    bad_qty_huge = await test_app_client.post(
+        "/api/webapp/cart/add",
+        json={"product_id": 1, "quantity": 9999, "telegram_id": 999111},
+    )
+    assert bad_qty_huge.status_code == 400
+
+    # Invalid payment method
+    bad_pm = await test_app_client.post(
+        "/api/webapp/checkout",
+        json={"payment_method": "unsupported_gateway", "telegram_id": 999111},
+    )
+    assert bad_pm.status_code == 400
+    assert "Unsupported payment method" in bad_pm.json()["detail"]

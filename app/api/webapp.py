@@ -626,6 +626,9 @@ async def add_to_cart(
     authorization: str | None = Header(None),
 ):
     """Add a product to cart with live stock check."""
+    if req.quantity <= 0 or req.quantity > 500:
+        raise HTTPException(status_code=400, detail="Quantity must be between 1 and 500.")
+
     async with get_session() as session:
         user = await resolve_user(
             session,
@@ -726,6 +729,13 @@ async def checkout(
             token=req.token,
         )
 
+        method = req.payment_method.strip().lower()
+        if method not in ("balance", "crypto", "stars"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported payment method '{req.payment_method}'. Use 'crypto' or 'balance'.",
+            )
+
         # 1. Validate and execute cart checkout
         try:
             checkout_res = await cart_service.checkout_cart(
@@ -739,7 +749,7 @@ async def checkout(
         discount = checkout_res["discount"]
 
         # --- OPTION A: STORE BALANCE CHECKOUT ---
-        if req.payment_method.lower() == "balance":
+        if method == "balance":
             if user.balance < order.amount:
                 # Cancel the order to release reserved inventory
                 await order_service.cancel_order(session, order.id)
