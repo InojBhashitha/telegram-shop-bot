@@ -209,7 +209,6 @@
     dockProductsBtn: document.getElementById('dockProductsBtn'),
     dockOrdersBtn: document.getElementById('dockOrdersBtn'),
     dockCartBtn: document.getElementById('dockCartBtn'),
-    dockProfileBtn: document.getElementById('dockProfileBtn'),
     dockSearchBtn: document.getElementById('dockSearchBtn'),
     searchSection: document.getElementById('searchSection'),
 
@@ -1756,7 +1755,11 @@
 
   if (el.customTopupInput) {
     el.customTopupInput.addEventListener('input', () => {
-      const amt = parseFloat(el.customTopupInput.value) || 0;
+      let val = el.customTopupInput.value.replace(/[^0-9.]/g, '');
+      const parts = val.split('.');
+      if (parts.length > 2) val = parts[0] + '.' + parts.slice(1).join('');
+      el.customTopupInput.value = val;
+      const amt = parseFloat(val) || 0;
       document.querySelectorAll('.preset-btn').forEach(b => {
         b.classList.toggle('active', parseFloat(b.dataset.amt) === amt);
       });
@@ -1783,6 +1786,7 @@
             currency: 'USD',
             init_data: state.initData || undefined,
             telegram_id: state.telegramId || undefined,
+            token: state.token || undefined,
           }),
         });
 
@@ -1804,6 +1808,7 @@
       } finally {
         el.confirmTopupBtn.disabled = false;
         el.confirmTopupBtn.innerHTML = `💳 Pay with Crypto • <span id="btnTopupAmount">$${amt.toFixed(2)}</span>`;
+        el.btnTopupAmount = document.getElementById('btnTopupAmount');
       }
     });
   }
@@ -1853,13 +1858,6 @@
     });
   }
 
-  if (el.dockProfileBtn) {
-    el.dockProfileBtn.addEventListener('click', () => {
-      haptic('light');
-      setActiveDockBtn(el.dockProfileBtn);
-      openProfileDrawer();
-    });
-  }
 
   if (el.dockAdminBtn) {
     el.dockAdminBtn.addEventListener('click', () => {
@@ -2464,22 +2462,43 @@
   // --- Clipboard Utility ---
   function copyToClipboard(text, successMessage = 'Copied!') {
     if (!text) return;
-    navigator.clipboard
-      .writeText(text)
-      .then(() => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => {
+          haptic('light');
+          showToast(successMessage, 'success');
+        })
+        .catch(() => {
+          fallbackCopy(text, successMessage);
+        });
+    } else {
+      fallbackCopy(text, successMessage);
+    }
+  }
+
+  function fallbackCopy(text, successMessage) {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.top = '0';
+      ta.style.left = '0';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const success = document.execCommand('copy');
+      ta.remove();
+      if (success) {
         haptic('light');
         showToast(successMessage, 'success');
-      })
-      .catch(() => {
-        // Fallback
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        ta.remove();
-        showToast(successMessage, 'success');
-      });
+      } else {
+        showToast('Please copy manually', 'normal');
+      }
+    } catch {
+      showToast('Please copy manually', 'normal');
+    }
   }
 
   function escapeHtml(str) {
