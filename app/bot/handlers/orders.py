@@ -220,7 +220,7 @@ async def pay_balance_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         if user.balance < order.amount:
             shortfall = (order.amount - user.balance).quantize(Decimal("0.01"))
             keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("➕ Top-Up Balance (+Bonus)", callback_data="topup")],
+                [InlineKeyboardButton("➕ Top-Up Balance", callback_data="topup")],
                 [
                     InlineKeyboardButton("🔄 Check Payment", callback_data=f"check_pay:{order.id}"),
                     InlineKeyboardButton("❌ Cancel Order", callback_data=f"cancel_order:{order.id}"),
@@ -363,10 +363,13 @@ async def show_order_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         payment = await payment_repo.get_by_order_id(session, order.id)
         payment_url = payment.payment_url if payment else None
 
+        from telegram.helpers import escape_markdown
+        safe_product_name = escape_markdown(product_name, version=1)
+
     await query.edit_message_text(
         f"☁️ *Cloud Deals*\n\n"
         f"📦 *Order {order.public_order_id}*\n\n"
-        f"🏷 Product: {product_name}{qty_label}\n"
+        f"🏷 Product: {safe_product_name}{qty_label}\n"
         f"💰 Amount: ${order.amount}\n"
         f"Status: {status_icon} {order.status.value.replace('_', ' ').title()}\n"
         f"📅 Date: {created}",

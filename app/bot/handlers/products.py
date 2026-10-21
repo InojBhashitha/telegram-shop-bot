@@ -42,12 +42,27 @@ async def show_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         )
         return
 
-    await query.edit_message_text(
-        "☁️ *Cloud Deals*\n\n"
-        "📦 *Available Categories:*",
-        reply_markup=categories_keyboard(categories),
-        parse_mode="Markdown",
-    )
+    try:
+        await query.edit_message_text(
+            "☁️ *Cloud Deals*\n\n"
+            "📦 *Available Categories:*",
+            reply_markup=categories_keyboard(categories),
+            parse_mode="Markdown",
+        )
+    except Exception:
+        try:
+            await query.edit_message_caption(
+                caption="☁️ *Cloud Deals*\n\n📦 *Available Categories:*",
+                reply_markup=categories_keyboard(categories),
+                parse_mode="Markdown",
+            )
+        except Exception:
+            if query.message:
+                await query.message.reply_text(
+                    "☁️ *Cloud Deals*\n\n📦 *Available Categories:*",
+                    reply_markup=categories_keyboard(categories),
+                    parse_mode="Markdown",
+                )
 
 
 async def show_category_products(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -100,11 +115,26 @@ async def show_category_products(update: Update, context: ContextTypes.DEFAULT_T
         except Exception as e:
             logger.warning("Category media edit failed: %s", e)
 
-    await query.edit_message_text(
-        text,
-        reply_markup=keyboard,
-        parse_mode="Markdown",
-    )
+    try:
+        await query.edit_message_text(
+            text,
+            reply_markup=keyboard,
+            parse_mode="Markdown",
+        )
+    except Exception:
+        try:
+            await query.edit_message_caption(
+                caption=text,
+                reply_markup=keyboard,
+                parse_mode="Markdown",
+            )
+        except Exception:
+            if query.message:
+                await query.message.reply_text(
+                    text,
+                    reply_markup=keyboard,
+                    parse_mode="Markdown",
+                )
 
 
 async def show_product_detail(
@@ -174,11 +204,26 @@ async def show_product_detail(
             except Exception as e:
                 logger.warning("Media edit failed, fallback to text: %s", e)
 
-        await query.edit_message_text(
-            caption,
-            reply_markup=keyboard,
-            parse_mode="Markdown",
-        )
+        try:
+            await query.edit_message_text(
+                caption,
+                reply_markup=keyboard,
+                parse_mode="Markdown",
+            )
+        except Exception:
+            try:
+                await query.edit_message_caption(
+                    caption=caption,
+                    reply_markup=keyboard,
+                    parse_mode="Markdown",
+                )
+            except Exception:
+                if query.message:
+                    await query.message.reply_text(
+                        caption,
+                        reply_markup=keyboard,
+                        parse_mode="Markdown",
+                    )
         return
 
     if update.message is not None:

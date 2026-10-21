@@ -117,7 +117,14 @@ async def show_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         reply_markup = cart_view_keyboard(has_items=True, is_valid=is_valid)
 
     if query:
-        await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+        try:
+            await query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+        except Exception:
+            try:
+                await query.edit_message_caption(caption=text, reply_markup=reply_markup, parse_mode="Markdown")
+            except Exception:
+                if query.message:
+                    await query.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
     else:
         await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
 
