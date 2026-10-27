@@ -985,6 +985,8 @@
       if (quickBuyBtn && !isOutOfStock) {
         quickBuyBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
+          quickBuyBtn.classList.add('added');
+          quickBuyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
           await quickAddToCart(p.id, 1);
           // Pop animation on cart badge
           if (el.cartBadge) {
@@ -992,6 +994,10 @@
             void el.cartBadge.offsetWidth;
             el.cartBadge.classList.add('pop');
           }
+          setTimeout(() => {
+            quickBuyBtn.classList.remove('added');
+            quickBuyBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>`;
+          }, 800);
         });
       }
 
@@ -1194,8 +1200,13 @@
 
   el.modalAddToCartBtn.addEventListener('click', async () => {
     if (!state.selectedProduct) return;
+    const origText = el.modalAddToCartBtn.textContent;
+    el.modalAddToCartBtn.textContent = 'Added to Bag ✓';
     await quickAddToCart(state.selectedProduct.id, state.modalQuantity);
-    closeModal();
+    setTimeout(() => {
+      closeModal();
+      el.modalAddToCartBtn.textContent = origText;
+    }, 450);
   });
 
   el.modalBuyNowBtn.addEventListener('click', async () => {
@@ -1216,10 +1227,11 @@
           quantity: quantity,
           init_data: state.initData || undefined,
           telegram_id: state.telegramId || undefined,
+          token: state.token || undefined,
         }),
       });
 
-      showToast(`Added ${quantity > 1 ? quantity + ' items' : 'item'} to cart 🛒`, 'success');
+      showToast(`Added ${quantity > 1 ? quantity + ' items' : 'item'} to bag 🛒`, 'success');
       haptic('success');
       await fetchCart();
     } catch (err) {
@@ -1342,6 +1354,7 @@
           quantity: newQty,
           init_data: state.initData || undefined,
           telegram_id: state.telegramId || undefined,
+          token: state.token || undefined,
         }),
       });
       await fetchCart();
@@ -1359,6 +1372,7 @@
           product_id: productId,
           init_data: state.initData || undefined,
           telegram_id: state.telegramId || undefined,
+          token: state.token || undefined,
         }),
       });
       showToast('Item removed', 'normal');
@@ -1376,6 +1390,7 @@
         body: JSON.stringify({
           init_data: state.initData || undefined,
           telegram_id: state.telegramId || undefined,
+          token: state.token || undefined,
         }),
       });
       showToast('Cart cleared', 'normal');
@@ -1428,6 +1443,7 @@
           payment_method: selectedMethod,
           init_data: state.initData || undefined,
           telegram_id: state.telegramId || undefined,
+          token: state.token || undefined,
         }),
       });
 
@@ -1542,8 +1558,15 @@
           <button class="btn-field-copy" title="Copy">📋</button>
         `;
 
-        field.querySelector('.btn-field-copy').addEventListener('click', () => {
+        const copyBtn = field.querySelector('.btn-field-copy');
+        copyBtn.addEventListener('click', () => {
           copyToClipboard(cred, 'Credential copied!');
+          copyBtn.textContent = '✓';
+          copyBtn.classList.add('copied');
+          setTimeout(() => {
+            copyBtn.textContent = '📋';
+            copyBtn.classList.remove('copied');
+          }, 1200);
         });
 
         el.vaultCredentialsContent.appendChild(field);
@@ -1552,6 +1575,13 @@
 
     el.copyAllCredentialsBtn.onclick = () => {
       copyToClipboard(allText, 'All credentials copied to clipboard! 📋');
+      const orig = el.copyAllCredentialsBtn.textContent;
+      el.copyAllCredentialsBtn.textContent = '✓ Copied All';
+      el.copyAllCredentialsBtn.classList.add('copied');
+      setTimeout(() => {
+        el.copyAllCredentialsBtn.textContent = orig;
+        el.copyAllCredentialsBtn.classList.remove('copied');
+      }, 1200);
     };
 
     openModal(el.vaultModal);
@@ -1614,33 +1644,12 @@
           btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const textToCopy = btn.getAttribute('data-creds') || '';
-            const fallbackCopy = (text) => {
-              const textArea = document.createElement('textarea');
-              textArea.value = text;
-              textArea.style.position = 'fixed';
-              textArea.style.left = '-999999px';
-              textArea.style.top = '-999999px';
-              document.body.appendChild(textArea);
-              textArea.focus();
-              textArea.select();
-              try {
-                document.execCommand('copy');
-                showToast('Credentials copied to clipboard!', 'success');
-              } catch (err) {
-                showToast('Failed to copy credentials', 'error');
-              }
-              document.body.removeChild(textArea);
-            };
-
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard.writeText(textToCopy).then(() => {
-                showToast('Credentials copied to clipboard!', 'success');
-              }).catch(() => {
-                fallbackCopy(textToCopy);
-              });
-            } else {
-              fallbackCopy(textToCopy);
-            }
+            copyToClipboard(textToCopy, 'Credentials copied to clipboard! 📋');
+            const orig = btn.textContent;
+            btn.textContent = '✓ Copied';
+            setTimeout(() => {
+              btn.textContent = orig;
+            }, 1200);
           });
         });
       }

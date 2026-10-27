@@ -552,8 +552,8 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: rgba(255, 255, 255, 0.08);
-  border: none;
+  background: rgba(28, 28, 34, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-pill);
   padding: 7px 16px;
   font-size: 13px;
@@ -561,17 +561,26 @@ html, body {
   color: var(--text-secondary);
   white-space: nowrap;
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.cat-pill:hover {
+  background: rgba(40, 40, 48, 0.95);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: var(--text-primary);
 }
 
 .cat-pill:active {
-  transform: scale(0.96);
+  transform: scale(0.95);
 }
 
 .cat-pill.active {
   background: #ffffff;
   color: #000000;
   font-weight: 600;
+  border-color: #ffffff;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.22);
 }
 
 /* ==========================================================================
@@ -793,6 +802,13 @@ html, body {
   background: #005bb5;
 }
 
+.card-quick-buy-btn.added {
+  background: var(--apple-green) !important;
+  border-color: rgba(48, 209, 88, 0.4) !important;
+  box-shadow: 0 2px 14px rgba(48, 209, 88, 0.55) !important;
+  transform: scale(1.12);
+}
+
 .card-quick-buy-btn.disabled {
   opacity: 0.3;
   pointer-events: none;
@@ -996,18 +1012,30 @@ html, body {
   right: 16px;
   max-width: 480px;
   margin: 0 auto;
-  background: rgba(30, 30, 32, 0.94);
+  background: rgba(30, 30, 36, 0.92);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
-  border: 1px solid var(--apple-border-strong);
+  border: 1px solid rgba(41, 151, 255, 0.3);
   border-radius: 20px;
   padding: 9px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.65), 0 0 20px rgba(41, 151, 255, 0.12);
   z-index: 85;
+  animation: stickyBarPop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes stickyBarPop {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .sticky-meta {
@@ -1555,15 +1583,21 @@ html, body {
   align-items: center;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--apple-border);
-  border-radius: 12px;
-  padding: 10px 14px;
+  border-radius: 14px;
+  padding: 12px 14px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-radio-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 .apple-radio-option.active {
-  background: rgba(0, 113, 227, 0.12);
-  border-color: var(--apple-blue);
+  background: rgba(0, 113, 227, 0.14);
+  border-color: var(--apple-blue-tint);
+  box-shadow: 0 0 16px rgba(41, 151, 255, 0.2);
 }
 
 .apple-radio-option input {
@@ -1577,13 +1611,13 @@ html, body {
 }
 
 .option-title {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
 .option-sub {
-  font-size: 11px;
+  font-size: 11.5px;
   color: var(--text-secondary);
 }
 
@@ -1592,10 +1626,13 @@ html, body {
   font-weight: 700;
   color: var(--apple-blue-tint);
   opacity: 0;
+  transform: scale(0.6);
+  transition: all 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .apple-radio-option.active .option-check {
   opacity: 1;
+  transform: scale(1);
 }
 
 /* ==========================================================================
@@ -1740,10 +1777,25 @@ html, body {
   border: 1px solid var(--apple-border);
   border-radius: var(--radius-pill);
   color: var(--text-primary);
-  padding: 4px 10px;
+  padding: 4px 12px;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.apple-copy-btn:active {
+  transform: scale(0.92);
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.apple-copy-btn.copied {
+  background: rgba(48, 209, 88, 0.2) !important;
+  border-color: rgba(48, 209, 88, 0.5) !important;
+  color: var(--apple-green) !important;
 }
 
 .credentials-content {
@@ -1752,19 +1804,59 @@ html, body {
   gap: 8px;
 }
 
-.cred-box {
+.credential-field, .cred-box {
   background: #000000;
-  border: 1px solid var(--apple-border);
-  border-radius: 10px;
-  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px 14px;
   font-family: var(--font-mono);
-  font-size: 12px;
-  color: #a5f3fc;
+  font-size: 13px;
+  color: #38bdf8;
   word-break: break-all;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+  transition: border-color 0.18s ease;
+}
+
+.credential-field:hover, .cred-box:hover {
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.credential-value {
+  flex: 1;
+  user-select: all;
+  -webkit-user-select: all;
+  line-height: 1.4;
+}
+
+.btn-field-copy {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-primary);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 13px;
+  transition: all 0.16s ease;
+}
+
+.btn-field-copy:active {
+  transform: scale(0.9);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.btn-field-copy.copied {
+  background: rgba(48, 209, 88, 0.25) !important;
+  border-color: var(--apple-green) !important;
+  color: var(--apple-green) !important;
 }
 
 .apple-warranty-callout {
@@ -1904,13 +1996,25 @@ html, body {
   border-radius: 14px;
   padding: 14px;
   border: 1px solid var(--apple-border);
+  transition: transform 0.16s ease, border-color 0.16s ease;
 }
 
-.order-header-line {
+.order-card:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.order-top, .order-header-line {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  align-items: center;
   margin-bottom: 6px;
+}
+
+.order-id {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .order-title {
@@ -1919,21 +2023,54 @@ html, body {
   margin-bottom: 4px;
 }
 
+.order-details-text {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.order-credentials-preview {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 8px;
+}
+
 .order-status-badge {
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: var(--radius-pill);
 }
 
-.order-status-badge.fulfilled {
-  background: rgba(48, 209, 88, 0.12);
+.order-status-badge.fulfilled,
+.order-status-badge.status-fulfilled {
+  background: rgba(48, 209, 88, 0.14);
   color: var(--apple-green);
+  border: 1px solid rgba(48, 209, 88, 0.25);
 }
 
-.order-status-badge.pending_payment {
-  background: rgba(255, 159, 10, 0.12);
+.order-status-badge.pending_payment,
+.order-status-badge.status-pending_payment {
+  background: rgba(255, 159, 10, 0.14);
   color: var(--apple-orange);
+  border: 1px solid rgba(255, 159, 10, 0.25);
+}
+
+.order-status-badge.paid,
+.order-status-badge.status-paid {
+  background: rgba(41, 151, 255, 0.14);
+  color: var(--apple-blue-tint);
+  border: 1px solid rgba(41, 151, 255, 0.25);
+}
+
+.order-status-badge.cancelled,
+.order-status-badge.status-cancelled {
+  background: rgba(255, 69, 58, 0.14);
+  color: var(--apple-red);
+  border: 1px solid rgba(255, 69, 58, 0.25);
 }
 
 /* ==========================================================================

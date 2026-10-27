@@ -123,7 +123,8 @@ async def show_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             try:
                 await query.edit_message_caption(caption=text, reply_markup=reply_markup, parse_mode="Markdown")
             except Exception:
-                if query.message:
+                from telegram import Message
+                if isinstance(query.message, Message):
                     await query.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
     else:
         await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")

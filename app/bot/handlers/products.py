@@ -6,7 +6,7 @@ import logging
 from decimal import Decimal
 from pathlib import Path
 
-from telegram import Update
+from telegram import Message, Update
 from telegram.ext import CallbackQueryHandler, ContextTypes
 
 from app.bot.keyboards.orders import payment_keyboard
@@ -57,7 +57,7 @@ async def show_categories(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                 parse_mode="Markdown",
             )
         except Exception:
-            if query.message:
+            if isinstance(query.message, Message):
                 await query.message.reply_text(
                     "☁️ *Cloud Deals*\n\n📦 *Available Categories:*",
                     reply_markup=categories_keyboard(categories),
@@ -129,7 +129,7 @@ async def show_category_products(update: Update, context: ContextTypes.DEFAULT_T
                 parse_mode="Markdown",
             )
         except Exception:
-            if query.message:
+            if isinstance(query.message, Message):
                 await query.message.reply_text(
                     text,
                     reply_markup=keyboard,
@@ -218,7 +218,7 @@ async def show_product_detail(
                     parse_mode="Markdown",
                 )
             except Exception:
-                if query.message:
+                if isinstance(query.message, Message):
                     await query.message.reply_text(
                         caption,
                         reply_markup=keyboard,
