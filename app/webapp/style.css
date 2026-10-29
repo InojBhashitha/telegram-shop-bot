@@ -1630,10 +1630,14 @@ html, body {
   border-color: rgba(255, 255, 255, 0.14);
 }
 
+.apple-radio-option:active {
+  transform: scale(0.985);
+}
+
 .apple-radio-option.active {
   background: rgba(0, 113, 227, 0.14);
   border-color: var(--apple-blue-tint);
-  box-shadow: 0 0 16px rgba(41, 151, 255, 0.2);
+  box-shadow: 0 0 0 1px var(--apple-blue-tint), 0 0 16px rgba(41, 151, 255, 0.22);
 }
 
 .apple-radio-option input {
@@ -2678,11 +2682,22 @@ html, body {
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.admin-nav-tab:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.admin-nav-tab:active {
+  transform: scale(0.95);
+}
+
 .admin-nav-tab.active {
   background: var(--text-primary);
   color: var(--apple-bg);
   border-color: var(--text-primary);
   box-shadow: 0 2px 10px rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
 }
 
 .admin-sheet-body {
@@ -2709,11 +2724,25 @@ html, body {
   gap: 4px;
   position: relative;
   overflow: hidden;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .admin-kpi-card.glow-card {
   border-color: rgba(255, 159, 10, 0.3);
   background: linear-gradient(135deg, rgba(255, 159, 10, 0.08) 0%, var(--apple-card) 100%);
+}
+
+.admin-kpi-card.glow-card:hover {
+  border-color: rgba(255, 159, 10, 0.5);
+  box-shadow: 0 8px 24px rgba(255, 159, 10, 0.18);
 }
 
 .kpi-label {
