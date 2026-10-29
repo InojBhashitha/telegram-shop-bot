@@ -1264,9 +1264,11 @@
       el.cartBadge.classList.remove('hidden');
       el.stickyCheckoutBar.classList.remove('hidden');
       el.stickyTotalAmount.textContent = formatMoney(c.final_amount);
+      if (el.clearCartBtn) el.clearCartBtn.classList.remove('hidden');
     } else {
       el.cartBadge.classList.add('hidden');
       el.stickyCheckoutBar.classList.add('hidden');
+      if (el.clearCartBtn) el.clearCartBtn.classList.add('hidden');
     }
 
     // Modal List
