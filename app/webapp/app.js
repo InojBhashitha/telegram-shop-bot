@@ -899,6 +899,10 @@
             el.spotlightGlowAura.style.background = resolveProviderColor(featured);
           }
 
+          el.featuredShowcaseCard.onclick = () => {
+            openProductSheet(featured);
+          };
+
           if (el.spotlightBuyBtn) {
             el.spotlightBuyBtn.onclick = async (e) => {
               e.stopPropagation();
