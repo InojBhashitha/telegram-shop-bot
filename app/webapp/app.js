@@ -491,6 +491,9 @@
       if (state.activeModal === modal) {
         state.activeModal = null;
       }
+      if (!state.activeModal && el.dockCatalogBtn) {
+        setActiveDockBtn(el.dockCatalogBtn);
+      }
       if (typeof callback === 'function') callback();
     }, 200);
   }
@@ -945,23 +948,30 @@
       const isOutOfStock = p.stock === 0;
       const glowStyle = resolveProviderColor(p);
 
-      // Apple Tag (e.g., "Saved for you", "Instant Stock", "Low Stock")
-      let tagText = 'Saved for you';
-      let tagIcon = '🔖';
+      // Apple Tag (e.g., "Instant Stock", "Low Stock", "Sold Out")
+      let tagText = 'Instant Stock';
+      let tagIcon = '⚡';
+      let tagClass = '';
       if (p.stock > 0 && p.stock <= 2) {
-        tagText = 'Low Stock';
-        tagIcon = '⚡';
+        tagText = `Only ${p.stock} left`;
+        tagIcon = '⚠️';
+        tagClass = 'tag-low-stock';
       } else if (p.stock > 0) {
-        tagText = 'Instant Stock';
+        tagText = `${p.stock} in Vault`;
         tagIcon = '⚡';
       } else {
-        tagText = 'Restock Soon';
+        tagText = 'Sold Out';
         tagIcon = '⏳';
+        tagClass = 'tag-sold-out';
       }
+
+      const hasBulkTiers = p.bulk_tiers && p.bulk_tiers.length > 0;
+      const bulkTagHtml = hasBulkTiers ? `<span class="card-bulk-chip">📉 Bulk Deals</span>` : '';
 
       card.innerHTML = `
         <div class="card-top-tag">
-          <span class="card-tag-badge">${tagIcon} ${tagText}</span>
+          <span class="card-tag-badge ${tagClass}">${tagIcon} ${tagText}</span>
+          ${bulkTagHtml}
         </div>
         <div class="card-logo-container" style="--provider-glow: ${glowStyle};">
           <div class="card-ambient-glow"></div>
@@ -1048,8 +1058,11 @@
         el.modalStockAlertBtn.disabled = false;
         el.modalStockAlertBtn.textContent = '🔔 Notify When Back in Stock';
       }
+    } else if (prod.stock <= 2) {
+      stockText = `⚠️ Only ${prod.stock} Left`;
+      el.modalStockBadge.className = 'apple-badge-stock stock-low';
     } else {
-      stockText = 'In Stock';
+      stockText = `⚡ ${prod.stock} Ready in Vault`;
       el.modalStockBadge.className = 'apple-badge-stock';
       el.modalOutOfStockBox?.classList.add('hidden');
       el.modalQtyRow?.classList.remove('hidden');
@@ -1625,7 +1638,7 @@
               <div class="order-credentials-preview">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                   <strong style="color:var(--text-primary);font-size:12px;">🔑 Delivered Credentials:</strong>
-                  <button type="button" class="btn btn-ghost copy-order-creds-btn" data-creds="${escapeHtml(rawDelivered)}" style="padding:2px 8px;font-size:11px;min-height:unset;height:24px;border:1px solid rgba(255,255,255,0.12);border-radius:6px;cursor:pointer;">📋 Copy</button>
+                  <button type="button" class="apple-copy-btn mini copy-order-creds-btn" data-creds="${escapeHtml(rawDelivered)}">📋 Copy</button>
                 </div>
                 <div style="font-family:var(--font-mono);font-size:11px;line-height:1.45;word-break:break-all;color:var(--text-secondary);white-space:pre-wrap;">${escapeHtml(rawDelivered)}</div>
               </div>

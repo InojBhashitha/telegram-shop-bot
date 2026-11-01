@@ -24,18 +24,17 @@ def main_menu_keyboard(cart_count: int = 0) -> InlineKeyboardMarkup:
         rows.append([InlineKeyboardButton("🚀 Launch Mini App Store", web_app=WebAppInfo(url=webapp_url))])
 
     rows.extend([
-        [InlineKeyboardButton("🎁 View all products", callback_data="products")],
         [
-            InlineKeyboardButton("🔥 Buy Now", callback_data="products"),
+            InlineKeyboardButton("🛍 Browse Store", callback_data="products"),
             InlineKeyboardButton(cart_btn, callback_data="cart"),
         ],
         [
-            InlineKeyboardButton("👤 Profile", callback_data="profile"),
-            InlineKeyboardButton("💳 Top-up", callback_data="topup"),
+            InlineKeyboardButton("📦 My Orders", callback_data="orders"),
+            InlineKeyboardButton("👤 My Profile", callback_data="profile"),
         ],
         [
-            InlineKeyboardButton("☎️ Support", callback_data="support"),
-            InlineKeyboardButton("❓ FAQ", callback_data="faq"),
+            InlineKeyboardButton("💳 Top-Up Balance", callback_data="topup"),
+            InlineKeyboardButton("☎️ Support / FAQ", callback_data="support"),
         ],
     ])
     return InlineKeyboardMarkup(rows)
