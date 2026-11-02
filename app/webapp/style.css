@@ -1086,7 +1086,18 @@ html, body {
   gap: 16px;
   box-shadow: 0 10px 32px rgba(0, 0, 0, 0.65), 0 0 20px rgba(41, 151, 255, 0.12);
   z-index: 85;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.18s ease, box-shadow 0.18s ease;
   animation: stickyBarPop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.apple-sticky-bar:hover {
+  border-color: rgba(41, 151, 255, 0.5);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 24px rgba(41, 151, 255, 0.2);
+}
+
+.apple-sticky-bar:active {
+  transform: scale(0.985);
 }
 
 @keyframes stickyBarPop {
@@ -1523,7 +1534,13 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: transform 0.15s ease, background 0.15s ease;
+  box-shadow: 0 4px 16px rgba(0, 113, 227, 0.35);
+  transition: all 0.16s ease;
+}
+
+.apple-btn-primary:hover {
+  background: #0077ed;
+  box-shadow: 0 6px 20px rgba(0, 113, 227, 0.45);
 }
 
 .apple-btn-primary:active {
@@ -1541,11 +1558,17 @@ html, body {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.15s ease;
+  transition: all 0.16s ease;
+}
+
+.apple-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .apple-btn-secondary:active {
   transform: scale(0.98);
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .apple-full-btn {
@@ -1848,7 +1871,18 @@ html, body {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  padding: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-pill);
+  transition: all 0.16s ease;
+}
+
+.apple-text-danger-btn:hover {
+  background: rgba(255, 69, 58, 0.12);
+}
+
+.apple-text-danger-btn:active {
+  transform: scale(0.96);
+  background: rgba(255, 69, 58, 0.2);
 }
 
 /* Vault Fulfilled Screen */

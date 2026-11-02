@@ -105,7 +105,7 @@ def order_list_keyboard(
     if nav:
         buttons.append(nav)
 
-    buttons.append([InlineKeyboardButton("⬅️ Back", callback_data="profile")])
+    buttons.append([InlineKeyboardButton("⬅️ Back to Menu", callback_data="main_menu")])
     return InlineKeyboardMarkup(buttons)
 
 

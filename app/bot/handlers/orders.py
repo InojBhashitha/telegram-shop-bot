@@ -366,13 +366,27 @@ async def show_order_detail(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         from telegram.helpers import escape_markdown
         safe_product_name = escape_markdown(product_name, version=1)
 
+        delivered_items = []
+        if order.status == OrderStatus.FULFILLED:
+            items = await inventory_repo.get_items_by_order_id(session, order.id)
+            delivered_items = [decrypt_content(item.content) for item in items if item.content]
+            if not delivered_items and order.inventory_item and order.inventory_item.content:
+                delivered_items = [decrypt_content(order.inventory_item.content)]
+
+        credentials_block = ""
+        if delivered_items:
+            safe_items = [item.replace("`", "'") for item in delivered_items]
+            formatted_items = "\n".join(f"• `{it}`" for it in safe_items)
+            credentials_block = f"\n\n🔑 *Delivered Credentials:*\n{formatted_items}"
+
     await query.edit_message_text(
         f"☁️ *Cloud Deals*\n\n"
         f"📦 *Order {order.public_order_id}*\n\n"
         f"🏷 Product: {safe_product_name}{qty_label}\n"
         f"💰 Amount: ${order.amount}\n"
         f"Status: {status_icon} {order.status.value.replace('_', ' ').title()}\n"
-        f"📅 Date: {created}",
+        f"📅 Date: {created}"
+        f"{credentials_block}",
         reply_markup=order_detail_keyboard(order, has_warranty=True, payment_url=payment_url, user_balance=user.balance),
         parse_mode="Markdown",
     )

@@ -1425,6 +1425,9 @@
   }
 
   el.stickyCheckoutBtn.addEventListener('click', openCartSheet);
+  if (el.stickyCheckoutBar) {
+    el.stickyCheckoutBar.addEventListener('click', openCartSheet);
+  }
   el.continueShoppingBtn.addEventListener('click', closeModal);
 
   // Payment Method Selection in Cart
