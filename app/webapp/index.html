@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="/webapp/style.css?v=15">
+  <link rel="stylesheet" href="/webapp/style.css?v=16">
 </head>
 <body class="apple-dark">
 
@@ -126,9 +126,9 @@
     </main>
 
     <!-- Floating Apple Bottom Navigation Dock (Exact Match to Reference) -->
-    <nav class="apple-dock-container bottom-dock">
-      <div class="apple-dock-capsule">
-        <button class="apple-dock-tab active" id="dockCatalogBtn" data-tab="catalog">
+    <nav class="apple-dock-container bottom-dock" role="navigation" aria-label="Main Navigation">
+      <div class="apple-dock-capsule" role="tablist">
+        <button class="apple-dock-tab active" id="dockCatalogBtn" data-tab="catalog" role="tab" aria-selected="true" aria-label="For You Section">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="dock-svg">
             <rect x="3" y="3" width="7" height="7" rx="2" stroke-width="2"/>
             <rect x="14" y="3" width="7" height="7" rx="2" stroke-width="2"/>
@@ -138,14 +138,14 @@
           <span>For You</span>
         </button>
 
-        <button class="apple-dock-tab" id="dockProductsBtn" data-tab="products">
+        <button class="apple-dock-tab" id="dockProductsBtn" data-tab="products" role="tab" aria-selected="false" aria-label="Products Section">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="dock-svg">
             <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" stroke-width="2"/>
           </svg>
           <span>Products</span>
         </button>
 
-        <button class="apple-dock-tab" id="dockOrdersBtn" data-tab="orders">
+        <button class="apple-dock-tab" id="dockOrdersBtn" data-tab="orders" role="tab" aria-selected="false" aria-label="Orders History">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="dock-svg">
             <circle cx="12" cy="12" r="10" stroke-width="2"/>
             <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" stroke-width="1.8"/>
@@ -153,7 +153,7 @@
           <span>Orders</span>
         </button>
 
-        <button class="apple-dock-tab" id="dockCartBtn" data-tab="cart">
+        <button class="apple-dock-tab" id="dockCartBtn" data-tab="cart" role="tab" aria-selected="false" aria-label="Shopping Bag">
           <div class="dock-bag-wrap">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="dock-svg">
               <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" stroke-width="2"/>
@@ -166,7 +166,7 @@
         </button>
 
         <!-- Admin Suite Button (Revealed only for Store Admins) -->
-        <button class="apple-dock-tab admin-tab hidden" id="dockAdminBtn" data-tab="admin" title="Admin Portal">
+        <button class="apple-dock-tab admin-tab hidden" id="dockAdminBtn" data-tab="admin" role="tab" aria-selected="false" aria-label="Admin Portal" title="Admin Portal">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" class="dock-svg admin-tab-svg">
             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke-width="2"/>
             <circle cx="12" cy="12" r="3" stroke-width="2"/>
@@ -176,10 +176,17 @@
       </div>
 
       <!-- Separate Circular Search Button on Right (Matching Reference) -->
-      <button class="apple-dock-search" id="dockSearchBtn" title="Search Products">
+      <button class="apple-dock-search" id="dockSearchBtn" aria-label="Search Products" title="Search Products">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
           <circle cx="11" cy="11" r="8" stroke-width="2"/>
           <path d="m21 21-4.3-4.3" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+
+      <!-- Scroll to Top Quick Navigation Button -->
+      <button class="apple-scroll-top-btn hidden" id="backToTopBtn" aria-label="Back to top" title="Scroll to top">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path d="m18 15-6-6-6 6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       </button>
     </nav>
@@ -470,8 +477,18 @@
   <div id="ordersModal" class="apple-bottom-sheet hidden">
     <div class="sheet-drag-handle"></div>
     <div class="sheet-header">
-      <h2>Order History</h2>
+      <div class="cart-title-wrap">
+        <h2>Order History</h2>
+        <span class="apple-badge-sub" id="ordersCountBadge">0 orders</span>
+      </div>
       <button class="apple-close-btn" id="closeOrdersModal">&times;</button>
+    </div>
+
+    <!-- Order History Quick Filter Segmented Bar -->
+    <div class="orders-filter-bar" id="ordersFilterBar">
+      <button class="orders-filter-pill active" data-filter="all">All</button>
+      <button class="orders-filter-pill" data-filter="fulfilled">✅ Fulfilled</button>
+      <button class="orders-filter-pill" data-filter="pending">⏳ Pending</button>
     </div>
 
     <div class="sheet-body">
@@ -817,6 +834,6 @@
   </aside>
 
   <!-- Core App Logic -->
-  <script src="/webapp/app.js?v=15"></script>
+  <script src="/webapp/app.js?v=16"></script>
 </body>
 </html>

@@ -156,7 +156,10 @@ def order_detail_keyboard(
                 )
             ])
 
-    buttons.append([InlineKeyboardButton("⬅️ Back", callback_data="orders")])
+    buttons.append([
+        InlineKeyboardButton("⬅️ Back to Orders", callback_data="orders"),
+        InlineKeyboardButton("🏠 Menu", callback_data="main_menu"),
+    ])
     return InlineKeyboardMarkup(buttons)
 
 

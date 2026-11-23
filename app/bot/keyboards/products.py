@@ -30,7 +30,7 @@ def categories_keyboard(categories: list[Category]) -> InlineKeyboardMarkup:
                 callback_data=f"cat:{cat.id}",
             )
         ])
-    buttons.append([InlineKeyboardButton("⬅️ Back", callback_data="main_menu")])
+    buttons.append([InlineKeyboardButton("⬅️ Back to Menu", callback_data="main_menu")])
     return InlineKeyboardMarkup(buttons)
 
 
@@ -57,7 +57,10 @@ def products_keyboard(
         buttons.append([
             InlineKeyboardButton(label, callback_data=f"prod:{prod.id}")
         ])
-    buttons.append([InlineKeyboardButton("⬅️ Back", callback_data="products")])
+    buttons.append([
+        InlineKeyboardButton("⬅️ Back to Categories", callback_data="products"),
+        InlineKeyboardButton("🏠 Menu", callback_data="main_menu"),
+    ])
     return InlineKeyboardMarkup(buttons)
 
 
@@ -109,6 +112,7 @@ def product_detail_keyboard(
     ])
 
     buttons.append([
-        InlineKeyboardButton("⬅️ Back", callback_data=f"cat:{category_id}")
+        InlineKeyboardButton("⬅️ Back to Products", callback_data=f"cat:{category_id}"),
+        InlineKeyboardButton("🏠 Menu", callback_data="main_menu"),
     ])
     return InlineKeyboardMarkup(buttons)

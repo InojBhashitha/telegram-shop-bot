@@ -556,16 +556,33 @@ html, body {
 }
 
 /* ==========================================================================
-   Category Segmented Strip (iOS Style)
+   Category Segmented Strip (Sticky iOS Style with Frosted Glass)
    ========================================================================== */
 
 .apple-categories-strip {
+  position: sticky;
+  top: 0;
+  z-index: 40;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 18px 16px;
+  padding: 10px 18px 12px;
   overflow-x: auto;
   scrollbar-width: none;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 6px;
+  mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 16px, black calc(100% - 16px), transparent);
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.apple-categories-strip.stuck {
+  background: rgba(14, 14, 18, 0.92);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
 }
 
 .apple-categories-strip::-webkit-scrollbar {
@@ -575,11 +592,13 @@ html, body {
 .cat-pill {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  background: rgba(28, 28, 34, 0.82);
+  gap: 6px;
+  background: rgba(28, 28, 34, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-pill);
-  padding: 7px 16px;
+  padding: 7px 15px;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
@@ -587,12 +606,14 @@ html, body {
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
 }
 
 .cat-pill:hover {
-  background: rgba(40, 40, 48, 0.95);
-  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(44, 44, 52, 0.95);
+  border-color: rgba(255, 255, 255, 0.16);
   color: var(--text-primary);
+  transform: translateY(-1px);
 }
 
 .cat-pill:active {
@@ -604,8 +625,18 @@ html, body {
   color: #000000;
   font-weight: 600;
   border-color: #ffffff;
-  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.22);
+  box-shadow: 0 4px 18px rgba(255, 255, 255, 0.25), 0 0 12px rgba(255, 255, 255, 0.15);
   transform: translateY(-1px);
+}
+
+.cat-pill .cat-icon {
+  font-size: 13px;
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.cat-pill.active .cat-icon {
+  transform: scale(1.15);
 }
 
 /* ==========================================================================
@@ -929,7 +960,7 @@ html, body {
 
 .apple-dock-container {
   position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 16px) + 6px);
+  bottom: calc(env(safe-area-inset-bottom, 16px) + 8px);
   left: 0;
   right: 0;
   display: flex;
@@ -938,30 +969,33 @@ html, body {
   gap: 8px;
   z-index: 90;
   pointer-events: none;
+  padding: 0 12px;
 }
 
 .apple-dock-capsule {
   pointer-events: auto;
-  background: rgba(28, 28, 30, 0.84);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
+  background: rgba(22, 22, 26, 0.82);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
   border-radius: var(--radius-pill);
-  border: 1px solid var(--apple-border-strong);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   padding: 4px 6px;
   display: flex;
   align-items: center;
   gap: 2px;
-  box-shadow: var(--apple-shadow-dock);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.72), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  position: relative;
 }
 
 .apple-dock-tab {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 6px 14px;
+  padding: 6px 13px;
   border-radius: 18px;
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--text-secondary);
   font-family: var(--font-apple);
@@ -969,27 +1003,55 @@ html, body {
   font-weight: 500;
   gap: 2px;
   cursor: pointer;
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 50px;
+}
+
+.apple-dock-tab:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .apple-dock-tab:active {
-  transform: scale(0.94);
+  transform: scale(0.92);
 }
 
 .apple-dock-tab.active {
-  background: var(--apple-blue-pill);
-  color: var(--apple-blue-tint);
+  background: rgba(41, 151, 255, 0.16);
+  color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 2px 10px rgba(41, 151, 255, 0.22);
+  border-color: rgba(41, 151, 255, 0.35);
+  box-shadow: 0 2px 12px rgba(41, 151, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .apple-dock-tab.active .dock-svg {
-  filter: drop-shadow(0 0 6px rgba(41, 151, 255, 0.5));
+  color: var(--apple-blue-tint);
+  filter: drop-shadow(0 0 6px rgba(41, 151, 255, 0.65));
+  transform: scale(1.06);
+}
+
+.apple-dock-tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--apple-blue-tint);
+  box-shadow: 0 0 6px var(--apple-blue-tint);
+  animation: dockDotPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dockDotPop {
+  0% { transform: scale(0); opacity: 0; }
+  70% { transform: scale(1.3); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .dock-svg {
   width: 20px;
   height: 20px;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), color 0.2s ease, filter 0.2s ease;
 }
 
 .dock-bag-wrap {
@@ -1001,20 +1063,22 @@ html, body {
 
 .dock-badge {
   position: absolute;
-  top: -4px;
-  right: -8px;
-  background: var(--apple-blue);
+  top: -5px;
+  right: -9px;
+  background: linear-gradient(135deg, #ff453a, #ff2d55);
   color: #ffffff;
   font-size: 10px;
   font-weight: 700;
-  min-width: 16px;
-  height: 16px;
-  border-radius: 8px;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 4px;
-  box-shadow: 0 2px 6px rgba(0, 113, 227, 0.4);
+  box-shadow: 0 2px 8px rgba(255, 45, 85, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  border: 1.5px solid rgba(22, 22, 26, 0.95);
+  pointer-events: none;
 }
 
 @keyframes dockBadgeBounce {
@@ -1033,24 +1097,34 @@ html, body {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: rgba(28, 28, 30, 0.84);
-  backdrop-filter: blur(28px);
-  -webkit-backdrop-filter: blur(28px);
-  border: 1px solid var(--apple-border-strong);
+  background: rgba(22, 22, 26, 0.82);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-primary);
+  color: var(--text-secondary);
   cursor: pointer;
-  box-shadow: var(--apple-shadow-dock);
-  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.72), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  flex-shrink: 0;
 }
 
 .apple-dock-search:hover {
   background: rgba(40, 40, 48, 0.92);
-  border-color: rgba(41, 151, 255, 0.35);
+  border-color: rgba(41, 151, 255, 0.4);
   color: var(--apple-blue-tint);
-  box-shadow: var(--apple-shadow-dock), 0 0 16px rgba(41, 151, 255, 0.2);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.72), 0 0 18px rgba(41, 151, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.apple-dock-search.active {
+  background: rgba(41, 151, 255, 0.18);
+  border-color: var(--apple-blue-tint);
+  color: var(--apple-blue-tint);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.72), 0 0 20px rgba(41, 151, 255, 0.35);
 }
 
 .apple-dock-search:active {
@@ -1061,6 +1135,73 @@ html, body {
 .apple-dock-search svg {
   width: 20px;
   height: 20px;
+}
+
+/* Floating Scroll-to-Top Navigation Button */
+.apple-scroll-top-btn {
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(30, 30, 36, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+  animation: scrollTopFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-scroll-top-btn:hover {
+  background: rgba(44, 44, 52, 0.95);
+  border-color: rgba(41, 151, 255, 0.4);
+  color: var(--apple-blue-tint);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65), 0 0 16px rgba(41, 151, 255, 0.2);
+}
+
+.apple-scroll-top-btn:active {
+  transform: scale(0.92);
+}
+
+.apple-scroll-top-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+@keyframes scrollTopFadeIn {
+  from { opacity: 0; transform: scale(0.7) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@media (max-width: 380px) {
+  .apple-dock-container {
+    gap: 6px;
+    padding: 0 6px;
+  }
+  .apple-dock-capsule {
+    padding: 3px 4px;
+    gap: 1px;
+  }
+  .apple-dock-tab {
+    padding: 5px 8px;
+    min-width: 44px;
+    font-size: 9.5px;
+  }
+  .apple-dock-search {
+    width: 44px;
+    height: 44px;
+  }
+  .apple-scroll-top-btn {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 /* ==========================================================================
@@ -2145,6 +2286,48 @@ html, body {
 .action-chevron {
   font-size: 18px;
   color: var(--text-secondary);
+}
+
+/* Order History Filter Bar */
+.orders-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px 14px;
+  border-bottom: 1px solid var(--apple-separator);
+  background: rgba(28, 28, 32, 0.65);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  margin-bottom: 8px;
+}
+
+.orders-filter-pill {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.orders-filter-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+}
+
+.orders-filter-pill:active {
+  transform: scale(0.95);
+}
+
+.orders-filter-pill.active {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 600;
+  border-color: #ffffff;
+  box-shadow: 0 2px 10px rgba(255, 255, 255, 0.2);
 }
 
 /* Orders List */

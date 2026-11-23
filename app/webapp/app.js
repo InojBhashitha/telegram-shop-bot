@@ -68,6 +68,10 @@
     selectedProduct: null,
     modalQuantity: 1,
     activeModal: null,
+    modalStack: [],
+    isNavScrolling: false,
+    ordersFilter: 'all',
+    cachedOrders: [],
     currentPaymentOrder: null,
     pollTimer: null,
     adminState: {
@@ -210,6 +214,10 @@
     dockOrdersBtn: document.getElementById('dockOrdersBtn'),
     dockCartBtn: document.getElementById('dockCartBtn'),
     dockSearchBtn: document.getElementById('dockSearchBtn'),
+    backToTopBtn: document.getElementById('backToTopBtn'),
+    ordersFilterBar: document.getElementById('ordersFilterBar'),
+    ordersCountBadge: document.getElementById('ordersCountBadge'),
+    appleTitleBlock: document.querySelector('.apple-title-block'),
     searchSection: document.getElementById('searchSection'),
 
     // Dev preview
@@ -437,6 +445,7 @@
   function openModal(modalEl) {
     if (state.activeModal) {
       if (state.activeModal === modalEl) return;
+      state.modalStack.push(state.activeModal);
       state.activeModal.classList.add('hidden');
       state.activeModal.classList.remove('sheet-closing');
     }
@@ -466,13 +475,33 @@
       return;
     }
 
-    modal.classList.add('sheet-closing');
-    el.modalOverlay.classList.add('overlay-closing');
-
     if (state.pollTimer) {
       clearInterval(state.pollTimer);
       state.pollTimer = null;
     }
+
+    // If there is a parent modal on the stack, return to it seamlessly
+    if (state.modalStack.length > 0) {
+      haptic('light');
+      modal.classList.add('sheet-closing');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('sheet-closing');
+        modal.style.transform = '';
+        const prevModal = state.modalStack.pop();
+        if (prevModal) {
+          prevModal.classList.remove('hidden');
+          prevModal.classList.remove('sheet-closing');
+          prevModal.style.transform = '';
+          state.activeModal = prevModal;
+        }
+        if (typeof callback === 'function') callback();
+      }, 150);
+      return;
+    }
+
+    modal.classList.add('sheet-closing');
+    el.modalOverlay.classList.add('overlay-closing');
 
     if (tg?.BackButton) {
       tg.BackButton.hide();
@@ -491,9 +520,7 @@
       if (state.activeModal === modal) {
         state.activeModal = null;
       }
-      if (!state.activeModal && el.dockCatalogBtn) {
-        setActiveDockBtn(el.dockCatalogBtn);
-      }
+      syncDockWithScroll();
       if (typeof callback === 'function') callback();
     }, 200);
   }
@@ -1612,74 +1639,107 @@
   el.vaultDoneBtn.addEventListener('click', closeModal);
 
   // --- Order History Drawer ---
+  function renderFilteredOrders() {
+    const orders = state.cachedOrders || [];
+    const filter = state.ordersFilter || 'all';
+
+    const filtered = orders.filter((o) => {
+      if (filter === 'fulfilled') return o.status === 'fulfilled';
+      if (filter === 'pending') return o.status === 'pending_payment' || o.status === 'payment_processing';
+      return true;
+    });
+
+    if (el.ordersCountBadge) {
+      el.ordersCountBadge.textContent = `${orders.length} order${orders.length === 1 ? '' : 's'}`;
+    }
+
+    el.ordersList.innerHTML = '';
+    if (filtered.length === 0) {
+      el.emptyOrdersView.classList.remove('hidden');
+      const emptyP = el.emptyOrdersView.querySelector('p');
+      if (emptyP) {
+        emptyP.textContent = filter === 'all'
+          ? 'Your purchased cloud credentials will be safely archived here.'
+          : `No ${filter} orders found.`;
+      }
+    } else {
+      el.emptyOrdersView.classList.add('hidden');
+      filtered.forEach((o) => {
+        const card = document.createElement('div');
+        card.className = 'order-card';
+
+        const dateStr = new Date(o.created_at).toLocaleDateString(undefined, {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+
+        let credPreview = '';
+        if (o.status === 'fulfilled' && o.delivered_items && o.delivered_items.length > 0) {
+          const rawDelivered = o.delivered_items.join('\n');
+          credPreview = `
+            <div class="order-credentials-preview">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <strong style="color:var(--text-primary);font-size:12px;">🔑 Delivered Credentials:</strong>
+                <button type="button" class="apple-copy-btn mini copy-order-creds-btn" data-creds="${escapeHtml(rawDelivered)}">📋 Copy</button>
+              </div>
+              <div style="font-family:var(--font-mono);font-size:11px;line-height:1.45;word-break:break-all;color:var(--text-secondary);white-space:pre-wrap;">${escapeHtml(rawDelivered)}</div>
+            </div>
+          `;
+        }
+
+        card.innerHTML = `
+          <div class="order-top">
+            <span class="order-id">#${escapeHtml(o.public_order_id)}</span>
+            <span class="order-status-badge status-${escapeHtml(o.status)}">${escapeHtml(o.status.replace('_', ' '))}</span>
+          </div>
+          <div class="order-details-text">
+            ${escapeHtml(o.product_name)} • <strong>${formatMoney(o.amount)}</strong> • ${escapeHtml(dateStr)}
+          </div>
+          ${credPreview}
+        `;
+
+        el.ordersList.appendChild(card);
+      });
+
+      el.ordersList.querySelectorAll('.copy-order-creds-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const textToCopy = btn.getAttribute('data-creds') || '';
+          copyToClipboard(textToCopy, 'Credentials copied to clipboard! 📋');
+          const orig = btn.textContent;
+          btn.textContent = '✓ Copied';
+          setTimeout(() => {
+            btn.textContent = orig;
+          }, 1200);
+        });
+      });
+    }
+  }
+
   async function openOrdersDrawer() {
     haptic('light');
     try {
       const data = await api('/orders');
-      const orders = data.orders || [];
-
-      el.ordersList.innerHTML = '';
-      if (orders.length === 0) {
-        el.emptyOrdersView.classList.remove('hidden');
-      } else {
-        el.emptyOrdersView.classList.add('hidden');
-        orders.forEach((o) => {
-          const card = document.createElement('div');
-          card.className = 'order-card';
-
-          const dateStr = new Date(o.created_at).toLocaleDateString(undefined, {
-            month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          });
-
-          let credPreview = '';
-          if (o.status === 'fulfilled' && o.delivered_items && o.delivered_items.length > 0) {
-            const rawDelivered = o.delivered_items.join('\n');
-            credPreview = `
-              <div class="order-credentials-preview">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                  <strong style="color:var(--text-primary);font-size:12px;">🔑 Delivered Credentials:</strong>
-                  <button type="button" class="apple-copy-btn mini copy-order-creds-btn" data-creds="${escapeHtml(rawDelivered)}">📋 Copy</button>
-                </div>
-                <div style="font-family:var(--font-mono);font-size:11px;line-height:1.45;word-break:break-all;color:var(--text-secondary);white-space:pre-wrap;">${escapeHtml(rawDelivered)}</div>
-              </div>
-            `;
-          }
-
-          card.innerHTML = `
-            <div class="order-top">
-              <span class="order-id">#${escapeHtml(o.public_order_id)}</span>
-              <span class="order-status-badge status-${escapeHtml(o.status)}">${escapeHtml(o.status.replace('_', ' '))}</span>
-            </div>
-            <div class="order-details-text">
-              ${escapeHtml(o.product_name)} • <strong>${formatMoney(o.amount)}</strong> • ${escapeHtml(dateStr)}
-            </div>
-            ${credPreview}
-          `;
-
-          el.ordersList.appendChild(card);
-        });
-
-        el.ordersList.querySelectorAll('.copy-order-creds-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const textToCopy = btn.getAttribute('data-creds') || '';
-            copyToClipboard(textToCopy, 'Credentials copied to clipboard! 📋');
-            const orig = btn.textContent;
-            btn.textContent = '✓ Copied';
-            setTimeout(() => {
-              btn.textContent = orig;
-            }, 1200);
-          });
-        });
-      }
-
+      state.cachedOrders = data.orders || [];
+      renderFilteredOrders();
       openModal(el.ordersModal);
     } catch (err) {
       showToast('Failed to load orders: ' + err.message, 'error');
     }
+  }
+
+  if (el.ordersFilterBar) {
+    el.ordersFilterBar.querySelectorAll('.orders-filter-pill').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        haptic('selection');
+        el.ordersFilterBar.querySelectorAll('.orders-filter-pill').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.ordersFilter = btn.dataset.filter || 'all';
+        renderFilteredOrders();
+      });
+    });
   }
 
   // --- Profile Drawer ---
@@ -1844,32 +1904,85 @@
     });
   }
 
-  // --- Navigation Dock Handlers ---
+  // --- Navigation Dock Handlers & Scroll Spy ---
   function setActiveDockBtn(activeBtn) {
-    document.querySelectorAll('.apple-dock-tab').forEach((b) => b.classList.remove('active'));
+    document.querySelectorAll('.apple-dock-tab').forEach((b) => {
+      b.classList.remove('active');
+      b.setAttribute('aria-selected', 'false');
+    });
     if (activeBtn) {
       activeBtn.classList.add('active');
+      activeBtn.setAttribute('aria-selected', 'true');
     }
   }
+
+  function syncDockWithScroll() {
+    if (state.activeModal || state.isNavScrolling) return;
+
+    const scrollY = window.scrollY || window.pageYOffset || 0;
+
+    // Back to top floating button visibility
+    if (el.backToTopBtn) {
+      el.backToTopBtn.classList.toggle('hidden', scrollY <= 320);
+    }
+
+    // Sticky category strip stuck state
+    if (el.categoriesBar) {
+      const barRect = el.categoriesBar.getBoundingClientRect();
+      el.categoriesBar.classList.toggle('stuck', barRect.top <= 2);
+    }
+
+    // Active tab calculation based on mainContent position
+    const main = document.getElementById('mainContent');
+    if (main && el.dockCatalogBtn && el.dockProductsBtn) {
+      const rect = main.getBoundingClientRect();
+      // When main content header is at or above 140px from viewport top, Products tab is active
+      if (rect.top <= 140) {
+        setActiveDockBtn(el.dockProductsBtn);
+      } else {
+        setActiveDockBtn(el.dockCatalogBtn);
+      }
+    }
+  }
+
+  // Throttled scroll listener using requestAnimationFrame for smooth 60fps performance
+  let scrollRafId = null;
+  window.addEventListener('scroll', () => {
+    if (scrollRafId) return;
+    scrollRafId = requestAnimationFrame(() => {
+      syncDockWithScroll();
+      scrollRafId = null;
+    });
+  }, { passive: true });
 
   if (el.dockCatalogBtn) {
     el.dockCatalogBtn.addEventListener('click', () => {
       haptic('light');
+      state.isNavScrolling = true;
       setActiveDockBtn(el.dockCatalogBtn);
       closeModal();
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => {
+        state.isNavScrolling = false;
+        syncDockWithScroll();
+      }, 450);
     });
   }
 
   if (el.dockProductsBtn) {
     el.dockProductsBtn.addEventListener('click', () => {
       haptic('light');
+      state.isNavScrolling = true;
       setActiveDockBtn(el.dockProductsBtn);
       closeModal();
       const main = document.getElementById('mainContent');
       if (main) {
         main.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
+      setTimeout(() => {
+        state.isNavScrolling = false;
+        syncDockWithScroll();
+      }, 450);
     });
   }
 
@@ -1933,11 +2046,43 @@
     });
   }
 
+  // Scroll-to-Top Floating Button Handler
+  if (el.backToTopBtn) {
+    el.backToTopBtn.addEventListener('click', () => {
+      haptic('light');
+      state.isNavScrolling = true;
+      setActiveDockBtn(el.dockCatalogBtn);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => {
+        state.isNavScrolling = false;
+        syncDockWithScroll();
+      }, 450);
+    });
+  }
+
+  // Clicking store title / logo in header scrolls to top
+  if (el.appleTitleBlock) {
+    el.appleTitleBlock.style.cursor = 'pointer';
+    el.appleTitleBlock.addEventListener('click', () => {
+      haptic('light');
+      state.isNavScrolling = true;
+      setActiveDockBtn(el.dockCatalogBtn);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => {
+        state.isNavScrolling = false;
+        syncDockWithScroll();
+      }, 450);
+    });
+  }
+
   // --- Search & Filters ---
   function onSearchChange() {
     state.searchQuery = el.searchInput ? el.searchInput.value : '';
     if (el.clearSearchBtn) {
       el.clearSearchBtn.classList.toggle('hidden', !state.searchQuery);
+    }
+    if (el.dockSearchBtn) {
+      el.dockSearchBtn.classList.toggle('active', Boolean(state.searchQuery.trim()));
     }
     if (state.searchQuery.trim()) {
       // Searching across entire store: update category pill visuals to 'all'
@@ -1959,6 +2104,14 @@
         el.searchInput.blur();
       }
     });
+    el.searchInput.addEventListener('focus', () => {
+      if (el.dockSearchBtn) el.dockSearchBtn.classList.add('active');
+    });
+    el.searchInput.addEventListener('blur', () => {
+      if (el.dockSearchBtn && !el.searchInput.value.trim()) {
+        el.dockSearchBtn.classList.remove('active');
+      }
+    });
   }
 
   if (el.clearSearchBtn) {
@@ -1966,6 +2119,7 @@
       if (el.searchInput) el.searchInput.value = '';
       state.searchQuery = '';
       el.clearSearchBtn.classList.add('hidden');
+      if (el.dockSearchBtn) el.dockSearchBtn.classList.remove('active');
       renderProducts();
       if (el.searchInput) el.searchInput.focus();
     });
